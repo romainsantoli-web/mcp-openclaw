@@ -48,6 +48,9 @@ class Settings:
     audit_file_path: Path
     memory_backend: str
     memory_sqlite_path: Path
+    memory_os_ai_repo_path: Path
+    memory_os_ai_events_path: Path
+    memory_os_ai_context_limit: int
     telemetry_enabled: bool
     workflow_max_attempts: int
     workflow_idempotency_enabled: bool
@@ -112,6 +115,20 @@ def load_settings(env_file: Path | None = None) -> Settings:
         memory_sqlite_path = Path(memory_sqlite_raw).expanduser().resolve()
     else:
         memory_sqlite_path = project_root / "data" / "memory.db"
+
+    memory_os_repo_raw = os.getenv("MEMORY_OS_AI_REPO_PATH", "")
+    if memory_os_repo_raw:
+        memory_os_ai_repo_path = Path(memory_os_repo_raw).expanduser().resolve()
+    else:
+        memory_os_ai_repo_path = project_root / "external" / "memory-os-ai"
+
+    memory_os_events_raw = os.getenv("MEMORY_OS_AI_EVENTS_PATH", "")
+    if memory_os_events_raw:
+        memory_os_ai_events_path = Path(memory_os_events_raw).expanduser().resolve()
+    else:
+        memory_os_ai_events_path = (
+            memory_os_ai_repo_path / "pdfs" / "mcp_openclaw_events.jsonl"
+        )
 
     workflow_store_raw = os.getenv("WORKFLOW_STORE_PATH", "")
     if workflow_store_raw:
@@ -184,8 +201,11 @@ def load_settings(env_file: Path | None = None) -> Settings:
         ),
         audit_enabled=_to_bool(os.getenv("AUDIT_ENABLED"), default=True),
         audit_file_path=audit_file_path,
-        memory_backend=os.getenv("MEMORY_BACKEND", "sqlite").strip().lower(),
+        memory_backend=os.getenv("MEMORY_BACKEND", "memory_os_ai").strip().lower(),
         memory_sqlite_path=memory_sqlite_path,
+        memory_os_ai_repo_path=memory_os_ai_repo_path,
+        memory_os_ai_events_path=memory_os_ai_events_path,
+        memory_os_ai_context_limit=int(os.getenv("MEMORY_OS_AI_CONTEXT_LIMIT", "16")),
         telemetry_enabled=_to_bool(os.getenv("TELEMETRY_ENABLED"), default=True),
         workflow_max_attempts=int(os.getenv("WORKFLOW_MAX_ATTEMPTS", "2")),
         workflow_idempotency_enabled=_to_bool(

@@ -19,6 +19,7 @@ from .firm_repo import (
 )
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
+from .memory_os_ai_store import MemoryOsAiSettings, MemoryOsAiStore
 from .memory_sqlite import SQLiteMemoryStore
 from .openclaw_dispatcher import OpenClawDispatcher
 from .model_router import (
@@ -106,6 +107,14 @@ def build_server(settings: Settings) -> Any:
     )
     if settings.memory_backend == "sqlite":
         memory: Any = SQLiteMemoryStore(settings.memory_sqlite_path)
+    elif settings.memory_backend == "memory_os_ai":
+        memory = MemoryOsAiStore(
+            MemoryOsAiSettings(
+                repo_path=settings.memory_os_ai_repo_path,
+                events_path=settings.memory_os_ai_events_path,
+                context_limit=settings.memory_os_ai_context_limit,
+            )
+        )
     else:
         memory = MemoryAdapter()
     telemetry = TelemetryCollector(enabled=settings.telemetry_enabled)
@@ -144,22 +153,99 @@ def build_server(settings: Settings) -> Any:
         except FirmRepoError:
             pass
 
+    def _record_memory_action(
+        *,
+        kind: str,
+        tool: str,
+        phase: str,
+        request: dict[str, Any] | None = None,
+        result: dict[str, Any] | None = None,
+    ) -> None:
+        payload = {
+            "kind": kind,
+            "tool": tool,
+            "phase": phase,
+            "request": request or {},
+            "result": result or {},
+        }
+        try:
+            memory.write_back("actions/all", payload)
+            memory.write_back(f"actions/{tool}", payload)
+            memory.write_back(f"actions/{kind}", payload)
+        except Exception:
+            pass
+
+    def _memory_context(query: str, limit: int | None = None) -> list[dict[str, Any]]:
+        if hasattr(memory, "retrieve_context"):
+            try:
+                return memory.retrieve_context(query, limit=limit)
+            except Exception:
+                return []
+
+        events = memory.retrieve("actions/all")
+        effective_limit = limit or settings.memory_os_ai_context_limit
+        return events[-effective_limit:]
+
     @mcp.tool()
     def firm_repo_status() -> dict[str, Any]:
-        return repo_status(settings)
+        request = {}
+        _record_memory_action(
+            kind="read",
+            tool="firm_repo_status",
+            phase="request",
+            request=request,
+        )
+        result = repo_status(settings)
+        _record_memory_action(
+            kind="read",
+            tool="firm_repo_status",
+            phase="response",
+            request=request,
+            result=result,
+        )
+        return result
 
     @mcp.tool()
     def firm_repo_sync() -> dict[str, Any]:
+        request = {}
+        _record_memory_action(
+            kind="network",
+            tool="firm_repo_sync",
+            phase="request",
+            request=request,
+        )
         blocked = _guard("firm_repo_sync", "network")
         if blocked is not None:
+            _record_memory_action(
+                kind="network",
+                tool="firm_repo_sync",
+                phase="response",
+                request=request,
+                result=blocked,
+            )
             return blocked
         try:
             result = sync_repo(settings)
             audit.log("firm_repo_sync", {"ok": True, "result": result})
+            _record_memory_action(
+                kind="network",
+                tool="firm_repo_sync",
+                phase="response",
+                request=request,
+                result=result,
+            )
             return result
         except FirmRepoError as exc:
             audit.log("firm_repo_sync", {"ok": False, "error": str(exc)})
-            return {"ok": False, "error": str(exc)}
+            result = {"ok": False, "error": str(exc)}
+            _record_memory_action(
+                kind="network",
+                tool="firm_repo_sync",
+                phase="response",
+                request=request,
+                result=result,
+            )
+            return result
 
     @mcp.tool()
     def firm_list_departments() -> dict[str, Any]:
@@ -383,6 +469,26 @@ def build_server(settings: Settings) -> Any:
         idempotency_key: str | None,
         max_attempts: int | None,
     ) -> dict[str, Any]:
+        _record_memory_action(
+            kind="workflow",
+            tool="firm_run_delivery_workflow",
+            phase="request",
+            request={
+                "objective": objective,
+                "departments": departments,
+                "prompt_name": prompt_name,
+                "memory_key": memory_key,
+                "push_to_openclaw": push_to_openclaw,
+                "openclaw_method": openclaw_method,
+                "task_family": task_family,
+                "quality_tier": quality_tier,
+                "subtask_type": subtask_type,
+                "latency_budget_ms": latency_budget_ms,
+                "model_override": model_override,
+                "idempotency_key": idempotency_key,
+                "max_attempts": max_attempts,
+            },
+        )
         plugin_context = {
             "objective": objective,
             "departments": list(departments) if departments else [],
@@ -474,6 +580,10 @@ def build_server(settings: Settings) -> Any:
                 department_agents[department] = agent_data["content"]
 
             memory_context = memory.retrieve(memory_key)
+            memory_global_context = _memory_context(
+                f"{objective} {task_family or ''} {subtask_type or ''}",
+                limit=settings.memory_os_ai_context_limit,
+            )
             routing_metadata = route_task(
                 settings=settings,
                 objective=objective,
@@ -502,7 +612,7 @@ def build_server(settings: Settings) -> Any:
                 prompt_content=prompt_data["content"],
                 selected_departments=selected_departments,
                 department_agents=department_agents,
-                memory_context=memory_context,
+                memory_context=(memory_context + memory_global_context),
                 routing_metadata=routing_metadata,
                 agent_copilot_access=agent_copilot_access,
             )
@@ -573,6 +683,7 @@ def build_server(settings: Settings) -> Any:
                 "prompt": prompt_name,
                 "memory_key": memory_key,
                 "memory_context_items": len(memory_context),
+                "memory_global_context_items": len(memory_global_context),
                 "memory_write": memory_write,
                 "routing": routing_metadata,
                 "agent_copilot_access": agent_copilot_access,
@@ -621,13 +732,41 @@ def build_server(settings: Settings) -> Any:
                 "idempotent_replay": run_envelope.get("idempotent_replay", False),
                 "attempts": run_envelope.get("attempts", []),
             }
+            _record_memory_action(
+                kind="workflow",
+                tool="firm_run_delivery_workflow",
+                phase="response",
+                request={
+                    "objective": objective,
+                    "memory_key": memory_key,
+                    "task_family": task_family,
+                },
+                result={
+                    "ok": final_result.get("ok"),
+                    "routing": final_result.get("routing"),
+                    "runtime": final_result.get("runtime"),
+                    "openclaw_result": final_result.get("openclaw_result"),
+                },
+            )
             return final_result
 
-        return {
+        failed_result = {
             "ok": False,
             "error": "workflow_runtime_result_invalid",
             "runtime": run_envelope,
         }
+        _record_memory_action(
+            kind="workflow",
+            tool="firm_run_delivery_workflow",
+            phase="response",
+            request={
+                "objective": objective,
+                "memory_key": memory_key,
+                "task_family": task_family,
+            },
+            result=failed_result,
+        )
+        return failed_result
 
     @mcp.tool()
     async def firm_run_delivery_workflow(
@@ -677,6 +816,27 @@ def build_server(settings: Settings) -> Any:
         idempotency_key: str | None = None,
         max_attempts: int | None = None,
     ) -> dict[str, Any]:
+        request = {
+            "objective": objective,
+            "departments": departments,
+            "prompt_name": prompt_name,
+            "memory_key": memory_key,
+            "openclaw_method": openclaw_method,
+            "require_openclaw_success": require_openclaw_success,
+            "task_family": task_family,
+            "quality_tier": quality_tier,
+            "subtask_type": subtask_type,
+            "latency_budget_ms": latency_budget_ms,
+            "model_override": model_override,
+            "idempotency_key": idempotency_key,
+            "max_attempts": max_attempts,
+        }
+        _record_memory_action(
+            kind="workflow",
+            tool="firm_run_delivery_and_dispatch",
+            phase="request",
+            request=request,
+        )
         result = await _execute_delivery_workflow(
             objective=objective,
             departments=departments,
@@ -694,6 +854,13 @@ def build_server(settings: Settings) -> Any:
         )
 
         if not result.get("ok"):
+            _record_memory_action(
+                kind="workflow",
+                tool="firm_run_delivery_and_dispatch",
+                phase="response",
+                request=request,
+                result=result,
+            )
             return result
 
         openclaw_result = result.get("openclaw_result") or {
@@ -702,14 +869,22 @@ def build_server(settings: Settings) -> Any:
         }
         dispatch_ok = bool(openclaw_result.get("ok"))
         if require_openclaw_success and not dispatch_ok:
-            return {
+            failed = {
                 "ok": False,
                 "error": "Dispatch OpenClaw échoué",
                 "objective": objective,
                 "openclaw_result": openclaw_result,
             }
+            _record_memory_action(
+                kind="workflow",
+                tool="firm_run_delivery_and_dispatch",
+                phase="response",
+                request=request,
+                result=failed,
+            )
+            return failed
 
-        return {
+        response = {
             "ok": True,
             "objective": objective,
             "dispatch_ok": dispatch_ok,
@@ -729,42 +904,149 @@ def build_server(settings: Settings) -> Any:
                 "agent_copilot_access_count": len(result.get("agent_copilot_access") or {}),
             },
         }
+        _record_memory_action(
+            kind="workflow",
+            tool="firm_run_delivery_and_dispatch",
+            phase="response",
+            request=request,
+            result=response,
+        )
+        return response
 
     @mcp.tool()
     def memory_retrieve(key: str) -> dict[str, Any]:
-        return {"key": key, "events": memory.retrieve(key)}
+        request = {"key": key}
+        _record_memory_action(
+            kind="read",
+            tool="memory_retrieve",
+            phase="request",
+            request=request,
+        )
+        result = {"key": key, "events": memory.retrieve(key)}
+        _record_memory_action(
+            kind="read",
+            tool="memory_retrieve",
+            phase="response",
+            request=request,
+            result={"events_count": len(result.get("events", []))},
+        )
+        return result
 
     @mcp.tool()
     def memory_write_back(key: str, value: dict[str, Any]) -> dict[str, Any]:
+        request = {"key": key, "value": value}
+        _record_memory_action(
+            kind="write",
+            tool="memory_write_back",
+            phase="request",
+            request=request,
+        )
         blocked = _guard("memory_write_back", "write")
         if blocked is not None:
+            _record_memory_action(
+                kind="write",
+                tool="memory_write_back",
+                phase="response",
+                request=request,
+                result=blocked,
+            )
             return blocked
         if settings.read_only_mode:
-            return {"ok": False, "error": "Mode lecture seule actif"}
+            result = {"ok": False, "error": "Mode lecture seule actif"}
+            _record_memory_action(
+                kind="write",
+                tool="memory_write_back",
+                phase="response",
+                request=request,
+                result=result,
+            )
+            return result
         result = memory.write_back(key, value)
         audit.log("memory_write_back", {"key": key, "ok": True})
+        _record_memory_action(
+            kind="write",
+            tool="memory_write_back",
+            phase="response",
+            request=request,
+            result=result,
+        )
         return result
 
     @mcp.tool()
     async def openclaw_health() -> dict[str, Any]:
+        request = {}
+        _record_memory_action(
+            kind="network",
+            tool="openclaw_health",
+            phase="request",
+            request=request,
+        )
         blocked = _guard("openclaw_health", "network")
         if blocked is not None:
+            _record_memory_action(
+                kind="network",
+                tool="openclaw_health",
+                phase="response",
+                request=request,
+                result=blocked,
+            )
             return blocked
-        return await gateway_health(ws_client)
+        result = await gateway_health(ws_client)
+        _record_memory_action(
+            kind="network",
+            tool="openclaw_health",
+            phase="response",
+            request=request,
+            result=result,
+        )
+        return result
 
     @mcp.tool()
     async def openclaw_invoke(method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        memory_context = _memory_context(
+            f"openclaw {method} {params or {}}",
+            limit=settings.memory_os_ai_context_limit,
+        )
+        request = {
+            "method": method,
+            "params": params or {},
+            "memory_context": memory_context,
+        }
+        _record_memory_action(
+            kind="execution",
+            tool="openclaw_invoke",
+            phase="request",
+            request=request,
+        )
         blocked = _guard("openclaw_invoke", "network")
         if blocked is not None:
+            blocked["memory_context"] = memory_context
+            _record_memory_action(
+                kind="execution",
+                tool="openclaw_invoke",
+                phase="response",
+                request=request,
+                result=blocked,
+            )
             return blocked
         invoke_start = time.monotonic()
         try:
-            response = await ws_client.request(method, params or {})
+            payload = dict(params or {})
+            payload.setdefault("memory_context", memory_context)
+            response = await ws_client.request(method, payload)
         except OpenClawError as exc:
             telemetry.inc("openclaw_invoke.failure")
             telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
             audit.log("openclaw_invoke", {"method": method, "ok": False, "error": str(exc)})
-            return {"ok": False, "error": str(exc)}
+            result = {"ok": False, "error": str(exc), "memory_context": memory_context}
+            _record_memory_action(
+                kind="execution",
+                tool="openclaw_invoke",
+                phase="response",
+                request=request,
+                result=result,
+            )
+            return result
 
         if response.error is not None:
             audit.log(
@@ -778,7 +1060,20 @@ def build_server(settings: Settings) -> Any:
             )
             telemetry.inc("openclaw_invoke.failure")
             telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
-            return {"ok": False, "request_id": response.request_id, "error": response.error}
+            result = {
+                "ok": False,
+                "request_id": response.request_id,
+                "error": response.error,
+                "memory_context": memory_context,
+            }
+            _record_memory_action(
+                kind="execution",
+                tool="openclaw_invoke",
+                phase="response",
+                request=request,
+                result=result,
+            )
+            return result
 
         audit.log(
             "openclaw_invoke",
@@ -790,7 +1085,20 @@ def build_server(settings: Settings) -> Any:
         )
         telemetry.inc("openclaw_invoke.success")
         telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
-        return {"ok": True, "request_id": response.request_id, "result": response.result}
+        result = {
+            "ok": True,
+            "request_id": response.request_id,
+            "result": response.result,
+            "memory_context": memory_context,
+        }
+        _record_memory_action(
+            kind="execution",
+            tool="openclaw_invoke",
+            phase="response",
+            request=request,
+            result=result,
+        )
+        return result
 
     setattr(mcp, "_openclaw_metrics_snapshot", telemetry.snapshot)
 

@@ -210,6 +210,25 @@ Variables principales:
 - `COST_GUARD_DAILY_BUDGET`
 - `COST_GUARD_LEDGER_PATH`
 
+## Mémoire unifiée Memory OS AI
+
+- Backend mémoire recommandé: `MEMORY_BACKEND=memory_os_ai`.
+- Le wrapper journalise les actions (requêtes + résultats) dans le moteur mémoire:
+   - `actions/all`
+   - `actions/<tool>`
+   - `actions/<kind>` (`read|write|network|execution|workflow`)
+- Les événements sont persistés dans:
+   - `MEMORY_OS_AI_EVENTS_PATH` (JSONL)
+   - `external/memory-os-ai/pdfs/mcp_openclaw_events/` (miroir texte ingérable par Memory OS AI)
+- Avant les exécutions critiques (`workflow`, `openclaw_invoke`), le wrapper récupère un contexte mémoire global et l'injecte dans le payload pour améliorer la pertinence.
+
+Variables principales:
+
+- `MEMORY_BACKEND`
+- `MEMORY_OS_AI_REPO_PATH`
+- `MEMORY_OS_AI_EVENTS_PATH`
+- `MEMORY_OS_AI_CONTEXT_LIMIT`
+
 ## Sécurité
 
 - Méthodes OpenClaw limitées par allowlist (`OPENCLAW_ALLOWED_METHODS`).

@@ -39,6 +39,7 @@ logger = logging.getLogger("mcp_ext.main")
 # ── Configuration ────────────────────────────────────────────────────────────
 MCP_HOST: str = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
+MCP_AUTH_TOKEN: str | None = os.getenv("MCP_AUTH_TOKEN")  # Optional Bearer auth
 
 # ── Import tool modules ───────────────────────────────────────────────────────
 from src import (  # noqa: E402
@@ -134,11 +135,36 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
 
 # ── Request router ───────────────────────────────────────────────────────────
 
+
+def _check_auth(request: web.Request) -> web.Response | None:
+    """Verify Bearer token if MCP_AUTH_TOKEN is set. Returns error response or None."""
+    if not MCP_AUTH_TOKEN:
+        return None  # Auth disabled — no token configured
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return web.json_response(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": "Missing Authorization: Bearer <token>"}},
+            status=401,
+        )
+    token = auth_header[7:]
+    if token != MCP_AUTH_TOKEN:
+        return web.json_response(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": "Invalid token"}},
+            status=403,
+        )
+    return None
+
+
 async def _handle_mcp(request: web.Request) -> web.Response:
     """
     Streamable HTTP MCP endpoint — handles all MCP JSON-RPC 2.0 messages.
     Supports: initialize, tools/list, tools/call, ping.
+    Protected by Bearer auth when MCP_AUTH_TOKEN is set.
     """
+    auth_error = _check_auth(request)
+    if auth_error is not None:
+        return auth_error
+
     try:
         body = await request.json()
     except Exception:

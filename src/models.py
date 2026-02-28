@@ -12,6 +12,15 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+# ── Shared path-traversal guard ──────────────────────────────────────────────
+
+def _check_no_traversal(v: str | None, field_name: str = "path") -> str | None:
+    """Block '..' in path fields — single source of truth for all models."""
+    if v is not None and ".." in v:
+        raise ValueError(f"{field_name} must not contain path traversal (..)")
+    return v
+
+
 # ════════════════════════════════════════════════════════════
 # vs_bridge — 4 tools
 # ════════════════════════════════════════════════════════════
@@ -153,10 +162,8 @@ class ExportDocumentInput(BaseModel):
 
     @field_validator("output_path")
     @classmethod
-    def no_path_traversal(cls, v: str | None) -> str | None:
-        if v is not None and ".." in v:
-            raise ValueError("output_path must not contain path traversal (..)")
-        return v
+    def no_path_traversal(cls, v):
+        return _check_no_traversal(v, "output_path")
 
 
 _VALID_FORMATS = {
@@ -176,10 +183,8 @@ class SecurityScanInput(BaseModel):
 
     @field_validator("target_path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("target_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "target_path")
 
 
 class SandboxAuditInput(BaseModel):
@@ -187,10 +192,8 @@ class SandboxAuditInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class SessionConfigCheckInput(BaseModel):
@@ -199,10 +202,8 @@ class SessionConfigCheckInput(BaseModel):
 
     @field_validator("env_file_path", "compose_file_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v is not None and ".." in v:
-            raise ValueError("Path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "path")
 
 
 class RateLimitCheckInput(BaseModel):
@@ -211,10 +212,8 @@ class RateLimitCheckInput(BaseModel):
 
     @field_validator("gateway_config_path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("gateway_config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "gateway_config_path")
 
 
 # ════════════════════════════════════════════════════════════
@@ -283,10 +282,8 @@ class WorkspaceLockInput(BaseModel):
 
     @field_validator("path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "path")
 
 
 # ════════════════════════════════════════════════════════════
@@ -316,10 +313,8 @@ class DocSyncCheckInput(BaseModel):
 
     @field_validator("package_json_path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("package_json_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "package_json_path")
 
 
 class ChannelAuditInput(BaseModel):
@@ -328,10 +323,8 @@ class ChannelAuditInput(BaseModel):
 
     @field_validator("package_json_path", "readme_path")
     @classmethod
-    def no_traversal(cls, v: str) -> str:
-        if ".." in v:
-            raise ValueError("Path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "path")
 
 
 _VALID_ADR_STATUSES = {"proposed", "accepted", "deprecated", "superseded"}
@@ -380,10 +373,8 @@ class GatewayAuthCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class CredentialsCheckInput(BaseModel):
@@ -392,10 +383,8 @@ class CredentialsCheckInput(BaseModel):
 
     @field_validator("credentials_dir")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("credentials_dir must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "credentials_dir")
 
 
 class WebhookSigCheckInput(BaseModel):
@@ -404,10 +393,8 @@ class WebhookSigCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class LogConfigCheckInput(BaseModel):
@@ -415,10 +402,8 @@ class LogConfigCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class WorkspaceIntegrityCheckInput(BaseModel):
@@ -427,10 +412,8 @@ class WorkspaceIntegrityCheckInput(BaseModel):
 
     @field_validator("workspace_dir")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("workspace_dir must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "workspace_dir")
 
 
 # ════════════════════════════════════════════════════════════
@@ -442,10 +425,8 @@ class NodeVersionCheckInput(BaseModel):
 
     @field_validator("node_binary")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("node_binary must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "node_binary")
 
 
 class SecretsWorkflowCheckInput(BaseModel):
@@ -453,10 +434,8 @@ class SecretsWorkflowCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class HttpHeadersCheckInput(BaseModel):
@@ -464,10 +443,8 @@ class HttpHeadersCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class NodesCommandsCheckInput(BaseModel):
@@ -475,10 +452,8 @@ class NodesCommandsCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class TrustedProxyCheckInput(BaseModel):
@@ -486,10 +461,8 @@ class TrustedProxyCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class SessionDiskBudgetCheckInput(BaseModel):
@@ -497,10 +470,8 @@ class SessionDiskBudgetCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class DmAllowlistCheckInput(BaseModel):
@@ -508,10 +479,8 @@ class DmAllowlistCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 # ════════════════════════════════════════════════════════════
@@ -524,10 +493,8 @@ class SecretsLifecycleCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class ChannelAuthCanonCheckInput(BaseModel):
@@ -535,10 +502,8 @@ class ChannelAuthCanonCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class ExecApprovalFreezeCheckInput(BaseModel):
@@ -546,10 +511,8 @@ class ExecApprovalFreezeCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class HookSessionRoutingCheckInput(BaseModel):
@@ -557,10 +520,8 @@ class HookSessionRoutingCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class ConfigIncludeCheckInput(BaseModel):
@@ -568,10 +529,8 @@ class ConfigIncludeCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class ConfigPrototypeCheckInput(BaseModel):
@@ -579,10 +538,8 @@ class ConfigPrototypeCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class SafeBinsProfileCheckInput(BaseModel):
@@ -590,10 +547,8 @@ class SafeBinsProfileCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class GroupPolicyDefaultCheckInput(BaseModel):
@@ -601,10 +556,8 @@ class GroupPolicyDefaultCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 # ════════════════════════════════════════════════════════════
@@ -617,10 +570,8 @@ class ShellEnvCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class PluginIntegrityCheckInput(BaseModel):
@@ -628,10 +579,8 @@ class PluginIntegrityCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class TokenSeparationCheckInput(BaseModel):
@@ -639,10 +588,8 @@ class TokenSeparationCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class OtelRedactionCheckInput(BaseModel):
@@ -650,10 +597,8 @@ class OtelRedactionCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 class RpcRateLimitCheckInput(BaseModel):
@@ -661,10 +606,8 @@ class RpcRateLimitCheckInput(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def no_traversal(cls, v: str | None) -> str | None:
-        if v and ".." in v:
-            raise ValueError("config_path must not contain path traversal (..)")
-        return v
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
 
 
 # ════════════════════════════════════════════════════════════

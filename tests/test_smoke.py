@@ -1362,6 +1362,233 @@ class TestAdvancedSecurity:
         assert data["status"] == "ok"
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Export tools — missing-token error paths (no external API needed)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestExportMissingTokens:
+    """Export tools must return ok=False when tokens are missing."""
+
+    def test_github_pr_missing_token(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "firm_export_github_pr",
+            "arguments": {
+                "repo": "owner/repo",
+                "content": "# Test",
+                "objective": "Test objective",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "GITHUB_TOKEN" in data["error"]
+
+    def test_jira_ticket_missing_token(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "firm_export_jira_ticket",
+            "arguments": {
+                "project_key": "ENG",
+                "content": "# Test",
+                "objective": "Test objective",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "JIRA_API_TOKEN" in data["error"]
+
+    def test_linear_issue_missing_token(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "firm_export_linear_issue",
+            "arguments": {
+                "team_id": "team-uuid",
+                "content": "# Test",
+                "objective": "Test objective",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "LINEAR_API_KEY" in data["error"]
+
+    def test_slack_digest_missing_webhook(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "firm_export_slack_digest",
+            "arguments": {
+                "content": "# Test",
+                "objective": "Test objective",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "SLACK_WEBHOOK_URL" in data["error"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Export tools — success paths with mocked HTTP (direct async call)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestExportMockedSuccess:
+    """Export tools must succeed with mocked external APIs."""
+
+    @pytest.mark.asyncio
+    async def test_github_pr_success(self, monkeypatch):
+        """Mock all GitHub API steps and verify PR result."""
+        from unittest.mock import AsyncMock, MagicMock
+        from src.delivery_export import firm_export_github_pr
+        import src.delivery_export as mod
+
+        monkeypatch.setattr(mod, "GITHUB_TOKEN", "ghp_test1234")
+
+        # Build mock response objects
+        def _make_resp(status_code, json_data):
+            resp = MagicMock()
+            resp.status_code = status_code
+            resp.json.return_value = json_data
+            resp.raise_for_status = MagicMock()
+            resp.text = json.dumps(json_data)
+            return resp
+
+        ref_resp = _make_resp(200, {"object": {"sha": "abc123"}})
+        branch_resp = _make_resp(201, {})
+        commit_resp = _make_resp(201, {})
+        pr_resp = _make_resp(201, {"number": 42, "html_url": "https://github.com/o/r/pull/42"})
+        labels_resp = _make_resp(200, {})
+
+        call_count = {"n": 0}
+        responses = {
+            "get": [ref_resp],
+            "post": [branch_resp, pr_resp, labels_resp],
+            "put": [commit_resp],
+        }
+        idx = {"get": 0, "post": 0, "put": 0}
+
+        class FakeClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): pass
+            async def get(self, *a, **kw):
+                r = responses["get"][idx["get"]]; idx["get"] += 1; return r
+            async def post(self, *a, **kw):
+                r = responses["post"][idx["post"]]; idx["post"] += 1; return r
+            async def put(self, *a, **kw):
+                r = responses["put"][idx["put"]]; idx["put"] += 1; return r
+
+        monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **kw: FakeClient())
+
+        result = await firm_export_github_pr(
+            repo="owner/repo",
+            content="# PR body",
+            objective="test feature",
+            departments=["eng"],
+        )
+        assert result["ok"] is True
+        assert result["pr_number"] == 42
+        assert result["pr_url"] == "https://github.com/o/r/pull/42"
+        assert result["draft"] is True
+        assert "ai-generated" in result["labels"]
+
+    @pytest.mark.asyncio
+    async def test_slack_digest_success(self, monkeypatch):
+        """Mock Slack webhook and verify success."""
+        from unittest.mock import MagicMock
+        from src.delivery_export import firm_export_slack_digest
+        import src.delivery_export as mod
+
+        monkeypatch.setattr(mod, "SLACK_WEBHOOK_URL", "https://hooks.slack.com/test")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "ok"
+
+        class FakeClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): pass
+            async def post(self, *a, **kw): return mock_resp
+
+        monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **kw: FakeClient())
+
+        result = await firm_export_slack_digest(
+            content="# Digest\nAll tasks completed.",
+            objective="weekly digest",
+            departments=["ops"],
+        )
+        assert result["ok"] is True
+        assert "webhook_used" in result
+
+    @pytest.mark.asyncio
+    async def test_jira_ticket_success(self, monkeypatch):
+        """Mock Jira REST API and verify issue creation."""
+        from unittest.mock import MagicMock
+        from src.delivery_export import firm_export_jira_ticket
+        import src.delivery_export as mod
+
+        monkeypatch.setattr(mod, "JIRA_API_TOKEN", "jira-token-1234")
+        monkeypatch.setattr(mod, "JIRA_BASE_URL", "https://org.atlassian.net")
+        monkeypatch.setattr(mod, "JIRA_USER_EMAIL", "test@example.com")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 201
+        mock_resp.json.return_value = {"key": "ENG-123"}
+        mock_resp.text = '{"key": "ENG-123"}'
+
+        class FakeClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): pass
+            async def post(self, *a, **kw): return mock_resp
+
+        monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **kw: FakeClient())
+
+        result = await firm_export_jira_ticket(
+            project_key="ENG",
+            content="# Issue body",
+            objective="bug fix",
+            departments=["qa"],
+        )
+        assert result["ok"] is True
+        assert result["issue_key"] == "ENG-123"
+        assert "atlassian.net/browse/ENG-123" in result["issue_url"]
+
+    @pytest.mark.asyncio
+    async def test_linear_issue_success(self, monkeypatch):
+        """Mock Linear GraphQL API and verify issue creation."""
+        from unittest.mock import MagicMock
+        from src.delivery_export import firm_export_linear_issue
+        import src.delivery_export as mod
+
+        monkeypatch.setattr(mod, "LINEAR_API_KEY", "lin_api_test1234")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "data": {
+                "issueCreate": {
+                    "success": True,
+                    "issue": {
+                        "id": "uuid-123",
+                        "identifier": "ENG-42",
+                        "url": "https://linear.app/team/issue/ENG-42",
+                    },
+                }
+            }
+        }
+        mock_resp.raise_for_status = MagicMock()
+
+        class FakeClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): pass
+            async def post(self, *a, **kw): return mock_resp
+
+        monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **kw: FakeClient())
+
+        result = await firm_export_linear_issue(
+            team_id="team-uuid",
+            content="# Issue",
+            objective="new feature",
+            departments=["product"],
+        )
+        assert result["ok"] is True
+        assert result["issue_id"] == "uuid-123"
+        assert result["issue_identifier"] == "ENG-42"
+        assert "linear.app" in result["issue_url"]
+
+
 class TestConfigMigration:
     """Tests for config_migration tools (H17, H18, H19, M17, M21)."""
 

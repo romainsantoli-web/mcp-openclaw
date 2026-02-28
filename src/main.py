@@ -25,6 +25,7 @@ import time
 from typing import Any
 
 from aiohttp import web
+from pydantic import ValidationError
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -41,6 +42,7 @@ MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
 
 # ── Import tool modules ───────────────────────────────────────────────────────
 from src import delivery_export, gateway_fleet, vs_bridge  # noqa: E402
+from src.models import TOOL_MODELS  # noqa: E402
 
 _ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export]
 
@@ -71,6 +73,23 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
             "isError": True,
             "content": [{"type": "text", "text": f"Unknown tool: {name}"}],
         }
+
+    # ── Pydantic validation ───────────────────────────────────────────────────
+    model_cls = TOOL_MODELS.get(name)
+    if model_cls is not None:
+        try:
+            validated = model_cls.model_validate(arguments)
+            # Use validated + coerced values for the handler call
+            arguments = validated.model_dump(exclude_unset=False)
+        except ValidationError as exc:
+            errors = [{"loc": list(e["loc"]), "msg": e["msg"]} for e in exc.errors()]
+            return {
+                "isError": True,
+                "content": [{
+                    "type": "text",
+                    "text": json.dumps({"error": "Validation failed", "details": errors}),
+                }],
+            }
 
     handler = TOOL_REGISTRY[name]["handler"]
 

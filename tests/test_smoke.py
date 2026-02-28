@@ -87,7 +87,7 @@ class TestPing:
     def test_ping_returns_pong(self, mcp_server):
         result = _rpc("ping")
         assert "result" in result
-        assert result["result"] == "pong"
+        assert result["result"]["pong"] is True
 
 
 class TestInitialize:
@@ -178,8 +178,8 @@ class TestFirmExportDocument:
         content = result["result"]["content"]
         text = content[0]["text"]
         data = json.loads(text)
-        # Check path was returned
-        assert "path" in data or "error" in data
+        # Check file_path or error was returned
+        assert "file_path" in data or "error" in data
 
 
 class TestUnknownMethod:
@@ -196,3 +196,103 @@ class TestToolCallUnknownTool:
         content = result["result"]["content"]
         text = content[0]["text"]
         assert "unknown tool" in text.lower() or "error" in text.lower()
+
+
+class TestPydanticValidation:
+    """Pydantic models must reject invalid inputs before the handler is called."""
+
+    def test_vs_context_push_missing_required_field(self, mcp_server):
+        """session_id is required — omitting it must return a validation error."""
+        result = _rpc("tools/call", {
+            "name": "vs_context_push",
+            "arguments": {
+                # session_id intentionally missing
+                "workspace_path": "/tmp/test",
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+        locs = [e["loc"] for e in data["details"]]
+        assert ["session_id"] in locs
+
+    def test_fleet_add_invalid_url_scheme(self, mcp_server):
+        """url must start with http/https/ws/wss — ftp:// must be rejected."""
+        result = _rpc("tools/call", {
+            "name": "firm_gateway_fleet_add",
+            "arguments": {
+                "name": "test-instance",
+                "url": "ftp://bad-url.example.com",
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_fleet_add_invalid_name_chars(self, mcp_server):
+        """Instance name must match ^[a-zA-Z0-9_-]+ — spaces are not allowed."""
+        result = _rpc("tools/call", {
+            "name": "firm_gateway_fleet_add",
+            "arguments": {
+                "name": "bad name with spaces",
+                "url": "http://127.0.0.1:18789",
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_export_auto_invalid_format(self, mcp_server):
+        """delivery_format must be one of the 7 known formats."""
+        result = _rpc("tools/call", {
+            "name": "firm_export_auto",
+            "arguments": {
+                "objective": "Test",
+                "content": "# Test",
+                "delivery_format": "telepathy",  # invalid
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_export_document_path_traversal_blocked(self, mcp_server):
+        """output_path containing .. must be rejected."""
+        result = _rpc("tools/call", {
+            "name": "firm_export_document",
+            "arguments": {
+                "objective": "Test",
+                "content": "# Test",
+                "output_path": "../../etc/passwd",
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_export_document_valid_passes(self, mcp_server):
+        """Valid arguments must NOT trigger validation error."""
+        result = _rpc("tools/call", {
+            "name": "firm_export_document",
+            "arguments": {
+                "objective": "Pydantic validation smoke test",
+                "content": "# OK\nAll fields are valid.",
+                "departments": ["qa"],
+            },
+        })
+        assert "result" in result
+        text = result["result"]["content"][0]["text"]
+        data = json.loads(text)
+        # Must succeed (no validation error)
+        assert "error" not in data or data.get("error") != "Validation failed"
+        assert data.get("ok") is True or "file_path" in data

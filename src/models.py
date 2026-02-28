@@ -372,6 +372,68 @@ class ExportAutoInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# gateway_hardening — 5 tools (H2, M3, M4, M7, M8)
+# ════════════════════════════════════════════════════════════
+
+class GatewayAuthCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class CredentialsCheckInput(BaseModel):
+    credentials_dir: str | None = Field(default=None, max_length=4096)
+    max_age_days: int = Field(default=30, ge=1, le=365)
+
+    @field_validator("credentials_dir")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("credentials_dir must not contain path traversal (..)")
+        return v
+
+
+class WebhookSigCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+    channel: str | None = Field(default=None, max_length=64)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class LogConfigCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class WorkspaceIntegrityCheckInput(BaseModel):
+    workspace_dir: str | None = Field(default=None, max_length=4096)
+    stale_days: int = Field(default=30, ge=1, le=365)
+
+    @field_validator("workspace_dir")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("workspace_dir must not contain path traversal (..)")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -412,4 +474,10 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_doc_sync_check":      DocSyncCheckInput,
     "openclaw_channel_audit":       ChannelAuditInput,
     "firm_adr_generate":            AdrGenerateInput,
+    # gateway_hardening (H2, M3, M4, M7, M8)
+    "openclaw_gateway_auth_check":        GatewayAuthCheckInput,
+    "openclaw_credentials_check":         CredentialsCheckInput,
+    "openclaw_webhook_sig_check":         WebhookSigCheckInput,
+    "openclaw_log_config_check":          LogConfigCheckInput,
+    "openclaw_workspace_integrity_check": WorkspaceIntegrityCheckInput,
 }

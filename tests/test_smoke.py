@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 30  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe
+EXPECTED_TOOLS = 35  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -133,6 +133,10 @@ class TestToolsList:
             # reliability_probe (H6, H7, M1, M5, M6)
             "openclaw_gateway_probe", "openclaw_doc_sync_check",
             "openclaw_channel_audit", "firm_adr_generate",
+            # gateway_hardening (H2, M3, M4, M7, M8)
+            "openclaw_gateway_auth_check", "openclaw_credentials_check",
+            "openclaw_webhook_sig_check", "openclaw_log_config_check",
+            "openclaw_workspace_integrity_check",
         }
         missing = required - names
         assert not missing, f"Missing tools: {missing}"
@@ -673,6 +677,167 @@ class TestReliabilityProbe:
                 "consequences": ["Con A"],
                 "status": "maybe",  # invalid
             },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+
+class TestGatewayHardening:
+    """Tests for gateway_hardening module (H2, M3, M4, M7, M8)."""
+
+    # ── openclaw_gateway_auth_check (H2) ─────────────────────────────────────
+
+    def test_gateway_auth_check_no_config(self, mcp_server):
+        """Nonexistent config path → status no_config, no crash."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_auth_check",
+            "arguments": {"config_path": "/nonexistent/openclaw.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] in ("no_config", "ok", "findings")
+
+    def test_gateway_auth_check_path_traversal_rejected(self, mcp_server):
+        """config_path with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_auth_check",
+            "arguments": {"config_path": "../../etc/passwd"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_gateway_auth_check_funnel_no_password(self, mcp_server, tmp_path):
+        """Funnel mode without auth.mode=password must produce a CRITICAL finding."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {
+                "tailscale": {"mode": "funnel"},
+                "auth": {"mode": "none"},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_auth_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] == "CRITICAL"
+        assert data["finding_count"] >= 1
+
+    def test_gateway_auth_check_disable_device_auth(self, mcp_server, tmp_path):
+        """dangerouslyDisableDeviceAuth=true must produce a HIGH finding."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {
+                "controlUi": {"dangerouslyDisableDeviceAuth": True},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_auth_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] in ("HIGH", "CRITICAL")
+
+    # ── openclaw_credentials_check (M3) ──────────────────────────────────────
+
+    def test_credentials_check_no_dir(self, mcp_server):
+        """Nonexistent credentials dir → status no_credentials_dir."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_credentials_check",
+            "arguments": {"credentials_dir": "/nonexistent/credentials"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] in ("no_credentials_dir", "ok", "findings")
+
+    def test_credentials_check_corrupted_json(self, mcp_server, tmp_path):
+        """A corrupted creds.json must produce a CRITICAL finding."""
+        creds_dir = tmp_path / "whatsapp-test"
+        creds_dir.mkdir(parents=True)
+        (creds_dir / "creds.json").write_text("not valid json !!!")
+        result = _rpc("tools/call", {
+            "name": "openclaw_credentials_check",
+            "arguments": {"credentials_dir": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] == "CRITICAL"
+
+    def test_credentials_check_path_traversal_rejected(self, mcp_server):
+        """credentials_dir with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_credentials_check",
+            "arguments": {"credentials_dir": "../../etc"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    # ── openclaw_webhook_sig_check (M4) ───────────────────────────────────────
+
+    def test_webhook_sig_check_no_config(self, mcp_server):
+        """Nonexistent config → graceful status."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_webhook_sig_check",
+            "arguments": {"config_path": "/nonexistent/openclaw.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] in ("no_config", "ok", "findings")
+
+    def test_webhook_sig_check_missing_secret(self, mcp_server, tmp_path):
+        """A telegram channel with webhookPath but no webhookSecret → HIGH finding."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "channels": {
+                "telegram": {
+                    "webhookPath": "/webhook/telegram",
+                    # no webhookSecret
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_webhook_sig_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] == "HIGH"
+
+    # ── openclaw_log_config_check (M7) ────────────────────────────────────────
+
+    def test_log_config_check_debug_level(self, mcp_server, tmp_path):
+        """logging.level=debug must produce a HIGH finding."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"logging": {"level": "debug"}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_log_config_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] == "HIGH"
+
+    def test_log_config_check_missing_redact(self, mcp_server, tmp_path):
+        """Absent redactPatterns must produce a MEDIUM finding."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"logging": {"level": "info"}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_log_config_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] in ("MEDIUM", "HIGH", "CRITICAL")
+
+    # ── openclaw_workspace_integrity_check (M8) ───────────────────────────────
+
+    def test_workspace_integrity_missing_dir(self, mcp_server):
+        """Nonexistent workspace dir → HIGH finding."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_workspace_integrity_check",
+            "arguments": {"workspace_dir": "/nonexistent/workspace"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["severity"] == "HIGH"
+
+    def test_workspace_integrity_path_traversal_rejected(self, mcp_server):
+        """workspace_dir with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_workspace_integrity_check",
+            "arguments": {"workspace_dir": "../../etc/passwd"},
         })
         data = json.loads(result["result"]["content"][0]["text"])
         assert data["error"] == "Validation failed"

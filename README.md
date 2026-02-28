@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (30)
+## Tools (35)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -38,6 +38,11 @@
 | reliability_probe | `openclaw_doc_sync_check` | Detect version drift in docs vs package.json | M5 |
 | reliability_probe | `openclaw_channel_audit` | Detect zombie channel SDK deps (LINE, Baileys…) | M1 |
 | reliability_probe | `firm_adr_generate` | Generate MADR + commit path for architecture decisions | M6 |
+| gateway_hardening | `openclaw_gateway_auth_check` | Verify Gateway auth config — CRITICAL if Funnel without password | H2 |
+| gateway_hardening | `openclaw_credentials_check` | Check Baileys/channel credential integrity and freshness | M3 |
+| gateway_hardening | `openclaw_webhook_sig_check` | Verify HMAC signing secrets for all inbound webhook channels | M4 |
+| gateway_hardening | `openclaw_log_config_check` | Detect debug/trace logging and missing redactPatterns | M7 |
+| gateway_hardening | `openclaw_workspace_integrity_check` | Validate ~/.openclaw/workspace (AGENTS.md, SOUL.md, staleness) | M8 |
 
 ## Quick start
 
@@ -91,6 +96,7 @@ python -m pytest tests/test_smoke.py -v
 | C3 | CRITICAL | SESSION_SECRET ephemeral / in config | `openclaw_session_config_check` |
 | C4 | CRITICAL | ACP sessions lost on restart (in-memory) | `acp_session_persist/restore` |
 | H1 | HIGH | `@buape/carbon` frozen at 0.0.0-beta | `firm_adr_generate` + CTO SOUL.md |
+| H2 | HIGH | Gateway Funnel without auth.mode=password | `openclaw_gateway_auth_check` |
 | H3 | HIGH | Spawned sessions get no env vars | `fleet_session_inject_env` |
 | H4 | HIGH | Cron not blocked in sandbox | `fleet_cron_schedule` |
 | H5 | HIGH | Race condition on workspace lock | `openclaw_workspace_lock` |
@@ -99,7 +105,11 @@ python -m pytest tests/test_smoke.py -v
 | H8 | HIGH | No rate limiting on Tailscale Funnel | `openclaw_rate_limit_check` |
 | M1 | MEDIUM | `@line/bot-sdk` zombie dependency | `openclaw_channel_audit` |
 | M2 | MEDIUM | Test coverage threshold 70% | factory 80% threshold + CTO SOUL.md |
+| M3 | MEDIUM | Baileys creds.json no integrity/age check | `openclaw_credentials_check` |
+| M4 | MEDIUM | Webhook HMAC signature verification missing | `openclaw_webhook_sig_check` |
 | M5 | MEDIUM | Docs version stale vs package.json | `openclaw_doc_sync_check` |
 | M6 | MEDIUM | No ADRs for architecture decisions | `firm_adr_generate` |
+| M7 | MEDIUM | Logging verbose / no redactPatterns | `openclaw_log_config_check` |
+| M8 | MEDIUM | ~/.openclaw/workspace integrity unchecked | `openclaw_workspace_integrity_check` |
 
 > ⚠️ Contenu généré par IA — validation humaine requise avant utilisation.

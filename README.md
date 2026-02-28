@@ -8,6 +8,12 @@ Wrapper MCP Python pour exposer les artefacts `setup-vs-agent-firm` à OpenClaw 
 - Fournir un pont vers la Gateway OpenClaw WebSocket.
 - Garder un mode d'accès privé et contrôlé (loopback + tunnel distant).
 
+## État Git
+
+- Dernier commit publié: `99ff1fd`
+- Branche: `main`
+- Remote: `origin/main`
+
 ## Prérequis
 
 - Python 3.11+
@@ -79,8 +85,46 @@ Exemple:
 - `cost_recent`: retourne les enregistrements de coûts récents.
 - `ops_recent_runs`: retourne l'historique récent des runs workflow.
 - `ops_dashboard_snapshot`: agrège diagnostics enterprise + observabilité + coûts + plugins.
+- `memory_context_preview`: affiche le contexte mémoire combiné (local + bridge API).
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
+
+## Architecture runtime complète
+
+- Processus principal `python -m src.main`:
+   - serveur MCP streamable HTTP (`MCP_HOST:MCP_PORT`, par défaut `127.0.0.1:8011`)
+   - exporter Prometheus (`127.0.0.1:9108/metrics`)
+   - Memory Bridge API (`127.0.0.1:9120/context/query`)
+- Intégration OpenClaw:
+   - voie WS (gateway)
+   - fallback webhook selon politique `OPENCLAW_DISPATCH_MODE`
+- Persistance:
+   - audit JSONL
+   - runtime workflow JSONL
+   - coûts JSONL
+   - mémoire via backend sélectionné
+
+## Flux mémoire détaillé (contexte maximal)
+
+1. Chaque action critique est journalisée (request + response):
+   - `firm_repo_*`, `workflow`, `openclaw_*`, `memory_*`
+2. Les événements sont écrits dans le backend mémoire actif.
+3. Avec `memory_os_ai`, double persistance:
+   - JSONL structuré (`MEMORY_OS_AI_EVENTS_PATH`)
+   - miroir texte (`external/memory-os-ai/pdfs/mcp_openclaw_events/`)
+4. Avant une exécution critique (`firm_run_delivery_workflow`, `openclaw_invoke`), le wrapper récupère le contexte via **2 canaux**:
+   - source locale (`MemoryOsAiStore.retrieve_context`)
+   - source API bridge (`POST /context/query`)
+5. Les deux flux sont fusionnés + dédupliqués.
+6. Le contexte fusionné est injecté dans les payloads pour guider la décision et l'exécution.
+
+## Endpoints locaux
+
+- MCP: `http://127.0.0.1:8011/mcp`
+- Prometheus metrics: `http://127.0.0.1:9108/metrics`
+- Prometheus health: `http://127.0.0.1:9108/healthz`
+- Memory Bridge query: `http://127.0.0.1:9120/context/query`
+- Memory Bridge health: `http://127.0.0.1:9120/healthz`
 
 ## Endpoint Prometheus (Phase 4)
 
@@ -248,6 +292,19 @@ Variables principales:
 - `MEMORY_BRIDGE_QUERY_PATH`
 - `MEMORY_BRIDGE_TIMEOUT_SECONDS`
 - `MEMORY_BRIDGE_USE_IN_CONTEXT`
+
+## Vérification rapide (runbook)
+
+- Démarrer:
+   - `./scripts/start.sh`
+- Vérifier statut:
+   - `./scripts/status.sh`
+- Smoke complet:
+   - `python scripts/smoke_test.py`
+- Vérifier bridge mémoire:
+   - `curl -s http://127.0.0.1:9120/healthz`
+- Vérifier metrics:
+   - `curl -s http://127.0.0.1:9108/metrics | head`
 
 ## Sécurité
 

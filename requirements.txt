@@ -1,0 +1,14 @@
+# mcp-openclaw-extensions — Python dependencies
+# Python 3.11+
+
+# HTTP client (async, sync)
+httpx>=0.27.0
+
+# WebSocket client for OpenClaw Gateway
+websockets>=12.0
+
+# Async HTTP server (MCP endpoint)
+aiohttp>=3.9.0
+
+# Data validation (optional, used in tests)
+pydantic>=2.6.0

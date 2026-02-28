@@ -62,9 +62,23 @@ Plan de migration recommandé:
 
 ## État Git
 
-- Dernier commit publié: `16d74cf`
+- Dernier commit publié: `3312654`
 - Branche: `main`
 - Remote: `origin/main`
+
+## Release stable
+
+- Version: `v0.1.0`
+- Release URL: https://github.com/romainsantoli-web/mcp-openclaw/releases/tag/v0.1.0
+- Notes détaillées: `docs/releases/v0.1.0.md`
+
+Installation express (3 commandes):
+
+```bash
+git clone https://github.com/romainsantoli-web/mcp-openclaw.git
+cd mcp-openclaw && python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && cp .env.example .env && ./scripts/start.sh
+```
 
 ## Produit complet (2 repos publics)
 

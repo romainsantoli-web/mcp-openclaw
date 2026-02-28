@@ -25,10 +25,23 @@ async def run_smoke(url: str) -> None:
                     "objective": "Créer une campagne social media B2B IA",
                     "task_family": "marketing",
                     "quality_tier": "high",
+                    "subtask_type": "hooks",
                     "latency_budget_ms": 15000,
                 },
             )
             print("routing_profile:", routing.structuredContent.get("routing", {}).get("model_profile"))
+
+            agent_plan = await session.call_tool(
+                "routing_agent_plan",
+                {
+                    "departments": ["communications", "social-media", "translation-utilization"],
+                    "quality_tier": "high",
+                },
+            )
+            print(
+                "agent_copilot_access_count:",
+                len(agent_plan.structuredContent.get("agent_copilot_access", {})),
+            )
 
             workflow = await session.call_tool(
                 "firm_run_delivery_workflow",
@@ -37,6 +50,7 @@ async def run_smoke(url: str) -> None:
                     "departments": ["communications", "social-media"],
                     "task_family": "marketing",
                     "quality_tier": "high",
+                    "subtask_type": "calendar",
                     "push_to_openclaw": False,
                 },
             )

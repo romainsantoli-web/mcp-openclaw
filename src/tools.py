@@ -16,7 +16,12 @@ from .firm_repo import (
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
 from .openclaw_dispatcher import OpenClawDispatcher
-from .model_router import list_profiles, route_task
+from .model_router import (
+    build_agent_copilot_access_plan,
+    list_profiles,
+    list_subtask_profiles,
+    route_task,
+)
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 
 
@@ -53,6 +58,7 @@ def _build_orchestration_payload(
     department_agents: dict[str, str],
     memory_context: list[dict[str, Any]],
     routing_metadata: dict[str, Any],
+    agent_copilot_access: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "objective": objective,
@@ -64,6 +70,7 @@ def _build_orchestration_payload(
         "agents": department_agents,
         "memory_context": memory_context,
         "routing": routing_metadata,
+        "agent_copilot_access": agent_copilot_access,
     }
 
 
@@ -146,14 +153,35 @@ def build_server(settings: Settings) -> Any:
             "routing_default_profile": settings.routing_default_profile,
             "routing_allowed_profiles": list(settings.routing_allowed_profiles),
             "routing_enable_copilot_hints": settings.routing_enable_copilot_hints,
+            "routing_enable_agent_copilot_access": settings.routing_enable_agent_copilot_access,
         }
 
     @mcp.tool()
     def routing_profiles_list() -> dict[str, Any]:
         return {
             "profiles": list_profiles(),
+            "subtask_profiles": list_subtask_profiles(),
             "default_profile": settings.routing_default_profile,
             "allowed_profiles": list(settings.routing_allowed_profiles),
+        }
+
+    @mcp.tool()
+    def routing_agent_plan(
+        departments: list[str],
+        quality_tier: str | None = None,
+        model_override: str | None = None,
+    ) -> dict[str, Any]:
+        effective_quality_tier = (
+            quality_tier or settings.routing_default_quality_tier
+        ).strip().lower()
+        return {
+            "ok": True,
+            "agent_copilot_access": build_agent_copilot_access_plan(
+                settings=settings,
+                departments=departments,
+                quality_tier=effective_quality_tier,
+                model_override=model_override,
+            ),
         }
 
     @mcp.tool()
@@ -161,6 +189,7 @@ def build_server(settings: Settings) -> Any:
         objective: str,
         task_family: str | None = None,
         quality_tier: str | None = None,
+        subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
     ) -> dict[str, Any]:
@@ -169,6 +198,7 @@ def build_server(settings: Settings) -> Any:
             objective=objective,
             task_family=task_family,
             quality_tier=quality_tier,
+            subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
         )
@@ -179,6 +209,7 @@ def build_server(settings: Settings) -> Any:
         objective: str,
         task_family: str | None = None,
         quality_tier: str | None = None,
+        subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
     ) -> dict[str, Any]:
@@ -187,6 +218,7 @@ def build_server(settings: Settings) -> Any:
             objective=objective,
             task_family=task_family,
             quality_tier=quality_tier,
+            subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
         )
@@ -209,6 +241,7 @@ def build_server(settings: Settings) -> Any:
         openclaw_method: str,
         task_family: str | None,
         quality_tier: str | None,
+        subtask_type: str | None,
         latency_budget_ms: int | None,
         model_override: str | None,
     ) -> dict[str, Any]:
@@ -259,7 +292,17 @@ def build_server(settings: Settings) -> Any:
             objective=objective,
             task_family=task_family,
             quality_tier=quality_tier,
+            subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
+        )
+        effective_quality_tier = (
+            quality_tier or settings.routing_default_quality_tier
+        ).strip().lower()
+        agent_copilot_access = build_agent_copilot_access_plan(
+            settings=settings,
+            departments=selected_departments,
+            quality_tier=effective_quality_tier,
             model_override=model_override,
         )
 
@@ -274,6 +317,7 @@ def build_server(settings: Settings) -> Any:
             department_agents=department_agents,
             memory_context=memory_context,
             routing_metadata=routing_metadata,
+            agent_copilot_access=agent_copilot_access,
         )
 
         openclaw_result: dict[str, Any] | None = None
@@ -304,6 +348,8 @@ def build_server(settings: Settings) -> Any:
                     else None,
                     "model_profile": routing_metadata.get("model_profile"),
                     "task_family": routing_metadata.get("task_family"),
+                    "subtask_type": routing_metadata.get("subtask_type"),
+                    "agent_copilot_access_count": len(agent_copilot_access),
                 },
             )
 
@@ -317,6 +363,7 @@ def build_server(settings: Settings) -> Any:
             "memory_context_items": len(memory_context),
             "memory_write": memory_write,
             "routing": routing_metadata,
+            "agent_copilot_access": agent_copilot_access,
             "effective_openclaw_method": effective_method,
             "orchestration_payload": orchestration_payload,
             "openclaw_result": openclaw_result,
@@ -336,6 +383,7 @@ def build_server(settings: Settings) -> Any:
         openclaw_method: str = "agent.run",
         task_family: str | None = None,
         quality_tier: str | None = None,
+        subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
     ) -> dict[str, Any]:
@@ -348,6 +396,7 @@ def build_server(settings: Settings) -> Any:
             openclaw_method=openclaw_method,
             task_family=task_family,
             quality_tier=quality_tier,
+            subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
         )
@@ -362,6 +411,7 @@ def build_server(settings: Settings) -> Any:
         require_openclaw_success: bool = False,
         task_family: str | None = None,
         quality_tier: str | None = None,
+        subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
     ) -> dict[str, Any]:
@@ -374,6 +424,7 @@ def build_server(settings: Settings) -> Any:
             openclaw_method=openclaw_method,
             task_family=task_family,
             quality_tier=quality_tier,
+            subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
         )
@@ -410,6 +461,8 @@ def build_server(settings: Settings) -> Any:
                 "memory_context_items": result.get("memory_context_items", 0),
                 "model_profile": (result.get("routing") or {}).get("model_profile"),
                 "task_family": (result.get("routing") or {}).get("task_family"),
+                "subtask_type": (result.get("routing") or {}).get("subtask_type"),
+                "agent_copilot_access_count": len(result.get("agent_copilot_access") or {}),
             },
         }
 

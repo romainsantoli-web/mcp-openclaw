@@ -39,6 +39,7 @@ class Settings:
     routing_default_profile: str
     routing_allowed_profiles: tuple[str, ...]
     routing_enable_copilot_hints: bool
+    routing_enable_agent_copilot_access: bool
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -57,7 +58,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
 
     allowed_profiles_raw = os.getenv(
         "ROUTING_ALLOWED_PROFILES",
-        "creative-premium,translation-precision,reasoning-technical,analysis-deep",
+        "creative-premium,creative-shortform,creative-longform,planning-strategic,translation-precision,translation-localization,translation-seo,reasoning-technical,debug-root-cause,debug-patch,analysis-deep,analysis-synthesis,analysis-comparison",
     )
     allowed_profiles = tuple(
         item.strip() for item in allowed_profiles_raw.split(",") if item.strip()
@@ -103,6 +104,10 @@ def load_settings(env_file: Path | None = None) -> Settings:
         routing_allowed_profiles=allowed_profiles,
         routing_enable_copilot_hints=_to_bool(
             os.getenv("ROUTING_ENABLE_COPILOT_HINTS"),
+            default=True,
+        ),
+        routing_enable_agent_copilot_access=_to_bool(
+            os.getenv("ROUTING_ENABLE_AGENT_COPILOT_ACCESS"),
             default=True,
         ),
     )

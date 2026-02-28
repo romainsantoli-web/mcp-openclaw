@@ -69,6 +69,7 @@ Exemple:
 - `routing_profiles_list`: liste les profils de modèles par famille de tâche.
 - `routing_preview`: simule le choix de profil de modèle avant exécution.
 - `routing_explain`: explique pourquoi un profil de modèle a été sélectionné.
+- `routing_agent_plan`: génère le plan d'accès Copilot par agent/département.
 - `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
@@ -88,6 +89,7 @@ Exemple:
 - Paramètres routing supportés:
    - `task_family` (`marketing|translation|debug|research`)
    - `quality_tier` (`high` recommandé)
+   - `subtask_type` (ex: `hooks`, `long-form`, `calendar`, `localization`, `root-cause`, `synthesis`)
    - `latency_budget_ms` (optionnel)
    - `model_override` (optionnel)
 
@@ -95,11 +97,13 @@ Exemple:
 
 - Compatibilité Copilot via métadonnées de routage incluses dans le payload (`routing`, `copilot_hints`).
 - Le routeur choisit un `model_profile` selon la famille de tâche et la qualité demandée.
+- Le routeur peut raffiner le profil avec `subtask_type` pour des spécialisations plus précises.
 - Profils par défaut:
    - `marketing` -> `creative-premium`
    - `translation` -> `translation-precision`
    - `debug` -> `reasoning-technical`
    - `research` -> `analysis-deep`
+- Chaque agent reçoit désormais un plan `agent_copilot_access` dédié (profil, forces, guidance).
 - Config env:
    - `ROUTING_MODE`
    - `ROUTING_DEFAULT_TASK_FAMILY`
@@ -107,6 +111,7 @@ Exemple:
    - `ROUTING_DEFAULT_PROFILE`
    - `ROUTING_ALLOWED_PROFILES`
    - `ROUTING_ENABLE_COPILOT_HINTS`
+   - `ROUTING_ENABLE_AGENT_COPILOT_ACCESS`
 
 ### Dispatch direct (V2.2)
 

@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (35)
+## Tools (42)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -43,6 +43,13 @@
 | gateway_hardening | `openclaw_webhook_sig_check` | Verify HMAC signing secrets for all inbound webhook channels | M4 |
 | gateway_hardening | `openclaw_log_config_check` | Detect debug/trace logging and missing redactPatterns | M7 |
 | gateway_hardening | `openclaw_workspace_integrity_check` | Validate ~/.openclaw/workspace (AGENTS.md, SOUL.md, staleness) | M8 |
+| runtime_audit | `openclaw_node_version_check` | Verify Node.js ≥ 22.12.0 (CVE-2025-59466, CVE-2026-21636) | C5 |
+| runtime_audit | `openclaw_secrets_workflow_check` | Detect hardcoded secrets in openclaw.json (migrate to `openclaw secrets`) | C6 |
+| runtime_audit | `openclaw_http_headers_check` | Verify HTTP security headers (HSTS, X-Content-Type-Options, Referrer-Policy) | H9 |
+| runtime_audit | `openclaw_nodes_commands_check` | Detect dangerous gateway.nodes.allowCommands override | H10 |
+| runtime_audit | `openclaw_trusted_proxy_check` | Verify trusted-proxy config coherence (bind + trustedProxies + auth mode) | H11 |
+| runtime_audit | `openclaw_session_disk_budget_check` | Verify session.maintenance.maxDiskBytes / highWaterBytes configured | M15 |
+| runtime_audit | `openclaw_dm_allowlist_check` | Detect dmPolicy=allowlist with empty allowFrom (fail-closed) across 9 channels | M16 |
 
 ## Quick start
 
@@ -111,5 +118,12 @@ python -m pytest tests/test_smoke.py -v
 | M6 | MEDIUM | No ADRs for architecture decisions | `firm_adr_generate` |
 | M7 | MEDIUM | Logging verbose / no redactPatterns | `openclaw_log_config_check` |
 | M8 | MEDIUM | ~/.openclaw/workspace integrity unchecked | `openclaw_workspace_integrity_check` |
+| C5 | CRITICAL | Node.js < 22.12.0 (CVE-2025-59466, CVE-2026-21636) | `openclaw_node_version_check` |
+| C6 | CRITICAL | Hardcoded secrets in openclaw.json (no secrets workflow) | `openclaw_secrets_workflow_check` |
+| H9 | HIGH | HTTP security headers absent (HSTS, X-Content-Type-Options) | `openclaw_http_headers_check` |
+| H10 | HIGH | gateway.nodes.allowCommands dangerous override | `openclaw_nodes_commands_check` |
+| H11 | HIGH | Trusted-proxy misconfigured (bind+proxies+auth mode) | `openclaw_trusted_proxy_check` |
+| M15 | MEDIUM | Session disk budget not configured (maxDiskBytes) | `openclaw_session_disk_budget_check` |
+| M16 | MEDIUM | dmPolicy=allowlist with empty allowFrom (fail-open) | `openclaw_dm_allowlist_check` |
 
 > ⚠️ Contenu généré par IA — validation humaine requise avant utilisation.

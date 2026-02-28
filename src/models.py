@@ -434,6 +434,87 @@ class WorkspaceIntegrityCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# runtime_audit (C5, C6, H9, H10, H11, M15, M16)
+# ════════════════════════════════════════════════════════════
+
+class NodeVersionCheckInput(BaseModel):
+    node_binary: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("node_binary")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("node_binary must not contain path traversal (..)")
+        return v
+
+
+class SecretsWorkflowCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class HttpHeadersCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class NodesCommandsCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class TrustedProxyCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class SessionDiskBudgetCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class DmAllowlistCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -480,4 +561,12 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_webhook_sig_check":         WebhookSigCheckInput,
     "openclaw_log_config_check":          LogConfigCheckInput,
     "openclaw_workspace_integrity_check": WorkspaceIntegrityCheckInput,
+    # runtime_audit (C5, C6, H9, H10, H11, M15, M16)
+    "openclaw_node_version_check":        NodeVersionCheckInput,
+    "openclaw_secrets_workflow_check":    SecretsWorkflowCheckInput,
+    "openclaw_http_headers_check":        HttpHeadersCheckInput,
+    "openclaw_nodes_commands_check":      NodesCommandsCheckInput,
+    "openclaw_trusted_proxy_check":       TrustedProxyCheckInput,
+    "openclaw_session_disk_budget_check": SessionDiskBudgetCheckInput,
+    "openclaw_dm_allowlist_check":        DmAllowlistCheckInput,
 }

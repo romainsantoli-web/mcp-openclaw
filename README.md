@@ -2,6 +2,56 @@
 
 Wrapper MCP Python pour exposer les artefacts `setup-vs-agent-firm` à OpenClaw via une intégration contrôlée.
 
+## Schéma simple (TL;DR)
+
+```mermaid
+flowchart LR
+      U[User] --> M[MCP]
+      M --> W[Wrapper]
+      W --> P[Policy]
+      P --> MEM[Memory]
+      MEM --> R[Routing]
+      R --> D[Dispatch]
+      D --> O[OpenClaw]
+      O --> A[Audit]
+      A --> X[Metrics]
+```
+
+Pipeline résumé: **User → MCP → Wrapper → Policy → Memory → Routing → Dispatch → OpenClaw → Audit → Metrics**.
+
+## Architecture Core vs Extensions
+
+Objectif: découpler le cœur générique du vertical `firm` pour faciliter l’adoption multi-domaines.
+
+Architecture cible:
+
+```text
+core/
+   dispatch/
+   routing/
+   policy/
+   memory/
+   cost/
+extensions/
+   firm_adapter/
+```
+
+Mapping actuel (état du code):
+
+- `core.dispatch` → `src/openclaw_dispatcher.py`, `src/openclaw_ws_client.py`
+- `core.routing` → `src/model_router.py`
+- `core.policy` → `src/policy_engine.py`
+- `core.memory` → `src/memory_adapter.py`, `src/memory_sqlite.py`, `src/memory_os_ai_store.py`, `src/memory_bridge_*`
+- `core.cost` → `src/cost_guard.py`
+- `extensions.firm_adapter` → `src/firm_repo.py` + tools `firm_*` dans `src/tools.py`
+
+Plan de migration recommandé:
+
+1. Extraire les tools `firm_*` dans un module extension dédié.
+2. Garder dans le core uniquement les tools génériques (`openclaw_*`, policy, memory, routing, observability).
+3. Ajouter un mécanisme d’enregistrement d’extensions au démarrage.
+4. Publier deux profils: `core-only` et `core+firm`.
+
 ## Objectif
 
 - Exposer des tools MCP stables pour lister/charger les agents et prompts.
@@ -10,7 +60,7 @@ Wrapper MCP Python pour exposer les artefacts `setup-vs-agent-firm` à OpenClaw 
 
 ## État Git
 
-- Dernier commit publié: `99ff1fd`
+- Dernier commit publié: `1e4292e`
 - Branche: `main`
 - Remote: `origin/main`
 

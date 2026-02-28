@@ -28,7 +28,7 @@ Wrapper MCP Python pour exposer les artefacts `setup-vs-agent-firm` à OpenClaw 
 
    - `cp .env.example .env`
 
-4. Lancer le serveur MCP (stdio):
+4. Lancer le serveur MCP:
 
    - `python -m src.main`
 
@@ -45,11 +45,25 @@ Exemple:
 - `./scripts/start.sh`
 - `./scripts/status.sh`
 - `./scripts/stop.sh`
+- `python scripts/smoke_test.py --url http://127.0.0.1:8011/mcp`
+
+## Repo source setup-vs-agent-firm
+
+- Par défaut, le wrapper utilise `external/setup-vs-agent-firm`.
+- Tu peux forcer un chemin via `FIRM_REPO_PATH`.
+- Sync manuel via tool `firm_repo_sync`.
+- Sync auto au démarrage via `FIRM_REPO_AUTO_SYNC=true`.
 
 ## Tools exposés
 
 - `firm_list_departments`: liste les départements disponibles dans le repo source.
+- `firm_repo_status`: statut du repo source local.
+- `firm_repo_sync`: clone/pull du repo source.
+- `firm_list_agents`: liste tous les agents disponibles.
+- `firm_list_prompts`: liste les prompts disponibles.
 - `firm_load_agent`: charge le contenu d'un agent (`.agent.md`).
+- `firm_load_prompt`: charge le contenu d'un prompt.
+- `firm_validate_layout`: valide la structure attendue du repo source.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 

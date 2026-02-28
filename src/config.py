@@ -27,6 +27,9 @@ class Settings:
     mcp_mount_path: str | None
     mcp_host: str
     mcp_port: int
+    firm_repo_url: str
+    firm_repo_branch: str
+    firm_repo_auto_sync: bool
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -44,7 +47,11 @@ def load_settings(env_file: Path | None = None) -> Settings:
     )
 
     repo_path = os.getenv("FIRM_REPO_PATH", "").strip()
-    firm_repo_path = Path(repo_path).expanduser().resolve() if repo_path else None
+    if repo_path:
+        firm_repo_path = Path(repo_path).expanduser().resolve()
+    else:
+        project_root = Path(__file__).resolve().parents[1]
+        firm_repo_path = project_root / "external" / "setup-vs-agent-firm"
 
     return Settings(
         openclaw_gateway_url=os.getenv(
@@ -63,4 +70,10 @@ def load_settings(env_file: Path | None = None) -> Settings:
         mcp_mount_path=os.getenv("MCP_MOUNT_PATH", "").strip() or None,
         mcp_host=os.getenv("MCP_HOST", "127.0.0.1"),
         mcp_port=int(os.getenv("MCP_PORT", "8011")),
+        firm_repo_url=os.getenv(
+            "FIRM_REPO_URL",
+            "https://github.com/romainsantoli-web/setup-vs-agent-firm.git",
+        ),
+        firm_repo_branch=os.getenv("FIRM_REPO_BRANCH", "main"),
+        firm_repo_auto_sync=_to_bool(os.getenv("FIRM_REPO_AUTO_SYNC"), default=False),
     )

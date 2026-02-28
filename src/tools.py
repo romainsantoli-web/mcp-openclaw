@@ -5,14 +5,21 @@ from pathlib import Path
 from typing import Any
 
 from .config import Settings
+from .firm_repo import (
+    FirmRepoError,
+    list_agents,
+    list_prompts,
+    load_prompt,
+    repo_status,
+    sync_repo,
+    validate_layout,
+)
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 
 
 def _discover_departments(settings: Settings) -> list[str]:
-    if settings.firm_repo_path is None:
-        return []
     agents_dir = settings.firm_repo_path / ".github" / "agents"
     if not agents_dir.exists():
         return []
@@ -25,9 +32,6 @@ def _discover_departments(settings: Settings) -> list[str]:
 
 
 def _load_agent(settings: Settings, agent_name: str) -> dict[str, Any]:
-    if settings.firm_repo_path is None:
-        return {"ok": False, "error": "FIRM_REPO_PATH non configuré"}
-
     file_path = (
         settings.firm_repo_path / ".github" / "agents" / f"{agent_name}.agent.md"
     )
@@ -51,13 +55,58 @@ def build_server(settings: Settings) -> Any:
     ws_client = OpenClawWsClient(settings)
     memory = MemoryAdapter()
 
+    if settings.firm_repo_auto_sync:
+        try:
+            sync_repo(settings)
+        except FirmRepoError:
+            pass
+
+    @mcp.tool()
+    def firm_repo_status() -> dict[str, Any]:
+        return repo_status(settings)
+
+    @mcp.tool()
+    def firm_repo_sync() -> dict[str, Any]:
+        try:
+            return sync_repo(settings)
+        except FirmRepoError as exc:
+            return {"ok": False, "error": str(exc)}
+
     @mcp.tool()
     def firm_list_departments() -> dict[str, Any]:
         return {"departments": _discover_departments(settings)}
 
     @mcp.tool()
+    def firm_list_agents() -> dict[str, Any]:
+        try:
+            return {"agents": list_agents(settings)}
+        except FirmRepoError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    @mcp.tool()
+    def firm_list_prompts() -> dict[str, Any]:
+        try:
+            return {"prompts": list_prompts(settings)}
+        except FirmRepoError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    @mcp.tool()
     def firm_load_agent(agent_name: str) -> dict[str, Any]:
         return _load_agent(settings, agent_name)
+
+    @mcp.tool()
+    def firm_load_prompt(prompt_name: str) -> dict[str, Any]:
+        try:
+            return load_prompt(settings, prompt_name)
+        except FirmRepoError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    @mcp.tool()
+    def firm_validate_layout() -> dict[str, Any]:
+        try:
+            return validate_layout(settings)
+        except FirmRepoError as exc:
+            return {"ok": False, "error": str(exc)}
 
     @mcp.tool()
     def memory_retrieve(key: str) -> dict[str, Any]:

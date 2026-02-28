@@ -4,3 +4,4 @@ __pycache__/
 .env
 .mcp-openclaw.pid
 .mcp-openclaw.log
+external/

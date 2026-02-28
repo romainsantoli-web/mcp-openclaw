@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 64  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader
+EXPECTED_TOOLS = 67  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -315,6 +315,65 @@ class TestPydanticValidation:
         assert "error" not in data or data.get("error") != "Validation failed"
         assert data.get("ok") is True or "file_path" in data
 
+    # ── Cross-field validators (I5) ──────────────────────────────────────────
+
+    def test_session_config_both_paths_none_rejected(self, mcp_server):
+        """Cross-field: at least one of env_file_path or compose_file_path required."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_session_config_check",
+            "arguments": {},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_orchestrate_duplicate_task_ids_rejected(self, mcp_server):
+        """Cross-field: duplicate task IDs should be rejected."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_agent_team_orchestrate",
+            "arguments": {
+                "tasks": [
+                    {"id": "t1", "name": "A", "tool": "echo"},
+                    {"id": "t1", "name": "B", "tool": "echo"},
+                ],
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_orchestrate_invalid_dep_reference_rejected(self, mcp_server):
+        """Cross-field: dependency referencing non-existent task ID should be rejected."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_agent_team_orchestrate",
+            "arguments": {
+                "tasks": [
+                    {"id": "t1", "name": "A", "tool": "echo"},
+                    {"id": "t2", "name": "B", "tool": "echo", "depends_on": ["t99"]},
+                ],
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_lock_timeout_reset_for_release(self, mcp_server, tmp_path):
+        """Cross-field: timeout_s should be silently reset for release/status actions."""
+        lock_path = str(tmp_path / "crossfield-lock")
+        # First acquire
+        _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {"path": lock_path, "action": "acquire", "owner": "test"},
+        })
+        # Release with custom timeout (should be silently reset)
+        result = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {
+                "path": lock_path, "action": "release",
+                "owner": "test", "timeout_s": 100.0,
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        # Should not fail — timeout was reset silently
+        assert "Validation failed" not in str(data)
+
 
 class TestSecurityAudit:
     """Tests for the 4 security_audit tools (gaps C1, C2, C3, H8)."""
@@ -391,16 +450,17 @@ class TestSecurityAudit:
         assert data["ok"] is True
         assert data["severity"] == "OK"
 
-    def test_session_config_check_no_args(self, mcp_server):
-        """With no args, checks the current process env — must return ok:True."""
+    def test_session_config_check_no_args(self, mcp_server, tmp_path):
+        """With at least one path, session config check must return ok:True."""
+        env = tmp_path / ".env"
+        env.write_text("SESSION_SECRET=my-secure-secret-value-123\n")
         result = _rpc("tools/call", {
             "name": "openclaw_session_config_check",
-            "arguments": {},
+            "arguments": {"env_file_path": str(env)},
         })
         data = json.loads(result["result"]["content"][0]["text"])
         assert data["ok"] is True
         assert "severity" in data
-        assert data["severity"] in ("OK", "HIGH")
 
     def test_session_config_check_detects_missing_secret(self, mcp_server, tmp_path):
         """docker-compose without SESSION_SECRET must be flagged HIGH."""
@@ -2067,18 +2127,260 @@ class TestSkillLoader:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# n8n workflow bridge tests (T8)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestN8nBridge:
+    """Tests for n8n workflow export/import tools (T8)."""
+
+    def test_export_simple_pipeline(self, mcp_server, tmp_path):
+        """Export a simple 2-step pipeline to n8n format."""
+        out = str(tmp_path / "workflow.json")
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_export",
+            "arguments": {
+                "pipeline_name": "test-pipeline",
+                "steps": [
+                    {"name": "Fetch Data", "type": "http_request", "parameters": {"url": "https://api.example.com"}},
+                    {"name": "Process", "type": "code", "depends_on": ["Fetch Data"]},
+                ],
+                "output_path": out,
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["node_count"] == 2
+        assert data["connection_count"] == 1
+        assert data["output_path"] == out
+        # Verify file was written
+        import pathlib
+        wf = json.loads(pathlib.Path(out).read_text())
+        assert wf["name"] == "test-pipeline"
+        assert len(wf["nodes"]) == 2
+
+    def test_export_inline_no_file(self, mcp_server):
+        """Export without output_path returns workflow inline."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_export",
+            "arguments": {
+                "pipeline_name": "inline-test",
+                "steps": [
+                    {"name": "Step1", "type": "webhook"},
+                ],
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert "workflow" in data
+        assert data["workflow"]["name"] == "inline-test"
+        assert data["workflow"]["meta"]["openclaw_exported"] is True
+
+    def test_export_empty_steps_rejected(self, mcp_server):
+        """Empty steps list should be rejected."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_export",
+            "arguments": {
+                "pipeline_name": "empty",
+                "steps": [],
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+
+    def test_import_valid_workflow(self, mcp_server, tmp_path):
+        """Import a valid n8n workflow JSON."""
+        wf = {
+            "name": "imported-test",
+            "nodes": [
+                {"id": "1", "name": "Start", "type": "n8n-nodes-base.start", "position": [250, 300], "parameters": {}},
+                {"id": "2", "name": "End", "type": "n8n-nodes-base.noOp", "position": [550, 300], "parameters": {}},
+            ],
+            "connections": {
+                "Start": {"main": [[{"node": "End", "type": "main", "index": 0}]]},
+            },
+        }
+        wf_file = tmp_path / "import-test.json"
+        wf_file.write_text(json.dumps(wf))
+        target = str(tmp_path / "imported")
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_import",
+            "arguments": {
+                "workflow_path": str(wf_file),
+                "target_dir": target,
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["name"] == "imported-test"
+        assert data["node_count"] == 2
+        assert "imported_path" in data
+
+    def test_import_invalid_json(self, mcp_server, tmp_path):
+        """Import should fail for invalid JSON."""
+        bad_file = tmp_path / "bad.json"
+        bad_file.write_text("{not valid json")
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_import",
+            "arguments": {"workflow_path": str(bad_file)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "Invalid JSON" in data.get("error", "")
+
+    def test_import_missing_fields_strict(self, mcp_server, tmp_path):
+        """Strict mode rejects workflows missing required fields."""
+        wf_file = tmp_path / "incomplete.json"
+        wf_file.write_text(json.dumps({"name": "test"}))  # missing nodes, connections
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_import",
+            "arguments": {"workflow_path": str(wf_file), "strict": True},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert len(data.get("issues", [])) > 0
+
+    def test_import_file_not_found(self, mcp_server):
+        """Import non-existent file."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_import",
+            "arguments": {"workflow_path": "/nonexistent/workflow.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+
+    def test_export_traversal_blocked(self, mcp_server):
+        """Path traversal in output_path should be blocked by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_n8n_workflow_export",
+            "arguments": {
+                "pipeline_name": "traversal-test",
+                "steps": [{"name": "X", "type": "code"}],
+                "output_path": "../../etc/evil.json",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Browser context check tests (T10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestBrowserAudit:
+    """Tests for browser automation context check (T10)."""
+
+    def test_no_browser_config(self, mcp_server, tmp_path):
+        """Workspace with no browser config should return warnings."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {"workspace_path": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True  # WARNING severity, not CRITICAL
+        assert data["config_found"] is False
+        assert any(f["check"] == "no_config_found" for f in data["findings"])
+
+    def test_config_override_headless(self, mcp_server, tmp_path):
+        """Config override with headless: true should pass."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {
+                "workspace_path": str(tmp_path),
+                "config_override": {
+                    "headless": True,
+                    "timeout": 30000,
+                    "viewport": {"width": 1280, "height": 720},
+                    "userDataDir": "/tmp/browser-profile",
+                },
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["severity"] == "INFO"
+        checks = [f["check"] for f in data["findings"]]
+        assert "headless_enabled" in checks
+        assert "timeout_configured" in checks
+        assert "viewport_configured" in checks
+
+    def test_config_override_no_sandbox(self, mcp_server, tmp_path):
+        """Config with --no-sandbox should be CRITICAL."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {
+                "workspace_path": str(tmp_path),
+                "config_override": {
+                    "headless": True,
+                    "args": ["--no-sandbox", "--disable-setuid-sandbox"],
+                },
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert data["severity"] == "CRITICAL"
+        dangerous = [f for f in data["findings"] if f["check"] == "dangerous_launch_arg"]
+        assert len(dangerous) >= 1
+
+    def test_config_headless_false_warning(self, mcp_server, tmp_path):
+        """headless: false should produce WARNING."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {
+                "workspace_path": str(tmp_path),
+                "config_override": {"headless": False},
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert any(f["check"] == "headless_disabled" for f in data["findings"])
+
+    def test_workspace_not_found(self, mcp_server):
+        """Non-existent workspace should fail."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {"workspace_path": "/nonexistent/workspace"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+
+    def test_traversal_blocked(self, mcp_server):
+        """Path traversal should be blocked by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {"workspace_path": "../../etc/passwd"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_with_package_json_playwright(self, mcp_server, tmp_path):
+        """Workspace with playwright in package.json should detect framework."""
+        pkg = tmp_path / "package.json"
+        pkg.write_text(json.dumps({
+            "dependencies": {"@playwright/test": "^1.40.0"},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_browser_context_check",
+            "arguments": {"workspace_path": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["framework"] == "playwright"
+        assert any(f["check"] == "dependency_detected" for f in data["findings"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Concurrency lock tests (I9)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestConcurrencyLocks:
     """Test workspace lock under concurrent access (I9)."""
 
-    def test_lock_concurrent_acquire(self, mcp_server):
+    def test_lock_concurrent_acquire(self, mcp_server, tmp_path):
         """Lock tool responds correctly to acquire requests."""
+        lock_path = str(tmp_path / "concurrent-lock-test")
         result = _rpc("tools/call", {
             "name": "openclaw_workspace_lock",
             "arguments": {
-                "path": "/tmp/test-concurrent-lock",
+                "path": lock_path,
                 "action": "acquire",
                 "owner": "test-owner-concurrent",
                 "timeout_s": 2.0,

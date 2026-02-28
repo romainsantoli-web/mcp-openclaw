@@ -205,6 +205,15 @@ class SessionConfigCheckInput(BaseModel):
     def no_traversal(cls, v):
         return _check_no_traversal(v, "path")
 
+    @model_validator(mode="after")
+    def at_least_one_path(self) -> "SessionConfigCheckInput":
+        """Cross-field: at least one of env_file_path or compose_file_path must be provided."""
+        if self.env_file_path is None and self.compose_file_path is None:
+            raise ValueError(
+                "At least one of env_file_path or compose_file_path must be provided"
+            )
+        return self
+
 
 class RateLimitCheckInput(BaseModel):
     gateway_config_path: Annotated[str, Field(min_length=1, max_length=4096)]
@@ -284,6 +293,14 @@ class WorkspaceLockInput(BaseModel):
     @classmethod
     def no_traversal(cls, v):
         return _check_no_traversal(v, "path")
+
+    @model_validator(mode="after")
+    def timeout_only_for_acquire(self) -> "WorkspaceLockInput":
+        """Cross-field: warn if timeout_s changed for non-acquire actions (ignored)."""
+        if self.action in ("release", "status") and self.timeout_s != 30.0:
+            # Silently reset — timeout is meaningless for release/status
+            object.__setattr__(self, "timeout_s", 30.0)
+        return self
 
 
 # ════════════════════════════════════════════════════════════
@@ -690,6 +707,28 @@ class AgentTeamOrchestrateInput(BaseModel):
     )
     timeout_s: float = Field(default=120.0, ge=1.0, le=600.0)
 
+    @model_validator(mode="after")
+    def validate_task_dependencies(self) -> "AgentTeamOrchestrateInput":
+        """Cross-field: check task IDs are unique and deps reference existing tasks."""
+        task_ids: set[str] = set()
+        for i, task in enumerate(self.tasks):
+            tid = task.get("id")
+            if tid:
+                if tid in task_ids:
+                    raise ValueError(f"Duplicate task id '{tid}' at index {i}")
+                task_ids.add(tid)
+        # Validate dependencies reference existing task IDs
+        for i, task in enumerate(self.tasks):
+            deps = task.get("depends_on", [])
+            if isinstance(deps, str):
+                deps = [deps]
+            for dep in deps:
+                if dep and task_ids and dep not in task_ids:
+                    raise ValueError(
+                        f"Task {i} depends on '{dep}' which is not a valid task id"
+                    )
+        return self
+
 
 class AgentTeamStatusInput(BaseModel):
     orchestration_id: str | None = Field(default=None, max_length=256)
@@ -742,6 +781,52 @@ class SkillSearchInput(BaseModel):
     @classmethod
     def no_traversal(cls, v):
         return _check_no_traversal(v, "skills_dir")
+
+
+# ════════════════════════════════════════════════════════════
+# n8n_bridge — 2 tools (T8)
+# ════════════════════════════════════════════════════════════
+
+class N8nWorkflowExportInput(BaseModel):
+    pipeline_name: Annotated[str, Field(min_length=1, max_length=256)]
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=200)
+    output_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("output_path")
+    @classmethod
+    def no_traversal_output(cls, v):
+        return _check_no_traversal(v, "output_path")
+
+
+class N8nWorkflowImportInput(BaseModel):
+    workflow_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    target_dir: str | None = Field(default=None, max_length=4096)
+    strict: bool = True
+
+    @field_validator("workflow_path")
+    @classmethod
+    def no_traversal_workflow(cls, v):
+        return _check_no_traversal(v, "workflow_path")
+
+    @field_validator("target_dir")
+    @classmethod
+    def no_traversal_target(cls, v):
+        return _check_no_traversal(v, "target_dir")
+
+
+# ════════════════════════════════════════════════════════════
+# browser_audit — 1 tool (T10)
+# ════════════════════════════════════════════════════════════
+
+class BrowserContextCheckInput(BaseModel):
+    workspace_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    config_override: dict[str, Any] | None = None
+    check_deps: bool = True
+
+    @field_validator("workspace_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "workspace_path")
 
 
 # ════════════════════════════════════════════════════════════
@@ -828,4 +913,9 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     # skill_loader (T7)
     "openclaw_skill_lazy_loader":                SkillLazyLoaderInput,
     "openclaw_skill_search":                     SkillSearchInput,
+    # n8n_bridge (T8)
+    "openclaw_n8n_workflow_export":              N8nWorkflowExportInput,
+    "openclaw_n8n_workflow_import":              N8nWorkflowImportInput,
+    # browser_audit (T10)
+    "openclaw_browser_context_check":            BrowserContextCheckInput,
 }

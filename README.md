@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (55)
+## Tools (67)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -63,6 +63,18 @@
 | config_migration | `openclaw_token_separation_check` | Verify hooks.token ≠ gateway.auth.token | H19 |
 | config_migration | `openclaw_otel_redaction_check` | Verify OTEL secret redaction in diagnostics export | M17 |
 | config_migration | `openclaw_rpc_rate_limit_check` | Verify control-plane RPC rate limiting config | M21 |
+| observability | `openclaw_observability_pipeline` | Ingest JSONL traces into SQLite for offline analysis | T1 |
+| observability | `openclaw_ci_pipeline_check` | Validate CI workflow completeness (lint, test, secrets) | T6 |
+| memory_audit | `openclaw_pgvector_memory_check` | Verify pgvector config (HNSW index, dimensions, distance metrics) | T3 |
+| memory_audit | `openclaw_knowledge_graph_check` | Audit knowledge graph integrity (orphan nodes, cycles, TTL) | T9 |
+| agent_orchestration | `openclaw_agent_team_orchestrate` | Task DAG execution with topological sort + parallel layers | T4 |
+| agent_orchestration | `openclaw_agent_team_status` | Check orchestration status by ID or list all | T4 |
+| i18n_audit | `openclaw_i18n_audit` | Scan locale files for missing keys, empty values, interpolation mismatches | T5 |
+| skill_loader | `openclaw_skill_lazy_loader` | Lazy-load SKILL.md metadata (YAML front-matter, 5min cache) | T7 |
+| skill_loader | `openclaw_skill_search` | Keyword/tag search across cached skills with relevance scoring | T7 |
+| n8n_bridge | `openclaw_n8n_workflow_export` | Export agent pipeline as n8n-compatible workflow JSON | T8 |
+| n8n_bridge | `openclaw_n8n_workflow_import` | Validate & import n8n workflow JSON into workspace | T8 |
+| browser_audit | `openclaw_browser_context_check` | Validate Playwright/Puppeteer headless config for agents | T10 |
 
 ## Quick start
 
@@ -151,5 +163,14 @@ python -m pytest tests/test_smoke.py -v
 | H19 | HIGH | hooks.token = gateway.auth.token (reuse) | `openclaw_token_separation_check` |
 | M17 | MEDIUM | OTEL secret redaction missing in diagnostics | `openclaw_otel_redaction_check` |
 | M21 | MEDIUM | Control-plane RPC rate limiting absent | `openclaw_rpc_rate_limit_check` |
+| T1 | TOOL | No observability pipeline for JSONL traces | `openclaw_observability_pipeline` |
+| T3 | TOOL | pgvector memory config unchecked | `openclaw_pgvector_memory_check` |
+| T4 | TOOL | No parallel agent orchestration (task DAG) | `openclaw_agent_team_orchestrate` |
+| T5 | TOOL | No i18n/localization audit | `openclaw_i18n_audit` |
+| T6 | TOOL | No CI pipeline completeness check | `openclaw_ci_pipeline_check` |
+| T7 | TOOL | Skills loaded eagerly (no lazy loading) | `openclaw_skill_lazy_loader` + `openclaw_skill_search` |
+| T8 | TOOL | No n8n workflow automation bridge | `openclaw_n8n_workflow_export` + `openclaw_n8n_workflow_import` |
+| T9 | TOOL | Knowledge graph integrity unchecked | `openclaw_knowledge_graph_check` |
+| T10 | TOOL | Browser automation config unchecked | `openclaw_browser_context_check` |
 
 > ⚠️ Contenu généré par IA — validation humaine requise avant utilisation.

@@ -46,12 +46,14 @@ from src import (  # noqa: E402
     acp_bridge,
     advanced_security,
     agent_orchestration,
+    browser_audit,
     config_migration,
     delivery_export,
     gateway_fleet,
     gateway_hardening,
     i18n_audit,
     memory_audit,
+    n8n_bridge,
     observability,
     reliability_probe,
     runtime_audit,
@@ -61,7 +63,7 @@ from src import (  # noqa: E402
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, agent_orchestration, i18n_audit, skill_loader]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}

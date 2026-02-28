@@ -107,10 +107,31 @@ pip install -r requirements-dev.txt
 python -m pytest tests/test_smoke.py -v
 ```
 
+**177 tests**, 100% pass — covering:
+- Server starts and answers `ping`
+- `initialize` returns correct capabilities + `__version__`
+- All 67 tools registered with valid `inputSchema`
+- `vs_context_push` degrades gracefully without Gateway
+- `firm_export_document` writes local file
+- Unknown method returns JSON-RPC error -32601
+- Unknown tool returns descriptive error
+- Timing-safe auth (I21), SQL injection guard (I24), session_id regex (I41)
+- ConfigPathInput traversal blocking across all 21 config-path models (I27)
+- Health/healthz endpoints return correct tool count + version (I35)
+- Shared `config_helpers`: `load_config`, `get_nested`, `mask_secret` (I25)
+
 ## Security
 
+- **Auth**: timing-safe `hmac.compare_digest` on Bearer token — no timing side-channel (I21)
+- **Request limit**: `client_max_size=2MB` on aiohttp `Application` (I22)
+- **Tool timeout**: `asyncio.wait_for` with `TOOL_TIMEOUT_S` (default 120s) on all async tool calls (I23)
+- **SQL injection guard**: `table_name` validated by Pydantic regex `^[a-zA-Z_][a-zA-Z0-9_]{0,127}$` + runtime whitelist in handler (I24)
+- **Session ID regex**: `^[a-zA-Z0-9_\-:.]+$` on all `session_id` fields — no injection (I41)
+- **Centralized version**: `__version__` in `main.py` — single source of truth (I37)
+- **DRY helpers**: `config_helpers.py` — shared `load_config`, `get_nested`, `mask_secret` (I25)
+- **ConfigPathInput base**: 21 models inherit traversal guard from single base class (I27)
 - GitHub PRs always created as **drafts** with `needs-review` label
-- Tokens masked in logs (last 4 chars only) via `_mask_secret()`
+- Tokens masked in logs (last 4 chars only) via `mask_secret()`
 - Context capped at 32 KB per WS payload
 - `fleet.json` and `acp_sessions.json` written atomically (`os.replace`)
 - Workspace lock via `fcntl.LOCK_EX | LOCK_NB` (advisory, crash-safe)

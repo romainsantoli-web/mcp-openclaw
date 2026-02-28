@@ -19,6 +19,12 @@ async def run_smoke(url: str) -> None:
             status = await session.call_tool("firm_repo_status", {})
             print("firm_repo_status:", status.structuredContent)
 
+            enterprise_diag = await session.call_tool("enterprise_diagnostics", {})
+            print(
+                "enterprise_memory_backend:",
+                enterprise_diag.structuredContent.get("memory", {}).get("backend"),
+            )
+
             routing = await session.call_tool(
                 "routing_preview",
                 {

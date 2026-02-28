@@ -40,6 +40,14 @@ class Settings:
     routing_allowed_profiles: tuple[str, ...]
     routing_enable_copilot_hints: bool
     routing_enable_agent_copilot_access: bool
+    secure_production_mode: bool
+    policy_blocked_tools: tuple[str, ...]
+    policy_allow_write_tools: bool
+    policy_allow_network_tools: bool
+    audit_enabled: bool
+    audit_file_path: Path
+    memory_backend: str
+    memory_sqlite_path: Path
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -64,12 +72,30 @@ def load_settings(env_file: Path | None = None) -> Settings:
         item.strip() for item in allowed_profiles_raw.split(",") if item.strip()
     )
 
+    blocked_tools_raw = os.getenv("POLICY_BLOCKED_TOOLS", "")
+    blocked_tools = tuple(
+        item.strip() for item in blocked_tools_raw.split(",") if item.strip()
+    )
+
     repo_path = os.getenv("FIRM_REPO_PATH", "").strip()
     if repo_path:
         firm_repo_path = Path(repo_path).expanduser().resolve()
     else:
         project_root = Path(__file__).resolve().parents[1]
         firm_repo_path = project_root / "external" / "setup-vs-agent-firm"
+
+    project_root = Path(__file__).resolve().parents[1]
+    audit_path_raw = os.getenv("AUDIT_FILE_PATH", "")
+    if audit_path_raw:
+        audit_file_path = Path(audit_path_raw).expanduser().resolve()
+    else:
+        audit_file_path = project_root / "data" / "audit.log.jsonl"
+
+    memory_sqlite_raw = os.getenv("MEMORY_SQLITE_PATH", "")
+    if memory_sqlite_raw:
+        memory_sqlite_path = Path(memory_sqlite_raw).expanduser().resolve()
+    else:
+        memory_sqlite_path = project_root / "data" / "memory.db"
 
     return Settings(
         openclaw_gateway_url=os.getenv(
@@ -110,4 +136,21 @@ def load_settings(env_file: Path | None = None) -> Settings:
             os.getenv("ROUTING_ENABLE_AGENT_COPILOT_ACCESS"),
             default=True,
         ),
+        secure_production_mode=_to_bool(
+            os.getenv("SECURE_PRODUCTION_MODE"),
+            default=False,
+        ),
+        policy_blocked_tools=blocked_tools,
+        policy_allow_write_tools=_to_bool(
+            os.getenv("POLICY_ALLOW_WRITE_TOOLS"),
+            default=False,
+        ),
+        policy_allow_network_tools=_to_bool(
+            os.getenv("POLICY_ALLOW_NETWORK_TOOLS"),
+            default=True,
+        ),
+        audit_enabled=_to_bool(os.getenv("AUDIT_ENABLED"), default=True),
+        audit_file_path=audit_file_path,
+        memory_backend=os.getenv("MEMORY_BACKEND", "sqlite").strip().lower(),
+        memory_sqlite_path=memory_sqlite_path,
     )

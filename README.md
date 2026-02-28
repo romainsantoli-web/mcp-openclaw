@@ -71,6 +71,7 @@ Exemple:
 - `routing_explain`: explique pourquoi un profil de modèle a été sélectionné.
 - `routing_agent_plan`: génère le plan d'accès Copilot par agent/département.
 - `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
+- `enterprise_diagnostics`: affiche les diagnostics policy/audit/mémoire persistante.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
@@ -132,6 +133,24 @@ Exemple:
 - Webhook: configurable via `OPENCLAW_WEBHOOK_URL` (sinon dérivé automatiquement depuis `OPENCLAW_GATEWAY_URL`).
 - Le dispatch tente plusieurs variantes de payload pour absorber les différences de schéma.
 - Les retours incluent `attempts` pour diagnostiquer précisément chaque tentative.
+
+## Enterprise Mode (Phase 1)
+
+- `SECURE_PRODUCTION_MODE=true` active des contrôles policy supplémentaires.
+- `PolicyEngine` contrôle les catégories `read|write|network` par tool.
+- `AuditLogger` écrit une trace JSONL des actions critiques.
+- `MEMORY_BACKEND=sqlite` active une mémoire persistante sur disque.
+- Diagnostic global via `enterprise_diagnostics`.
+
+Variables principales:
+
+- `POLICY_BLOCKED_TOOLS`
+- `POLICY_ALLOW_WRITE_TOOLS`
+- `POLICY_ALLOW_NETWORK_TOOLS`
+- `AUDIT_ENABLED`
+- `AUDIT_FILE_PATH`
+- `MEMORY_BACKEND`
+- `MEMORY_SQLITE_PATH`
 
 ## Sécurité
 

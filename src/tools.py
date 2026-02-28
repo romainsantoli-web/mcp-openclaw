@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+from .audit import AuditLogger, AuditSettings
 from .config import Settings
 from .firm_repo import (
     FirmRepoError,
@@ -15,6 +16,7 @@ from .firm_repo import (
 )
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
+from .memory_sqlite import SQLiteMemoryStore
 from .openclaw_dispatcher import OpenClawDispatcher
 from .model_router import (
     build_agent_copilot_access_plan,
@@ -22,6 +24,7 @@ from .model_router import (
     list_subtask_profiles,
     route_task,
 )
+from .policy_engine import PolicyEngine, PolicyError
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 
 
@@ -83,7 +86,29 @@ def build_server(settings: Settings) -> Any:
     )
     ws_client = OpenClawWsClient(settings)
     dispatcher = OpenClawDispatcher(settings=settings, ws_client=ws_client)
-    memory = MemoryAdapter()
+    policy = PolicyEngine(
+        secure_production_mode=settings.secure_production_mode,
+        blocked_tools=settings.policy_blocked_tools,
+        allow_write_tools=settings.policy_allow_write_tools,
+        allow_network_tools=settings.policy_allow_network_tools,
+    )
+    audit = AuditLogger(
+        AuditSettings(
+            enabled=settings.audit_enabled,
+            file_path=settings.audit_file_path,
+        )
+    )
+    if settings.memory_backend == "sqlite":
+        memory: Any = SQLiteMemoryStore(settings.memory_sqlite_path)
+    else:
+        memory = MemoryAdapter()
+
+    def _guard(tool_name: str, category: str) -> dict[str, Any] | None:
+        try:
+            policy.guard(tool_name, category)
+        except PolicyError as exc:
+            return {"ok": False, "error": str(exc)}
+        return None
 
     if settings.firm_repo_auto_sync:
         try:
@@ -97,9 +122,15 @@ def build_server(settings: Settings) -> Any:
 
     @mcp.tool()
     def firm_repo_sync() -> dict[str, Any]:
+        blocked = _guard("firm_repo_sync", "network")
+        if blocked is not None:
+            return blocked
         try:
-            return sync_repo(settings)
+            result = sync_repo(settings)
+            audit.log("firm_repo_sync", {"ok": True, "result": result})
+            return result
         except FirmRepoError as exc:
+            audit.log("firm_repo_sync", {"ok": False, "error": str(exc)})
             return {"ok": False, "error": str(exc)}
 
     @mcp.tool()
@@ -154,6 +185,21 @@ def build_server(settings: Settings) -> Any:
             "routing_allowed_profiles": list(settings.routing_allowed_profiles),
             "routing_enable_copilot_hints": settings.routing_enable_copilot_hints,
             "routing_enable_agent_copilot_access": settings.routing_enable_agent_copilot_access,
+            "secure_production_mode": settings.secure_production_mode,
+        }
+
+    @mcp.tool()
+    def enterprise_diagnostics() -> dict[str, Any]:
+        memory_diag: dict[str, Any]
+        if hasattr(memory, "diagnostics"):
+            memory_diag = memory.diagnostics()
+        else:
+            memory_diag = {"backend": "memory", "events_count": "unknown"}
+        return {
+            "policy": policy.diagnostics(),
+            "audit": audit.diagnostics(),
+            "memory": memory_diag,
+            "secure_production_mode": settings.secure_production_mode,
         }
 
     @mcp.tool()
@@ -322,6 +368,9 @@ def build_server(settings: Settings) -> Any:
 
         openclaw_result: dict[str, Any] | None = None
         if push_to_openclaw:
+            blocked = _guard("firm_run_delivery_workflow.dispatch", "network")
+            if blocked is not None:
+                return blocked
             dispatch = await dispatcher.dispatch(
                 method=effective_method,
                 payload=orchestration_payload,
@@ -334,6 +383,16 @@ def build_server(settings: Settings) -> Any:
                 "error": dispatch.error,
                 "attempts": dispatch.attempts,
             }
+            audit.log(
+                "openclaw_dispatch",
+                {
+                    "objective": objective,
+                    "method": effective_method,
+                    "ok": openclaw_result.get("ok"),
+                    "channel": openclaw_result.get("channel"),
+                    "request_id": openclaw_result.get("request_id"),
+                },
+            )
 
         memory_write = None
         if not settings.read_only_mode:
@@ -352,6 +411,18 @@ def build_server(settings: Settings) -> Any:
                     "agent_copilot_access_count": len(agent_copilot_access),
                 },
             )
+
+        audit.log(
+            "firm_run_delivery_workflow",
+            {
+                "objective": objective,
+                "departments": selected_departments,
+                "push_to_openclaw": push_to_openclaw,
+                "task_family": routing_metadata.get("task_family"),
+                "model_profile": routing_metadata.get("model_profile"),
+                "ok": True,
+            },
+        )
 
         return {
             "ok": True,
@@ -472,24 +543,53 @@ def build_server(settings: Settings) -> Any:
 
     @mcp.tool()
     def memory_write_back(key: str, value: dict[str, Any]) -> dict[str, Any]:
+        blocked = _guard("memory_write_back", "write")
+        if blocked is not None:
+            return blocked
         if settings.read_only_mode:
             return {"ok": False, "error": "Mode lecture seule actif"}
-        return memory.write_back(key, value)
+        result = memory.write_back(key, value)
+        audit.log("memory_write_back", {"key": key, "ok": True})
+        return result
 
     @mcp.tool()
     async def openclaw_health() -> dict[str, Any]:
+        blocked = _guard("openclaw_health", "network")
+        if blocked is not None:
+            return blocked
         return await gateway_health(ws_client)
 
     @mcp.tool()
     async def openclaw_invoke(method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        blocked = _guard("openclaw_invoke", "network")
+        if blocked is not None:
+            return blocked
         try:
             response = await ws_client.request(method, params or {})
         except OpenClawError as exc:
+            audit.log("openclaw_invoke", {"method": method, "ok": False, "error": str(exc)})
             return {"ok": False, "error": str(exc)}
 
         if response.error is not None:
+            audit.log(
+                "openclaw_invoke",
+                {
+                    "method": method,
+                    "ok": False,
+                    "request_id": response.request_id,
+                    "error": response.error,
+                },
+            )
             return {"ok": False, "request_id": response.request_id, "error": response.error}
 
+        audit.log(
+            "openclaw_invoke",
+            {
+                "method": method,
+                "ok": True,
+                "request_id": response.request_id,
+            },
+        )
         return {"ok": True, "request_id": response.request_id, "result": response.result}
 
     return mcp

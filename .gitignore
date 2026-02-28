@@ -5,3 +5,6 @@ __pycache__/
 .mcp-openclaw.pid
 .mcp-openclaw.log
 external/
+data/
+*.db
+*.sqlite

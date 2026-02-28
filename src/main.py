@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -47,12 +47,14 @@ TOOL_TIMEOUT_S: float = float(os.getenv("TOOL_TIMEOUT_S", "120"))  # Per-tool ti
 
 # ── Import tool modules ───────────────────────────────────────────────────────
 from src import (  # noqa: E402
+    a2a_bridge,
     acp_bridge,
     advanced_security,
     agent_orchestration,
     browser_audit,
     config_migration,
     delivery_export,
+    ecosystem_audit,
     gateway_fleet,
     gateway_hardening,
     hebbian_memory,
@@ -60,6 +62,7 @@ from src import (  # noqa: E402
     memory_audit,
     n8n_bridge,
     observability,
+    platform_audit,
     reliability_probe,
     runtime_audit,
     security_audit,
@@ -68,7 +71,7 @@ from src import (  # noqa: E402
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit, a2a_bridge, platform_audit, ecosystem_audit]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}
@@ -203,7 +206,7 @@ async def _handle_mcp(request: web.Request) -> web.Response:
     # ── MCP methods ──────────────────────────────────────────────────────────
     if method == "initialize":
         return await respond({
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2025-11-25",
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {
                 "name": "mcp-openclaw-extensions",

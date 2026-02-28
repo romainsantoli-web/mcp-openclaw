@@ -860,6 +860,198 @@ class BrowserContextCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# a2a_bridge — 6 tools (G1-G6)
+# ════════════════════════════════════════════════════════════
+
+class A2aCardGenerateInput(BaseModel):
+    """Generate an A2A Agent Card from a SOUL.md file."""
+    soul_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    base_url: Annotated[str, Field(min_length=7, max_length=2048)]
+    output_path: str | None = Field(default=None, max_length=4096)
+    capabilities: dict[str, bool] | None = None
+    security_schemes: dict[str, Any] | None = None
+    extensions: list[dict[str, Any]] | None = None
+
+    @field_validator("soul_path")
+    @classmethod
+    def no_traversal_soul(cls, v):
+        return _check_no_traversal(v, "soul_path")
+
+    @field_validator("output_path")
+    @classmethod
+    def no_traversal_output(cls, v):
+        return _check_no_traversal(v, "output_path")
+
+
+class A2aCardValidateInput(BaseModel):
+    """Validate an Agent Card against A2A v1.0 RC spec."""
+    card_path: str | None = Field(default=None, max_length=4096)
+    card_json: dict[str, Any] | None = None
+
+    @field_validator("card_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "card_path")
+
+    @model_validator(mode="after")
+    def at_least_one_source(self):
+        if not self.card_path and not self.card_json:
+            raise ValueError("Provide either card_path or card_json")
+        return self
+
+
+class A2aTaskSendInput(BaseModel):
+    """Send a message/task to an A2A agent."""
+    agent_url: Annotated[str, Field(min_length=7, max_length=2048)]
+    message: Annotated[str, Field(min_length=1, max_length=65536)]
+    context_id: str | None = Field(default=None, max_length=256, pattern=_SESSION_ID_PATTERN)
+    blocking: bool = False
+    metadata: dict[str, Any] | None = None
+
+
+class A2aTaskStatusInput(BaseModel):
+    """Get A2A task status or list tasks."""
+    task_id: str | None = Field(default=None, max_length=256)
+    context_id: str | None = Field(default=None, max_length=256)
+    include_history: bool = False
+
+
+class A2aPushConfigInput(BaseModel):
+    """CRUD for A2A push notification webhook configs."""
+    task_id: Annotated[str, Field(min_length=1, max_length=256)]
+    action: str = Field(default="list", pattern=r"^(create|get|list|delete)$")
+    webhook_url: str | None = Field(default=None, max_length=2048)
+    auth_token: str | None = Field(default=None, max_length=512)
+    config_id: str | None = Field(default=None, max_length=128)
+
+
+class A2aDiscoveryInput(BaseModel):
+    """Discover A2A agents via Agent Cards or local SOUL.md scan."""
+    urls: list[str] | None = Field(default=None, max_length=50)
+    souls_dir: str | None = Field(default=None, max_length=4096)
+    check_reachability: bool = False
+
+    @field_validator("souls_dir")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "souls_dir")
+
+
+# ════════════════════════════════════════════════════════════
+# platform_audit — 8 tools (G12-G20)
+# ════════════════════════════════════════════════════════════
+
+class SecretsV2AuditInput(ConfigPathInput):
+    """Audit OpenClaw secrets v2 lifecycle."""
+    secrets_config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("secrets_config_path")
+    @classmethod
+    def no_traversal_secrets(cls, v):
+        return _check_no_traversal(v, "secrets_config_path")
+
+
+class AgentRoutingCheckInput(ConfigPathInput):
+    """Validate agent routing bindings."""
+    pass
+
+
+class VoiceSecurityCheckInput(ConfigPathInput):
+    """TTS/voice channel security audit."""
+    pass
+
+
+class TrustModelCheckInput(ConfigPathInput):
+    """Multi-user trust model validation."""
+    pass
+
+
+class AutoupdateCheckInput(ConfigPathInput):
+    """Auto-updater supply chain check."""
+    pass
+
+
+class PluginSdkCheckInput(ConfigPathInput):
+    """Plugin SDK integrity validation."""
+    pass
+
+
+class ContentBoundaryCheckInput(ConfigPathInput):
+    """Content boundary anti-prompt-injection audit."""
+    pass
+
+
+class SqliteVecCheckInput(ConfigPathInput):
+    """SQLite-vec memory backend validation."""
+    pass
+
+
+# ════════════════════════════════════════════════════════════
+# ecosystem_audit — 7 tools (G21-G27)
+# ════════════════════════════════════════════════════════════
+
+class McpFirewallCheckInput(ConfigPathInput):
+    """MCP Gateway firewall policy audit."""
+    pass
+
+
+class RagPipelineCheckInput(ConfigPathInput):
+    """RAG pipeline health & configuration audit."""
+    pass
+
+
+class SandboxExecCheckInput(ConfigPathInput):
+    """Sandbox execution isolation audit."""
+    pass
+
+
+class ContextHealthCheckInput(BaseModel):
+    """Context rot / cognitive health detection."""
+    session_data: dict[str, Any] | None = None
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class ProvenanceTrackerInput(BaseModel):
+    """Cryptographic audit trail / provenance tracking."""
+    action: str = Field(default="status", pattern=r"^(append|verify|status|export)$")
+    entry: dict[str, Any] | None = None
+    chain_path: str | None = Field(default=None, max_length=4096)
+    algorithm: str = Field(default="sha256", pattern=r"^(sha256|sha384|sha512)$")
+
+    @field_validator("chain_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "chain_path")
+
+
+class CostAnalyticsInput(BaseModel):
+    """Usage/cost tracking and analysis."""
+    session_data: dict[str, Any] | None = None
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class TokenBudgetOptimizerInput(BaseModel):
+    """Token optimization analysis."""
+    session_data: dict[str, Any] | None = None
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -957,4 +1149,28 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_n8n_workflow_import":              N8nWorkflowImportInput,
     # browser_audit (T10)
     "openclaw_browser_context_check":            BrowserContextCheckInput,
+    # a2a_bridge (G1-G6)
+    "openclaw_a2a_card_generate":                A2aCardGenerateInput,
+    "openclaw_a2a_card_validate":                A2aCardValidateInput,
+    "openclaw_a2a_task_send":                    A2aTaskSendInput,
+    "openclaw_a2a_task_status":                  A2aTaskStatusInput,
+    "openclaw_a2a_push_config":                  A2aPushConfigInput,
+    "openclaw_a2a_discovery":                    A2aDiscoveryInput,
+    # platform_audit (G12-G20)
+    "openclaw_secrets_v2_audit":                 SecretsV2AuditInput,
+    "openclaw_agent_routing_check":              AgentRoutingCheckInput,
+    "openclaw_voice_security_check":             VoiceSecurityCheckInput,
+    "openclaw_trust_model_check":                TrustModelCheckInput,
+    "openclaw_autoupdate_check":                 AutoupdateCheckInput,
+    "openclaw_plugin_sdk_check":                 PluginSdkCheckInput,
+    "openclaw_content_boundary_check":           ContentBoundaryCheckInput,
+    "openclaw_sqlite_vec_check":                 SqliteVecCheckInput,
+    # ecosystem_audit (G21-G27)
+    "openclaw_mcp_firewall_check":               McpFirewallCheckInput,
+    "openclaw_rag_pipeline_check":               RagPipelineCheckInput,
+    "openclaw_sandbox_exec_check":               SandboxExecCheckInput,
+    "openclaw_context_health_check":             ContextHealthCheckInput,
+    "openclaw_provenance_tracker":               ProvenanceTrackerInput,
+    "openclaw_cost_analytics":                   CostAnalyticsInput,
+    "openclaw_token_budget_optimizer":           TokenBudgetOptimizerInput,
 }

@@ -2805,13 +2805,30 @@ class TestHebbianMemory:
         assert result["pii_stripping"] == "enabled"
 
     @pytest.mark.asyncio
-    async def test_harvest_missing_file(self):
-        """Non-existent JSONL → error."""
+    async def test_harvest_missing_file(self, tmp_path):
+        """Non-existent JSONL (inside allowed dir) → error."""
         from src.hebbian_memory import openclaw_hebbian_harvest
 
-        result = await openclaw_hebbian_harvest("/nonexistent/sessions.jsonl")
+        result = await openclaw_hebbian_harvest(str(tmp_path / "does_not_exist.jsonl"))
         assert result["ok"] is False
         assert "not found" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_harvest_blocked_by_path_whitelist(self):
+        """JSONL path outside allowed dirs → blocked."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+        import os
+        old = os.environ.get("HEBBIAN_ALLOWED_DIRS")
+        os.environ["HEBBIAN_ALLOWED_DIRS"] = "/opt/allowed-only"
+        try:
+            result = await openclaw_hebbian_harvest("/etc/shadow.jsonl")
+            assert result["ok"] is False
+            assert "outside allowed directories" in result["error"]
+        finally:
+            if old is not None:
+                os.environ["HEBBIAN_ALLOWED_DIRS"] = old
+            else:
+                os.environ.pop("HEBBIAN_ALLOWED_DIRS", None)
 
     @pytest.mark.asyncio
     async def test_harvest_pii_stripping(self, tmp_path):
@@ -3214,4 +3231,195 @@ class TestHebbianMemory:
 
         inp = HebbianDriftCheckInput(claude_md_path="/proj/CLAUDE.md", threshold=0.5)
         assert inp.threshold == 0.5
+
+    # ── Edge cases (review feedback) ─────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_harvest_malformed_jsonl_mid_file(self, tmp_path):
+        """JSONL with corrupt line in the middle → partial ingest + error logged."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+
+        jsonl_file = tmp_path / "partial.jsonl"
+        lines = [
+            json.dumps({"session_id": "ok1", "summary": "Good session", "tags": ["a"]}),
+            "THIS IS NOT JSON {{{",
+            json.dumps({"session_id": "ok2", "summary": "Another good one", "tags": ["b"]}),
+        ]
+        jsonl_file.write_text("\n".join(lines))
+        db = str(tmp_path / "partial.db")
+
+        result = await openclaw_hebbian_harvest(str(jsonl_file), db_path=db)
+        assert result["ok"] is True
+        # At least one good line ingested
+        assert result["ingested"] >= 1
+        # Error captured for the bad line
+        assert len(result["errors"]) >= 1
+        assert "Line 2" in result["errors"][0]
+
+    @pytest.mark.asyncio
+    async def test_layer_validate_out_of_range_weight(self, tmp_path):
+        """Layer 2 rule with weight > 0.95 → HIGH finding."""
+        from src.hebbian_memory import openclaw_hebbian_layer_validate
+
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("""\
+# ═══════════════════════════════════════════
+# LAYER 1 — CORE (immuable)
+# ═══════════════════════════════════════════
+
+## Rules
+- Do not delete anything
+
+# ═══════════════════════════════════════════
+# LAYER 2 — CONSOLIDATED PATTERNS
+# ═══════════════════════════════════════════
+
+- [1.50] This weight is way too high
+- [0.80] Normal weight rule
+
+# ═══════════════════════════════════════════
+# LAYER 3 — EPISODIC INDEX
+# ═══════════════════════════════════════════
+
+- sid:abc | test
+
+# ═══════════════════════════════════════════
+# LAYER 4 — META INSTRUCTIONS
+# ═══════════════════════════════════════════
+
+- Auto-résumé
+""")
+
+        result = await openclaw_hebbian_layer_validate(str(md))
+        assert result["ok"] is True
+        high_findings = [f for f in result["findings"] if f["severity"] == "HIGH" and "weight" in f["message"].lower()]
+        assert len(high_findings) >= 1
+
+    @pytest.mark.asyncio
+    async def test_drift_check_missing_current_file(self, tmp_path):
+        """Current Claude.md does not exist → error."""
+        from src.hebbian_memory import openclaw_hebbian_drift_check
+
+        result = await openclaw_hebbian_drift_check("/nonexistent/CLAUDE.md")
+        assert result["ok"] is False
+        assert "not found" in result["error"]
+
+    def test_compute_hebbian_weights_pure(self):
+        """Pure _compute_hebbian_weights with no I/O → correct deltas."""
+        from src.hebbian_memory import _compute_hebbian_weights
+
+        rules = [
+            {"rule_id": "r1", "weight": 0.50, "text": "Rule one"},
+            {"rule_id": "r2", "weight": 0.90, "text": "Rule two"},
+            {"rule_id": "r3", "weight": 0.05, "text": "Rule three"},
+        ]
+        activated = {"r1"}  # only r1 is activated
+
+        changes, promotions, atrophy = _compute_hebbian_weights(
+            rules, activated, learning_rate=0.05, decay=0.02
+        )
+
+        # r1: activated → 0.50 + 0.05*1 - 0.02*0 = 0.55
+        r1_ch = [c for c in changes if c["rule_id"] == "r1"]
+        assert len(r1_ch) == 1
+        assert r1_ch[0]["new_weight"] == 0.55
+
+        # r2: not activated → 0.90 + 0.05*0 - 0.02*1 = 0.88
+        r2_ch = [c for c in changes if c["rule_id"] == "r2"]
+        assert len(r2_ch) == 1
+        assert r2_ch[0]["new_weight"] == 0.88
+
+        # r3: not activated → 0.05 - 0.02 = 0.03 → atrophy candidate
+        r3_ch = [c for c in changes if c["rule_id"] == "r3"]
+        assert len(r3_ch) == 1
+        assert r3_ch[0]["new_weight"] == 0.03
+        assert "r3" in atrophy
+
+    def test_compute_hebbian_weights_clamping(self):
+        """Weights clamped to [0.0, 0.95]."""
+        from src.hebbian_memory import _compute_hebbian_weights
+
+        rules = [
+            {"rule_id": "high", "weight": 0.94, "text": "Near max"},
+            {"rule_id": "low", "weight": 0.01, "text": "Near min"},
+        ]
+        # Both activated → high goes up, low goes up
+        ch, promo, _ = _compute_hebbian_weights(rules, {"high"}, learning_rate=0.1, decay=0.02)
+        high_ch = [c for c in ch if c["rule_id"] == "high"]
+        assert high_ch[0]["new_weight"] <= 0.95  # clamped
+
+        # low not activated, high decay
+        ch2, _, atrophy = _compute_hebbian_weights(
+            [{"rule_id": "tiny", "weight": 0.01, "text": "Tiny"}],
+            set(),
+            learning_rate=0.05,
+            decay=0.05,
+        )
+        tiny_ch = [c for c in ch2 if c["rule_id"] == "tiny"]
+        assert tiny_ch[0]["new_weight"] >= 0.0  # clamped, not negative
+
+    def test_apply_weight_changes_pure(self):
+        """_apply_weight_changes transforms markdown correctly."""
+        from src.hebbian_memory import _apply_weight_changes
+
+        content = """\
+- [0.90] Always run tests
+- [0.60] Check coverage
+"""
+        changes = [
+            {"old_weight": 0.90, "new_weight": 0.88, "text": "Always run tests"},
+            {"old_weight": 0.60, "new_weight": 0.58, "text": "Check coverage"},
+        ]
+        result = _apply_weight_changes(content, changes)
+        assert "[0.88] Always run tests" in result
+        assert "[0.58] Check coverage" in result
+        assert "[0.90]" not in result
+        assert "[0.60]" not in result
+
+    @pytest.mark.asyncio
+    async def test_harvest_pii_strips_unix_paths(self, tmp_path):
+        """Unix home paths (/home/user/...) are stripped from summaries."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+        import sqlite3
+
+        jsonl_file = tmp_path / "unix.jsonl"
+        jsonl_file.write_text(json.dumps({
+            "session_id": "unix-pii",
+            "summary": "Error in /home/deploy/.config/secrets.yaml and /Users/admin/Desktop/keys.txt",
+            "tags": ["bugfix"],
+        }))
+        db = str(tmp_path / "unix.db")
+
+        result = await openclaw_hebbian_harvest(str(jsonl_file), db_path=db)
+        assert result["ok"] is True
+
+        conn = sqlite3.connect(db)
+        row = conn.execute("SELECT summary FROM hebbian_sessions WHERE session_id='unix-pii'").fetchone()
+        conn.close()
+        assert "/home/deploy/.config/secrets.yaml" not in row[0]
+        assert "/Users/admin/Desktop/keys.txt" not in row[0]
+        assert "REDACTED" in row[0]
+
+    def test_validate_hebbian_path_allowed(self, tmp_path):
+        """Path inside allowed dirs → accepted."""
+        from src.hebbian_memory import _validate_hebbian_path
+        # tmp_path is inside /tmp or similar → should pass
+        result = _validate_hebbian_path(str(tmp_path / "test.jsonl"))
+        assert result == str(tmp_path / "test.jsonl")
+
+    def test_validate_hebbian_path_blocked(self):
+        """Path outside allowed dirs → ValueError."""
+        from src.hebbian_memory import _validate_hebbian_path
+        import os
+        # Save and override env
+        old = os.environ.get("HEBBIAN_ALLOWED_DIRS")
+        os.environ["HEBBIAN_ALLOWED_DIRS"] = "/opt/allowed-only"
+        try:
+            with pytest.raises(ValueError, match="outside allowed directories"):
+                _validate_hebbian_path("/etc/shadow")
+        finally:
+            if old is not None:
+                os.environ["HEBBIAN_ALLOWED_DIRS"] = old
+            else:
+                os.environ.pop("HEBBIAN_ALLOWED_DIRS", None)
 

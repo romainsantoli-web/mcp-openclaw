@@ -40,6 +40,40 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_DB_PATH = os.path.expanduser("~/.openclaw/hebbian.db")
 
+# Configurable path whitelist — covers containers, multi-user, NFS mounts.
+# Override via HEBBIAN_ALLOWED_DIRS env var (colon-separated) or pass at call.
+_DEFAULT_ALLOWED_DIRS: list[str] = [
+    os.path.expanduser("~"),
+    "/tmp",
+    "/private/tmp",      # macOS symlink target
+    "/var/folders",      # macOS per-user temp
+    "/private/var/folders",
+]
+
+
+def _get_allowed_dirs() -> list[str]:
+    """Return the resolved list of allowed directories."""
+    env = os.environ.get("HEBBIAN_ALLOWED_DIRS")
+    if env:
+        return [os.path.realpath(d) for d in env.split(":") if d.strip()]
+    return [os.path.realpath(d) for d in _DEFAULT_ALLOWED_DIRS]
+
+
+def _validate_hebbian_path(path_str: str, label: str = "path") -> str:
+    """Validate a path against the configurable whitelist.
+
+    Raises ValueError if the resolved path does not fall inside any allowed dir.
+    """
+    resolved = os.path.realpath(os.path.abspath(path_str))
+    allowed = _get_allowed_dirs()
+    for d in allowed:
+        if resolved.startswith(d + os.sep) or resolved == d:
+            return path_str
+    raise ValueError(
+        f"{label} '{path_str}' resolves to '{resolved}' which is outside "
+        f"allowed directories: {allowed}. Set HEBBIAN_ALLOWED_DIRS to extend."
+    )
+
 # CDC §4.3 — Hebbian parameters
 _DEFAULT_LEARNING_RATE = 0.05
 _DEFAULT_DECAY = 0.02
@@ -86,7 +120,17 @@ _PII_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
     ("aws_key", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
     ("jwt", re.compile(r"\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b")),
+    # Unix/macOS home paths — /home/user/..., /Users/user/..., /root/...
+    ("unix_home_path", re.compile(
+        r"(?:/home/[a-zA-Z0-9._-]+|/Users/[a-zA-Z0-9._-]+|/root)"
+        r"(?:/[a-zA-Z0-9._@:~-]+){1,10}"
+    )),
 ]
+
+# Known limitation: _PII_PATTERNS covers the most common PII categories but
+# does not catch all possible sensitive data.  Stack traces may contain env vars
+# with embedded credentials (e.g.  DB_URL=postgres://user:password@...) which
+# require a dedicated secrets scanner beyond regex.  Documented per review.
 
 
 def _strip_pii(text: str) -> str:
@@ -215,6 +259,12 @@ async def openclaw_hebbian_harvest(
     Returns:
         dict with ok, db_path, ingested, skipped, errors.
     """
+    # Path whitelist validation
+    try:
+        _validate_hebbian_path(session_jsonl_path, "session_jsonl_path")
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
     actual_db = db_path or _DEFAULT_DB_PATH
     jsonl = Path(session_jsonl_path)
 
@@ -314,6 +364,73 @@ async def openclaw_hebbian_harvest(
     }
 
 
+# ── Pure computation (no I/O) ────────────────────────────────────────────────
+
+
+def _compute_hebbian_weights(
+    rules: list[dict[str, Any]],
+    activated_rule_ids: set[str],
+    learning_rate: float = _DEFAULT_LEARNING_RATE,
+    decay: float = _DEFAULT_DECAY,
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Pure function: compute weight updates without any I/O.
+
+    Returns (changes, promotions, atrophy_candidates).
+    Fully testable in isolation.
+    """
+    changes: list[dict[str, Any]] = []
+    promotions: list[str] = []
+    atrophy_candidates: list[str] = []
+
+    for rule in rules:
+        old_weight = rule["weight"]
+        rule_id = rule["rule_id"]
+        activated = 1.0 if rule_id in activated_rule_ids else 0.0
+
+        # CDC §4.3: new = old + (lr * activation) - (decay * (1 - activation))
+        new_weight = old_weight + (learning_rate * activated) - (decay * (1.0 - activated))
+        new_weight = max(_WEIGHT_MIN, min(_WEIGHT_MAX, new_weight))
+        new_weight = round(new_weight, 2)
+
+        if new_weight != old_weight:
+            changes.append({
+                "rule_id": rule_id,
+                "text": rule["text"],
+                "old_weight": old_weight,
+                "new_weight": new_weight,
+                "delta": round(new_weight - old_weight, 3),
+                "activated": bool(activated),
+            })
+
+        # Check promotion/atrophy
+        if new_weight >= _THRESHOLD_STRONG_TO_CORE:
+            promotions.append(rule_id)
+        elif new_weight < _THRESHOLD_ATROPHY:
+            atrophy_candidates.append(rule_id)
+
+    return changes, promotions, atrophy_candidates
+
+
+def _apply_weight_changes(
+    content: str,
+    changes: list[dict[str, Any]],
+) -> str:
+    """Apply computed weight changes to markdown content. Pure string transform."""
+    updated = content
+    for ch in changes:
+        # Handle both [0.9] and [0.90] formats — try formatted first, then raw
+        old_weight = ch["old_weight"]
+        old_formatted = f"[{old_weight:.2f}] {ch['text']}"
+        old_raw = f"[{old_weight}] {ch['text']}"
+        new_line = f"[{ch['new_weight']:.2f}] {ch['text']}"
+
+        if old_formatted in updated:
+            updated = updated.replace(old_formatted, new_line, 1)
+        elif old_raw in updated:
+            updated = updated.replace(old_raw, new_line, 1)
+    return updated
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 # Tool 2: openclaw_hebbian_weight_update  (Runtime)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -334,6 +451,11 @@ async def openclaw_hebbian_weight_update(
 
     Default: dry_run=True → returns proposed changes without writing.
     When dry_run=False → updates the Claude.md file in place.
+
+    Separation of concerns:
+    - _compute_hebbian_weights() — pure calculation, no I/O, fully testable
+    - _apply_weight_changes()    — pure string transform
+    - This function              — orchestration + I/O (file read/write, SQLite)
 
     CDC §4.3 formula + §4.4 Claude.md Writer.
 
@@ -382,53 +504,27 @@ async def openclaw_hebbian_weight_update(
         except Exception as exc:
             logger.warning("Could not read activation data: %s", exc)
 
-    # Apply Hebbian update formula
-    changes: list[dict[str, Any]] = []
-    promotions: list[str] = []
-    atrophy_candidates: list[str] = []
+    # Pure computation — no I/O
+    changes, promotions, atrophy_candidates = _compute_hebbian_weights(
+        rules, activated_rule_ids, learning_rate, decay
+    )
 
-    updated_content = content
-    for rule in rules:
-        old_weight = rule["weight"]
-        rule_id = rule["rule_id"]
-        activated = 1.0 if rule_id in activated_rule_ids else 0.0
+    # dry_run=True → return immediately, zero filesystem writes
+    if dry_run:
+        return {
+            "ok": True,
+            "dry_run": True,
+            "changes": changes,
+            "promotions_candidates": promotions,
+            "atrophy_candidates": atrophy_candidates,
+            "total_rules": len(rules),
+            "rules_changed": len(changes),
+            "human_action_required": bool(promotions or atrophy_candidates),
+        }
 
-        # CDC §4.3: new = old + (lr * activation) - (decay * (1 - activation))
-        new_weight = old_weight + (learning_rate * activated) - (decay * (1.0 - activated))
-        new_weight = max(_WEIGHT_MIN, min(_WEIGHT_MAX, new_weight))
-        new_weight = round(new_weight, 2)
-
-        if new_weight != old_weight:
-            changes.append({
-                "rule_id": rule_id,
-                "text": rule["text"],
-                "old_weight": old_weight,
-                "new_weight": new_weight,
-                "delta": round(new_weight - old_weight, 3),
-                "activated": bool(activated),
-            })
-
-            if not dry_run:
-                # Replace the weight in the markdown
-                old_str = f"[{old_weight:.2f}]" if "." in str(old_weight) else f"[{old_weight}]"
-                # Handle both [0.94] and [0.9] formats
-                old_pattern = f"[{old_weight}]"
-                new_str = f"[{new_weight:.2f}]"
-                # Only replace first occurrence of this specific rule line
-                old_line = f"[{old_weight}] {rule['text']}"
-                new_line = f"[{new_weight:.2f}] {rule['text']}"
-                updated_content = updated_content.replace(
-                    old_line, new_line, 1
-                )
-
-        # Check promotion/atrophy
-        if new_weight >= _THRESHOLD_STRONG_TO_CORE:
-            promotions.append(rule_id)
-        elif new_weight < _THRESHOLD_ATROPHY:
-            atrophy_candidates.append(rule_id)
-
-    # Write if not dry_run
-    if not dry_run and changes:
+    # dry_run=False → apply changes to filesystem
+    if changes:
+        updated_content = _apply_weight_changes(content, changes)
         md_path.write_text(updated_content, encoding="utf-8")
 
         # Record weight history in SQLite
@@ -453,7 +549,7 @@ async def openclaw_hebbian_weight_update(
 
     return {
         "ok": True,
-        "dry_run": dry_run,
+        "dry_run": False,
         "changes": changes,
         "promotions_candidates": promotions,
         "atrophy_candidates": atrophy_candidates,

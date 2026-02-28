@@ -15,6 +15,7 @@ from .firm_repo import (
 )
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
+from .openclaw_dispatcher import OpenClawDispatcher
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 
 
@@ -71,6 +72,7 @@ def build_server(settings: Settings) -> Any:
         port=settings.mcp_port,
     )
     ws_client = OpenClawWsClient(settings)
+    dispatcher = OpenClawDispatcher(settings=settings, ws_client=ws_client)
     memory = MemoryAdapter()
 
     if settings.firm_repo_auto_sync:
@@ -125,6 +127,17 @@ def build_server(settings: Settings) -> Any:
             return validate_layout(settings)
         except FirmRepoError as exc:
             return {"ok": False, "error": str(exc)}
+
+    @mcp.tool()
+    def openclaw_dispatch_diagnostics() -> dict[str, Any]:
+        return {
+            "gateway_url": settings.openclaw_gateway_url,
+            "webhook_url": settings.openclaw_webhook_url,
+            "dispatch_mode": settings.openclaw_dispatch_mode,
+            "allowlist_policy": settings.openclaw_allowlist_policy,
+            "allowed_methods": list(settings.openclaw_allowed_methods),
+            "read_only_mode": settings.read_only_mode,
+        }
 
     async def _execute_delivery_workflow(
         objective: str,
@@ -186,23 +199,18 @@ def build_server(settings: Settings) -> Any:
 
         openclaw_result: dict[str, Any] | None = None
         if push_to_openclaw:
-            try:
-                response = await ws_client.request(openclaw_method, orchestration_payload)
-            except OpenClawError as exc:
-                openclaw_result = {"ok": False, "error": str(exc)}
-            else:
-                if response.error:
-                    openclaw_result = {
-                        "ok": False,
-                        "request_id": response.request_id,
-                        "error": response.error,
-                    }
-                else:
-                    openclaw_result = {
-                        "ok": True,
-                        "request_id": response.request_id,
-                        "result": response.result,
-                    }
+            dispatch = await dispatcher.dispatch(
+                method=openclaw_method,
+                payload=orchestration_payload,
+            )
+            openclaw_result = {
+                "ok": dispatch.ok,
+                "channel": dispatch.channel,
+                "request_id": dispatch.request_id,
+                "result": dispatch.result,
+                "error": dispatch.error,
+                "attempts": dispatch.attempts,
+            }
 
         memory_write = None
         if not settings.read_only_mode:
@@ -296,6 +304,7 @@ def build_server(settings: Settings) -> Any:
             "openclaw_request_id": openclaw_result.get("request_id"),
             "openclaw_error": openclaw_result.get("error"),
             "openclaw_result": openclaw_result.get("result"),
+            "openclaw_attempts": openclaw_result.get("attempts", []),
             "summary": {
                 "selected_departments": result.get("selected_departments", []),
                 "prompt": result.get("prompt"),

@@ -20,6 +20,9 @@ class Settings:
     openclaw_timeout_seconds: int
     openclaw_reconnect_max_attempts: int
     openclaw_allowed_methods: tuple[str, ...]
+    openclaw_allowlist_policy: str
+    openclaw_webhook_url: str
+    openclaw_dispatch_mode: str
     firm_repo_path: Path | None
     read_only_mode: bool
     log_level: str
@@ -63,6 +66,9 @@ def load_settings(env_file: Path | None = None) -> Settings:
             os.getenv("OPENCLAW_RECONNECT_MAX_ATTEMPTS", "3")
         ),
         openclaw_allowed_methods=allowed_methods,
+        openclaw_allowlist_policy=os.getenv("OPENCLAW_ALLOWLIST_POLICY", "strict"),
+        openclaw_webhook_url=os.getenv("OPENCLAW_WEBHOOK_URL", "").strip(),
+        openclaw_dispatch_mode=os.getenv("OPENCLAW_DISPATCH_MODE", "auto"),
         firm_repo_path=firm_repo_path,
         read_only_mode=_to_bool(os.getenv("READ_ONLY_MODE"), default=True),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),

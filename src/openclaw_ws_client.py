@@ -57,8 +57,13 @@ class OpenClawWsClient:
                 await self._ws.close()
                 self._ws = None
 
-    async def request(self, method: str, params: dict[str, Any] | None = None) -> OpenClawResponse:
-        if method not in self._settings.openclaw_allowed_methods:
+    async def request(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        enforce_allowlist: bool = True,
+    ) -> OpenClawResponse:
+        if enforce_allowlist and method not in self._settings.openclaw_allowed_methods:
             raise OpenClawError(f"Méthode non autorisée: {method}")
 
         if self._settings.read_only_mode and method.endswith(".write"):

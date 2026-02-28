@@ -66,6 +66,7 @@ Exemple:
 - `firm_validate_layout`: valide la structure attendue du repo source.
 - `firm_run_delivery_workflow`: prépare un run CEO -> départements avec mémoire et dispatch OpenClaw optionnel.
 - `firm_run_delivery_and_dispatch`: exécute workflow + dispatch OpenClaw avec un résumé compact.
+- `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
@@ -88,6 +89,19 @@ Exemple:
 - Comportement: force le dispatch OpenClaw (`agent.run` par défaut).
 - Retour: statut compact (`dispatch_ok`, `openclaw_request_id`, résumé départements/prompt).
 - Option `require_openclaw_success=true`: la tool retourne `ok=false` si l'envoi OpenClaw échoue.
+
+## Robustesse dispatch (V2.3)
+
+- Stratégie `OPENCLAW_DISPATCH_MODE`:
+   - `auto`: essaie WS puis fallback webhook.
+   - `ws_only`: WS uniquement.
+   - `webhook_only`: webhook uniquement.
+- Politique allowlist `OPENCLAW_ALLOWLIST_POLICY`:
+   - `strict`: refuse localement les méthodes hors `OPENCLAW_ALLOWED_METHODS`.
+   - `warn`: tente quand même et laisse OpenClaw décider.
+- Webhook: configurable via `OPENCLAW_WEBHOOK_URL` (sinon dérivé automatiquement depuis `OPENCLAW_GATEWAY_URL`).
+- Le dispatch tente plusieurs variantes de payload pour absorber les différences de schéma.
+- Les retours incluent `attempts` pour diagnostiquer précisément chaque tentative.
 
 ## Sécurité
 

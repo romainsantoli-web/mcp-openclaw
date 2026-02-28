@@ -72,6 +72,8 @@ Exemple:
 - `routing_agent_plan`: génère le plan d'accès Copilot par agent/département.
 - `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
 - `enterprise_diagnostics`: affiche les diagnostics policy/audit/mémoire persistante.
+- `observability_snapshot`: expose compteurs/latences runtime.
+- `ops_recent_runs`: retourne l'historique récent des runs workflow.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
@@ -93,6 +95,9 @@ Exemple:
    - `subtask_type` (ex: `hooks`, `long-form`, `calendar`, `localization`, `root-cause`, `synthesis`)
    - `latency_budget_ms` (optionnel)
    - `model_override` (optionnel)
+- Paramètres runtime supportés sur les workflows:
+   - `idempotency_key` (optionnel)
+   - `max_attempts` (optionnel)
 
 ## Routage modèles (V2.4)
 
@@ -151,6 +156,19 @@ Variables principales:
 - `AUDIT_FILE_PATH`
 - `MEMORY_BACKEND`
 - `MEMORY_SQLITE_PATH`
+
+## Enterprise Mode (Phase 2)
+
+- Runtime workflow avec retries et idempotence.
+- Historique des runs persistant (`workflow_runs.jsonl`).
+- Télémétrie interne (compteurs + latences).
+
+Variables principales:
+
+- `TELEMETRY_ENABLED`
+- `WORKFLOW_MAX_ATTEMPTS`
+- `WORKFLOW_IDEMPOTENCY_ENABLED`
+- `WORKFLOW_STORE_PATH`
 
 ## Sécurité
 

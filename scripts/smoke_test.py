@@ -57,6 +57,8 @@ async def run_smoke(url: str) -> None:
                     "task_family": "marketing",
                     "quality_tier": "high",
                     "subtask_type": "calendar",
+                    "idempotency_key": "smoke-workflow-1",
+                    "max_attempts": 2,
                     "push_to_openclaw": False,
                 },
             )
@@ -69,6 +71,10 @@ async def run_smoke(url: str) -> None:
             print(
                 "workflow_model_profile:",
                 workflow_content.get("routing", {}).get("model_profile"),
+            )
+            print(
+                "workflow_run_attempts:",
+                workflow_content.get("runtime", {}).get("attempts_count"),
             )
 
             dispatch = await session.call_tool(
@@ -86,6 +92,15 @@ async def run_smoke(url: str) -> None:
                 "dispatch_request_id:",
                 dispatch_content.get("openclaw_request_id"),
             )
+
+            obs = await session.call_tool("observability_snapshot", {})
+            print(
+                "observability_workflow_total:",
+                obs.structuredContent.get("telemetry", {}).get("counters", {}).get("workflow.total"),
+            )
+
+            recent = await session.call_tool("ops_recent_runs", {"limit": 3})
+            print("recent_runs_count:", len(recent.structuredContent.get("runs", [])))
 
 
 def main() -> None:

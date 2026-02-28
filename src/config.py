@@ -48,6 +48,10 @@ class Settings:
     audit_file_path: Path
     memory_backend: str
     memory_sqlite_path: Path
+    telemetry_enabled: bool
+    workflow_max_attempts: int
+    workflow_idempotency_enabled: bool
+    workflow_store_path: Path
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -96,6 +100,12 @@ def load_settings(env_file: Path | None = None) -> Settings:
         memory_sqlite_path = Path(memory_sqlite_raw).expanduser().resolve()
     else:
         memory_sqlite_path = project_root / "data" / "memory.db"
+
+    workflow_store_raw = os.getenv("WORKFLOW_STORE_PATH", "")
+    if workflow_store_raw:
+        workflow_store_path = Path(workflow_store_raw).expanduser().resolve()
+    else:
+        workflow_store_path = project_root / "data" / "workflow_runs.jsonl"
 
     return Settings(
         openclaw_gateway_url=os.getenv(
@@ -153,4 +163,11 @@ def load_settings(env_file: Path | None = None) -> Settings:
         audit_file_path=audit_file_path,
         memory_backend=os.getenv("MEMORY_BACKEND", "sqlite").strip().lower(),
         memory_sqlite_path=memory_sqlite_path,
+        telemetry_enabled=_to_bool(os.getenv("TELEMETRY_ENABLED"), default=True),
+        workflow_max_attempts=int(os.getenv("WORKFLOW_MAX_ATTEMPTS", "2")),
+        workflow_idempotency_enabled=_to_bool(
+            os.getenv("WORKFLOW_IDEMPOTENCY_ENABLED"),
+            default=True,
+        ),
+        workflow_store_path=workflow_store_path,
     )

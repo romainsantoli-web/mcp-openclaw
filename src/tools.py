@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import time
 from typing import Any
 
 from .audit import AuditLogger, AuditSettings
@@ -25,7 +26,9 @@ from .model_router import (
     route_task,
 )
 from .policy_engine import PolicyEngine, PolicyError
+from .telemetry import TelemetryCollector
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
+from .workflow_runtime import RuntimeSettings, WorkflowRuntime
 
 
 def _discover_departments(settings: Settings) -> list[str]:
@@ -102,6 +105,14 @@ def build_server(settings: Settings) -> Any:
         memory: Any = SQLiteMemoryStore(settings.memory_sqlite_path)
     else:
         memory = MemoryAdapter()
+    telemetry = TelemetryCollector(enabled=settings.telemetry_enabled)
+    workflow_runtime = WorkflowRuntime(
+        RuntimeSettings(
+            max_attempts=settings.workflow_max_attempts,
+            idempotency_enabled=settings.workflow_idempotency_enabled,
+            store_path=settings.workflow_store_path,
+        )
+    )
 
     def _guard(tool_name: str, category: str) -> dict[str, Any] | None:
         try:
@@ -199,7 +210,24 @@ def build_server(settings: Settings) -> Any:
             "policy": policy.diagnostics(),
             "audit": audit.diagnostics(),
             "memory": memory_diag,
+            "telemetry": telemetry.snapshot(),
+            "workflow_runtime": workflow_runtime.diagnostics(),
             "secure_production_mode": settings.secure_production_mode,
+        }
+
+    @mcp.tool()
+    def observability_snapshot() -> dict[str, Any]:
+        return {
+            "ok": True,
+            "telemetry": telemetry.snapshot(),
+            "runtime": workflow_runtime.diagnostics(),
+        }
+
+    @mcp.tool()
+    def ops_recent_runs(limit: int = 20) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "runs": workflow_runtime.list_recent_runs(limit=max(1, limit)),
         }
 
     @mcp.tool()
@@ -290,158 +318,200 @@ def build_server(settings: Settings) -> Any:
         subtask_type: str | None,
         latency_budget_ms: int | None,
         model_override: str | None,
+        idempotency_key: str | None,
+        max_attempts: int | None,
     ) -> dict[str, Any]:
-        try:
-            prompts = list_prompts(settings)
-        except FirmRepoError as exc:
-            return {"ok": False, "error": str(exc)}
+        async def _run_once() -> dict[str, Any]:
+            try:
+                prompts = list_prompts(settings)
+            except FirmRepoError as exc:
+                return {"ok": False, "error": str(exc)}
 
-        if prompt_name not in prompts:
-            return {
-                "ok": False,
-                "error": f"Prompt non trouvé: {prompt_name}",
-                "available_prompts": prompts,
-            }
-
-        prompt_data = load_prompt(settings, prompt_name)
-        if not prompt_data.get("ok"):
-            return prompt_data
-
-        available_departments = _discover_departments(settings)
-        selected_departments = departments or available_departments
-        unknown_departments = [
-            item for item in selected_departments if item not in available_departments
-        ]
-        if unknown_departments:
-            return {
-                "ok": False,
-                "error": "Départements inconnus demandés",
-                "unknown_departments": unknown_departments,
-                "available_departments": available_departments,
-            }
-
-        department_agents: dict[str, str] = {}
-        for department in selected_departments:
-            agent_name = f"department-{department}"
-            agent_data = _load_agent(settings, agent_name)
-            if not agent_data.get("ok"):
+            if prompt_name not in prompts:
                 return {
                     "ok": False,
-                    "error": f"Impossible de charger l'agent pour {department}",
-                    "details": agent_data,
+                    "error": f"Prompt non trouvé: {prompt_name}",
+                    "available_prompts": prompts,
                 }
-            department_agents[department] = agent_data["content"]
 
-        memory_context = memory.retrieve(memory_key)
-        routing_metadata = route_task(
-            settings=settings,
-            objective=objective,
-            task_family=task_family,
-            quality_tier=quality_tier,
-            subtask_type=subtask_type,
-            latency_budget_ms=latency_budget_ms,
-            model_override=model_override,
-        )
-        effective_quality_tier = (
-            quality_tier or settings.routing_default_quality_tier
-        ).strip().lower()
-        agent_copilot_access = build_agent_copilot_access_plan(
-            settings=settings,
-            departments=selected_departments,
-            quality_tier=effective_quality_tier,
-            model_override=model_override,
-        )
+            prompt_data = load_prompt(settings, prompt_name)
+            if not prompt_data.get("ok"):
+                return prompt_data
 
-        effective_method = openclaw_method
-        if not effective_method:
-            effective_method = routing_metadata.get("default_method", "agent.run")
+            available_departments = _discover_departments(settings)
+            selected_departments = departments or available_departments
+            unknown_departments = [
+                item for item in selected_departments if item not in available_departments
+            ]
+            if unknown_departments:
+                return {
+                    "ok": False,
+                    "error": "Départements inconnus demandés",
+                    "unknown_departments": unknown_departments,
+                    "available_departments": available_departments,
+                }
 
-        orchestration_payload = _build_orchestration_payload(
-            objective=objective,
-            prompt_content=prompt_data["content"],
-            selected_departments=selected_departments,
-            department_agents=department_agents,
-            memory_context=memory_context,
-            routing_metadata=routing_metadata,
-            agent_copilot_access=agent_copilot_access,
-        )
+            department_agents: dict[str, str] = {}
+            for department in selected_departments:
+                agent_name = f"department-{department}"
+                agent_data = _load_agent(settings, agent_name)
+                if not agent_data.get("ok"):
+                    return {
+                        "ok": False,
+                        "error": f"Impossible de charger l'agent pour {department}",
+                        "details": agent_data,
+                    }
+                department_agents[department] = agent_data["content"]
 
-        openclaw_result: dict[str, Any] | None = None
-        if push_to_openclaw:
-            blocked = _guard("firm_run_delivery_workflow.dispatch", "network")
-            if blocked is not None:
-                return blocked
-            dispatch = await dispatcher.dispatch(
-                method=effective_method,
-                payload=orchestration_payload,
+            memory_context = memory.retrieve(memory_key)
+            routing_metadata = route_task(
+                settings=settings,
+                objective=objective,
+                task_family=task_family,
+                quality_tier=quality_tier,
+                subtask_type=subtask_type,
+                latency_budget_ms=latency_budget_ms,
+                model_override=model_override,
             )
-            openclaw_result = {
-                "ok": dispatch.ok,
-                "channel": dispatch.channel,
-                "request_id": dispatch.request_id,
-                "result": dispatch.result,
-                "error": dispatch.error,
-                "attempts": dispatch.attempts,
-            }
+            effective_quality_tier = (
+                quality_tier or settings.routing_default_quality_tier
+            ).strip().lower()
+            agent_copilot_access = build_agent_copilot_access_plan(
+                settings=settings,
+                departments=selected_departments,
+                quality_tier=effective_quality_tier,
+                model_override=model_override,
+            )
+
+            effective_method = openclaw_method
+            if not effective_method:
+                effective_method = routing_metadata.get("default_method", "agent.run")
+
+            orchestration_payload = _build_orchestration_payload(
+                objective=objective,
+                prompt_content=prompt_data["content"],
+                selected_departments=selected_departments,
+                department_agents=department_agents,
+                memory_context=memory_context,
+                routing_metadata=routing_metadata,
+                agent_copilot_access=agent_copilot_access,
+            )
+
+            openclaw_result: dict[str, Any] | None = None
+            if push_to_openclaw:
+                blocked = _guard("firm_run_delivery_workflow.dispatch", "network")
+                if blocked is not None:
+                    return blocked
+                dispatch = await dispatcher.dispatch(
+                    method=effective_method,
+                    payload=orchestration_payload,
+                )
+                openclaw_result = {
+                    "ok": dispatch.ok,
+                    "channel": dispatch.channel,
+                    "request_id": dispatch.request_id,
+                    "result": dispatch.result,
+                    "error": dispatch.error,
+                    "attempts": dispatch.attempts,
+                }
+                audit.log(
+                    "openclaw_dispatch",
+                    {
+                        "objective": objective,
+                        "method": effective_method,
+                        "ok": openclaw_result.get("ok"),
+                        "channel": openclaw_result.get("channel"),
+                        "request_id": openclaw_result.get("request_id"),
+                    },
+                )
+
+            memory_write = None
+            if not settings.read_only_mode:
+                memory_write = memory.write_back(
+                    key=memory_key,
+                    value={
+                        "objective": objective,
+                        "departments": selected_departments,
+                        "push_to_openclaw": push_to_openclaw,
+                        "openclaw_ok": openclaw_result.get("ok")
+                        if openclaw_result is not None
+                        else None,
+                        "model_profile": routing_metadata.get("model_profile"),
+                        "task_family": routing_metadata.get("task_family"),
+                        "subtask_type": routing_metadata.get("subtask_type"),
+                        "agent_copilot_access_count": len(agent_copilot_access),
+                    },
+                )
+
             audit.log(
-                "openclaw_dispatch",
+                "firm_run_delivery_workflow",
                 {
-                    "objective": objective,
-                    "method": effective_method,
-                    "ok": openclaw_result.get("ok"),
-                    "channel": openclaw_result.get("channel"),
-                    "request_id": openclaw_result.get("request_id"),
-                },
-            )
-
-        memory_write = None
-        if not settings.read_only_mode:
-            memory_write = memory.write_back(
-                key=memory_key,
-                value={
                     "objective": objective,
                     "departments": selected_departments,
                     "push_to_openclaw": push_to_openclaw,
-                    "openclaw_ok": openclaw_result.get("ok")
-                    if openclaw_result is not None
-                    else None,
-                    "model_profile": routing_metadata.get("model_profile"),
                     "task_family": routing_metadata.get("task_family"),
-                    "subtask_type": routing_metadata.get("subtask_type"),
-                    "agent_copilot_access_count": len(agent_copilot_access),
+                    "model_profile": routing_metadata.get("model_profile"),
+                    "ok": True,
                 },
             )
 
-        audit.log(
-            "firm_run_delivery_workflow",
-            {
-                "objective": objective,
-                "departments": selected_departments,
-                "push_to_openclaw": push_to_openclaw,
-                "task_family": routing_metadata.get("task_family"),
-                "model_profile": routing_metadata.get("model_profile"),
+            return {
                 "ok": True,
+                "objective": objective,
+                "selected_departments": selected_departments,
+                "available_departments": available_departments,
+                "prompt": prompt_name,
+                "memory_key": memory_key,
+                "memory_context_items": len(memory_context),
+                "memory_write": memory_write,
+                "routing": routing_metadata,
+                "agent_copilot_access": agent_copilot_access,
+                "effective_openclaw_method": effective_method,
+                "orchestration_payload": orchestration_payload,
+                "openclaw_result": openclaw_result,
+                "notes": [
+                    "Aucun appel OpenClaw n'est fait si push_to_openclaw=false.",
+                    "La mémoire locale n'est écrite que si READ_ONLY_MODE=false.",
+                ],
+            }
+
+        start = time.monotonic()
+        run_envelope = await workflow_runtime.execute(
+            workflow_name="firm_delivery_workflow",
+            run_callable=_run_once,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            metadata={
+                "objective": objective,
+                "push_to_openclaw": push_to_openclaw,
+                "task_family": task_family,
+                "subtask_type": subtask_type,
             },
         )
+        duration_ms = (time.monotonic() - start) * 1000
+        telemetry.inc("workflow.total")
+        if run_envelope.get("ok"):
+            telemetry.inc("workflow.success")
+        else:
+            telemetry.inc("workflow.failure")
+        telemetry.observe_ms("workflow.duration_ms", duration_ms)
+
+        final_result = run_envelope.get("result", {})
+        if isinstance(final_result, dict):
+            final_result["runtime"] = {
+                "run_id": run_envelope.get("run_id"),
+                "attempts_count": run_envelope.get("attempts_count"),
+                "max_attempts": run_envelope.get("max_attempts"),
+                "duration_ms": run_envelope.get("duration_ms"),
+                "idempotent_replay": run_envelope.get("idempotent_replay", False),
+                "attempts": run_envelope.get("attempts", []),
+            }
+            return final_result
 
         return {
-            "ok": True,
-            "objective": objective,
-            "selected_departments": selected_departments,
-            "available_departments": available_departments,
-            "prompt": prompt_name,
-            "memory_key": memory_key,
-            "memory_context_items": len(memory_context),
-            "memory_write": memory_write,
-            "routing": routing_metadata,
-            "agent_copilot_access": agent_copilot_access,
-            "effective_openclaw_method": effective_method,
-            "orchestration_payload": orchestration_payload,
-            "openclaw_result": openclaw_result,
-            "notes": [
-                "Aucun appel OpenClaw n'est fait si push_to_openclaw=false.",
-                "La mémoire locale n'est écrite que si READ_ONLY_MODE=false.",
-            ],
+            "ok": False,
+            "error": "workflow_runtime_result_invalid",
+            "runtime": run_envelope,
         }
 
     @mcp.tool()
@@ -457,6 +527,8 @@ def build_server(settings: Settings) -> Any:
         subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int | None = None,
     ) -> dict[str, Any]:
         return await _execute_delivery_workflow(
             objective=objective,
@@ -470,6 +542,8 @@ def build_server(settings: Settings) -> Any:
             subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
         )
 
     @mcp.tool()
@@ -485,6 +559,8 @@ def build_server(settings: Settings) -> Any:
         subtask_type: str | None = None,
         latency_budget_ms: int | None = None,
         model_override: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int | None = None,
     ) -> dict[str, Any]:
         result = await _execute_delivery_workflow(
             objective=objective,
@@ -498,6 +574,8 @@ def build_server(settings: Settings) -> Any:
             subtask_type=subtask_type,
             latency_budget_ms=latency_budget_ms,
             model_override=model_override,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
         )
 
         if not result.get("ok"):
@@ -564,9 +642,12 @@ def build_server(settings: Settings) -> Any:
         blocked = _guard("openclaw_invoke", "network")
         if blocked is not None:
             return blocked
+        invoke_start = time.monotonic()
         try:
             response = await ws_client.request(method, params or {})
         except OpenClawError as exc:
+            telemetry.inc("openclaw_invoke.failure")
+            telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
             audit.log("openclaw_invoke", {"method": method, "ok": False, "error": str(exc)})
             return {"ok": False, "error": str(exc)}
 
@@ -580,6 +661,8 @@ def build_server(settings: Settings) -> Any:
                     "error": response.error,
                 },
             )
+            telemetry.inc("openclaw_invoke.failure")
+            telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
             return {"ok": False, "request_id": response.request_id, "error": response.error}
 
         audit.log(
@@ -590,6 +673,8 @@ def build_server(settings: Settings) -> Any:
                 "request_id": response.request_id,
             },
         )
+        telemetry.inc("openclaw_invoke.success")
+        telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
         return {"ok": True, "request_id": response.request_id, "result": response.result}
 
     return mcp

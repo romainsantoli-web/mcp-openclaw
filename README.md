@@ -73,7 +73,12 @@ Exemple:
 - `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
 - `enterprise_diagnostics`: affiche les diagnostics policy/audit/mémoire persistante.
 - `observability_snapshot`: expose compteurs/latences runtime.
+- `plugin_diagnostics`: expose l'état des plugins runtime et leur politique d'application.
+- `cost_estimate`: estime le coût prévisionnel d'un workflow selon l'objectif/routing.
+- `cost_status`: affiche les budgets actifs et la consommation journalière.
+- `cost_recent`: retourne les enregistrements de coûts récents.
 - `ops_recent_runs`: retourne l'historique récent des runs workflow.
+- `ops_dashboard_snapshot`: agrège diagnostics enterprise + observabilité + coûts + plugins.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
@@ -169,6 +174,23 @@ Variables principales:
 - `WORKFLOW_MAX_ATTEMPTS`
 - `WORKFLOW_IDEMPOTENCY_ENABLED`
 - `WORKFLOW_STORE_PATH`
+
+## Enterprise Mode (Phase 3)
+
+- Plugins runtime pré/post workflow (normalisation + garde-fous objectifs).
+- Cost guard avec budgets par run et journalier.
+- Snapshot ops consolidé pour pilotage rapide.
+
+Variables principales:
+
+- `PLUGINS_ENABLED`
+- `PLUGIN_ENFORCE_OBJECTIVE_MIN_LENGTH`
+- `PLUGIN_POLICY_MODE`
+- `COST_GUARD_ENABLED`
+- `COST_GUARD_POLICY_MODE`
+- `COST_GUARD_PER_RUN_BUDGET`
+- `COST_GUARD_DAILY_BUDGET`
+- `COST_GUARD_LEDGER_PATH`
 
 ## Sécurité
 

@@ -99,8 +99,34 @@ async def run_smoke(url: str) -> None:
                 obs.structuredContent.get("telemetry", {}).get("counters", {}).get("workflow.total"),
             )
 
+            plugin_diag = await session.call_tool("plugin_diagnostics", {})
+            print(
+                "plugin_count:",
+                len(plugin_diag.structuredContent.get("plugins", {}).get("enabled", [])),
+            )
+
+            estimate = await session.call_tool(
+                "cost_estimate",
+                {
+                    "objective": "Estimer un workflow marketing trimestriel B2B",
+                    "departments": ["communications", "social-media"],
+                    "task_family": "marketing",
+                    "quality_tier": "high",
+                },
+            )
+            print("cost_estimate_ok:", estimate.structuredContent.get("ok"))
+
+            cost_status = await session.call_tool("cost_status", {})
+            print(
+                "cost_daily_spent:",
+                cost_status.structuredContent.get("daily", {}).get("spent"),
+            )
+
             recent = await session.call_tool("ops_recent_runs", {"limit": 3})
             print("recent_runs_count:", len(recent.structuredContent.get("runs", [])))
+
+            dashboard = await session.call_tool("ops_dashboard_snapshot", {"limit": 3})
+            print("dashboard_ok:", dashboard.structuredContent.get("ok"))
 
 
 def main() -> None:

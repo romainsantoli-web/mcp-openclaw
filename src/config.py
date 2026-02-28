@@ -52,6 +52,14 @@ class Settings:
     workflow_max_attempts: int
     workflow_idempotency_enabled: bool
     workflow_store_path: Path
+    plugins_enabled: tuple[str, ...]
+    plugin_enforce_objective_min_length: int
+    plugin_policy_mode: str
+    cost_guard_enabled: bool
+    cost_guard_policy_mode: str
+    cost_guard_per_run_budget: float
+    cost_guard_daily_budget: float
+    cost_guard_ledger_path: Path
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -106,6 +114,17 @@ def load_settings(env_file: Path | None = None) -> Settings:
         workflow_store_path = Path(workflow_store_raw).expanduser().resolve()
     else:
         workflow_store_path = project_root / "data" / "workflow_runs.jsonl"
+
+    plugins_raw = os.getenv("PLUGINS_ENABLED", "enforce_objective_min_length")
+    plugins_enabled = tuple(
+        item.strip() for item in plugins_raw.split(",") if item.strip()
+    )
+
+    cost_ledger_raw = os.getenv("COST_GUARD_LEDGER_PATH", "")
+    if cost_ledger_raw:
+        cost_guard_ledger_path = Path(cost_ledger_raw).expanduser().resolve()
+    else:
+        cost_guard_ledger_path = project_root / "data" / "cost_ledger.jsonl"
 
     return Settings(
         openclaw_gateway_url=os.getenv(
@@ -170,4 +189,14 @@ def load_settings(env_file: Path | None = None) -> Settings:
             default=True,
         ),
         workflow_store_path=workflow_store_path,
+        plugins_enabled=plugins_enabled,
+        plugin_enforce_objective_min_length=int(
+            os.getenv("PLUGIN_ENFORCE_OBJECTIVE_MIN_LENGTH", "24")
+        ),
+        plugin_policy_mode=os.getenv("PLUGIN_POLICY_MODE", "enforce").strip().lower(),
+        cost_guard_enabled=_to_bool(os.getenv("COST_GUARD_ENABLED"), default=True),
+        cost_guard_policy_mode=os.getenv("COST_GUARD_POLICY_MODE", "enforce").strip().lower(),
+        cost_guard_per_run_budget=float(os.getenv("COST_GUARD_PER_RUN_BUDGET", "2.5")),
+        cost_guard_daily_budget=float(os.getenv("COST_GUARD_DAILY_BUDGET", "25.0")),
+        cost_guard_ledger_path=cost_guard_ledger_path,
     )

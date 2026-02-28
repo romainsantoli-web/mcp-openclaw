@@ -5,7 +5,9 @@ import time
 from typing import Any
 
 from .audit import AuditLogger, AuditSettings
+from .cost_guard import CostGuard, CostGuardSettings
 from .config import Settings
+from .dashboard_ops import build_dashboard_snapshot
 from .firm_repo import (
     FirmRepoError,
     list_agents,
@@ -26,6 +28,7 @@ from .model_router import (
     route_task,
 )
 from .policy_engine import PolicyEngine, PolicyError
+from .plugin_system import PluginManager
 from .telemetry import TelemetryCollector
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 from .workflow_runtime import RuntimeSettings, WorkflowRuntime
@@ -111,6 +114,20 @@ def build_server(settings: Settings) -> Any:
             max_attempts=settings.workflow_max_attempts,
             idempotency_enabled=settings.workflow_idempotency_enabled,
             store_path=settings.workflow_store_path,
+        )
+    )
+    plugins = PluginManager(
+        enabled_plugins=settings.plugins_enabled,
+        objective_min_length=settings.plugin_enforce_objective_min_length,
+        policy_mode=settings.plugin_policy_mode,
+    )
+    cost_guard = CostGuard(
+        CostGuardSettings(
+            enabled=settings.cost_guard_enabled,
+            policy_mode=settings.cost_guard_policy_mode,
+            per_run_budget=settings.cost_guard_per_run_budget,
+            daily_budget=settings.cost_guard_daily_budget,
+            ledger_path=settings.cost_guard_ledger_path,
         )
     )
 
@@ -212,6 +229,8 @@ def build_server(settings: Settings) -> Any:
             "memory": memory_diag,
             "telemetry": telemetry.snapshot(),
             "workflow_runtime": workflow_runtime.diagnostics(),
+            "plugins": plugins.diagnostics(),
+            "cost_guard": cost_guard.diagnostics(),
             "secure_production_mode": settings.secure_production_mode,
         }
 
@@ -224,10 +243,53 @@ def build_server(settings: Settings) -> Any:
         }
 
     @mcp.tool()
+    def plugin_diagnostics() -> dict[str, Any]:
+        return {"ok": True, "plugins": plugins.diagnostics()}
+
+    @mcp.tool()
+    def cost_estimate(
+        objective: str,
+        departments: list[str],
+        push_to_openclaw: bool = False,
+    ) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "estimate": cost_guard.estimate(
+                objective=objective,
+                departments=departments,
+                push_to_openclaw=push_to_openclaw,
+            ),
+        }
+
+    @mcp.tool()
+    def cost_status() -> dict[str, Any]:
+        return {"ok": True, "cost_guard": cost_guard.diagnostics()}
+
+    @mcp.tool()
+    def cost_recent(limit: int = 20) -> dict[str, Any]:
+        return {"ok": True, "records": cost_guard.recent_records(limit=max(1, limit))}
+
+    @mcp.tool()
     def ops_recent_runs(limit: int = 20) -> dict[str, Any]:
         return {
             "ok": True,
             "runs": workflow_runtime.list_recent_runs(limit=max(1, limit)),
+        }
+
+    @mcp.tool()
+    def ops_dashboard_snapshot(limit: int = 20) -> dict[str, Any]:
+        enterprise = enterprise_diagnostics()
+        observability = observability_snapshot()
+        runs = workflow_runtime.list_recent_runs(limit=max(1, limit))
+        return {
+            "ok": True,
+            "snapshot": build_dashboard_snapshot(
+                enterprise=enterprise,
+                observability=observability,
+                recent_runs=runs,
+                cost_guard=cost_guard.diagnostics(),
+                plugins=plugins.diagnostics(),
+            ),
         }
 
     @mcp.tool()
@@ -321,6 +383,54 @@ def build_server(settings: Settings) -> Any:
         idempotency_key: str | None,
         max_attempts: int | None,
     ) -> dict[str, Any]:
+        plugin_context = {
+            "objective": objective,
+            "departments": list(departments) if departments else [],
+            "task_family": task_family,
+            "quality_tier": quality_tier,
+            "subtask_type": subtask_type,
+        }
+        pre_plugin = plugins.pre_workflow(plugin_context)
+        if not pre_plugin.ok:
+            telemetry.inc("workflow.failure")
+            audit.log(
+                "workflow_plugin_block",
+                {
+                    "objective": objective,
+                    "error": pre_plugin.error,
+                    "events": pre_plugin.events,
+                },
+            )
+            return {
+                "ok": False,
+                "error": pre_plugin.error,
+                "plugin_events": pre_plugin.events,
+            }
+
+        departments = pre_plugin.context.get("departments") or departments
+
+        cost_check = cost_guard.check_and_record(
+            workflow="firm_delivery_workflow",
+            objective=objective,
+            departments=departments or [],
+            push_to_openclaw=push_to_openclaw,
+        )
+        if not cost_check.get("ok"):
+            telemetry.inc("workflow.failure")
+            audit.log(
+                "workflow_cost_block",
+                {
+                    "objective": objective,
+                    "cost_check": cost_check,
+                },
+            )
+            return {
+                "ok": False,
+                "error": "cost_guard_blocked",
+                "cost_check": cost_check,
+                "plugin_events": pre_plugin.events,
+            }
+
         async def _run_once() -> dict[str, Any]:
             try:
                 prompts = list_prompts(settings)
@@ -498,6 +608,11 @@ def build_server(settings: Settings) -> Any:
 
         final_result = run_envelope.get("result", {})
         if isinstance(final_result, dict):
+            final_result["plugin_events"] = {
+                "pre": pre_plugin.events,
+                "post": plugins.post_workflow(pre_plugin.context, final_result),
+            }
+            final_result["cost_check"] = cost_check
             final_result["runtime"] = {
                 "run_id": run_envelope.get("run_id"),
                 "attempts_count": run_envelope.get("attempts_count"),

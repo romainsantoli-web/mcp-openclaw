@@ -54,13 +54,9 @@ _CRON_COMMAND_PATTERN = re.compile(r"^[a-zA-Z0-9 /._\-=]+$")
 _CRON_COMMAND_BLOCKLIST = {"rm", "dd", "mkfs", "format", "shutdown", "reboot", "halt", "kill"}
 
 
-# ── Helper: secret masking ────────────────────────────────────────────────────
+# ── Helper: secret masking (delegates to shared config_helpers) ─────────────────
 
-def _mask_secret(val: str) -> str:
-    """Returns last 4 chars visible, rest masked. Never log full secrets."""
-    if not val or len(val) <= 4:
-        return "****"
-    return f"****{val[-4:]}"
+from src.config_helpers import mask_secret as _mask_secret  # noqa: E402
 
 
 # ── ACP session persistence (C4) ─────────────────────────────────────────────

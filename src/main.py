@@ -15,6 +15,7 @@ Or via scripts:
 from __future__ import annotations
 
 import asyncio
+import hmac
 import inspect
 import json
 import logging
@@ -23,6 +24,8 @@ import signal
 import sys
 import time
 from typing import Any
+
+__version__ = "1.1.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -40,6 +43,7 @@ logger = logging.getLogger("mcp_ext.main")
 MCP_HOST: str = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
 MCP_AUTH_TOKEN: str | None = os.getenv("MCP_AUTH_TOKEN")  # Optional Bearer auth
+TOOL_TIMEOUT_S: float = float(os.getenv("TOOL_TIMEOUT_S", "120"))  # Per-tool timeout
 
 # ── Import tool modules ───────────────────────────────────────────────────────
 from src import (  # noqa: E402
@@ -120,9 +124,15 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
 
     try:
         if asyncio.iscoroutinefunction(handler):
-            result = await handler(**filtered)
+            result = await asyncio.wait_for(handler(**filtered), timeout=TOOL_TIMEOUT_S)
         else:
             result = handler(**filtered)
+    except asyncio.TimeoutError:
+        logger.error("Tool %s timed out after %.0fs", name, TOOL_TIMEOUT_S)
+        return {
+            "isError": True,
+            "content": [{"type": "text", "text": f"Tool timed out after {TOOL_TIMEOUT_S}s"}],
+        }
     except TypeError as exc:
         return {
             "isError": True,
@@ -154,7 +164,7 @@ def _check_auth(request: web.Request) -> web.Response | None:
             status=401,
         )
     token = auth_header[7:]
-    if token != MCP_AUTH_TOKEN:
+    if not hmac.compare_digest(token, MCP_AUTH_TOKEN):
         return web.json_response(
             {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": "Invalid token"}},
             status=403,
@@ -196,7 +206,7 @@ async def _handle_mcp(request: web.Request) -> web.Response:
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {
                 "name": "mcp-openclaw-extensions",
-                "version": "1.0.0",
+                "version": __version__,
                 "description": (
                     "VS Code↔OpenClaw bridge · Fleet manager · "
                     "Delivery export pipeline"
@@ -227,7 +237,7 @@ async def _handle_health(request: web.Request) -> web.Response:
         categories[cat] = categories.get(cat, 0) + 1
     return web.json_response({
         "status": "ok",
-        "version": "1.0.0",
+        "version": __version__,
         "tools": len(TOOL_REGISTRY),
         "categories": categories,
         "ts": time.time(),
@@ -237,9 +247,8 @@ async def _handle_health(request: web.Request) -> web.Response:
 # ── Server lifecycle ──────────────────────────────────────────────────────────
 
 async def _build_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(client_max_size=2 * 1024 * 1024)  # 2 MB request limit
     app.router.add_post("/mcp", _handle_mcp)
-    app.router.add_get("/mcp", _handle_mcp)   # For SSE-style discovery
     app.router.add_get("/health", _handle_health)
     app.router.add_get("/healthz", _handle_health)
     return app

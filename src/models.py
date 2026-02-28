@@ -1,5 +1,5 @@
 """
-models.py — Pydantic v2 input models for all 16 MCP tools.
+models.py — Pydantic v2 input models for all 67 MCP tools.
 
 Validated in main.py before dispatching to handlers.
 ValidationError is caught and returned as a structured tool error.
@@ -21,12 +21,27 @@ def _check_no_traversal(v: str | None, field_name: str = "path") -> str | None:
     return v
 
 
+# ── Reusable base for config-path-only models ───────────────────────────────
+
+class ConfigPathInput(BaseModel):
+    """Base model for tools that take a single optional config_path."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
 # ════════════════════════════════════════════════════════════
 # vs_bridge — 4 tools
 # ════════════════════════════════════════════════════════════
 
+_SESSION_ID_PATTERN = r"^[a-zA-Z0-9_\-:.]+$"
+
+
 class VsContextPushInput(BaseModel):
-    session_id: Annotated[str, Field(min_length=1, max_length=256)]
+    session_id: Annotated[str, Field(min_length=1, max_length=256, pattern=_SESSION_ID_PATTERN)]
     workspace_path: Annotated[str, Field(min_length=1, max_length=4096)]
     open_files: list[str] = Field(default_factory=list, max_length=200)
     active_file: str | None = None
@@ -35,21 +50,14 @@ class VsContextPushInput(BaseModel):
     language_id: str | None = Field(default=None, max_length=64)
     metadata: dict[str, Any] | None = None
 
-    @field_validator("session_id")
-    @classmethod
-    def no_newlines(cls, v: str) -> str:
-        if "\n" in v or "\r" in v:
-            raise ValueError("session_id must not contain newlines")
-        return v
-
 
 class VsContextPullInput(BaseModel):
-    session_id: Annotated[str, Field(min_length=1, max_length=256)]
+    session_id: Annotated[str, Field(min_length=1, max_length=256, pattern=_SESSION_ID_PATTERN)]
 
 
 class VsSessionLinkInput(BaseModel):
     workspace_path: Annotated[str, Field(min_length=1, max_length=4096)]
-    session_id: Annotated[str, Field(min_length=1, max_length=256)]
+    session_id: Annotated[str, Field(min_length=1, max_length=256, pattern=_SESSION_ID_PATTERN)]
 
 
 class VsSessionStatusInput(BaseModel):
@@ -385,13 +393,8 @@ class ExportAutoInput(BaseModel):
 # gateway_hardening — 5 tools (H2, M3, M4, M7, M8)
 # ════════════════════════════════════════════════════════════
 
-class GatewayAuthCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class GatewayAuthCheckInput(ConfigPathInput):
+    pass
 
 
 class CredentialsCheckInput(BaseModel):
@@ -414,13 +417,8 @@ class WebhookSigCheckInput(BaseModel):
         return _check_no_traversal(v, "config_path")
 
 
-class LogConfigCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class LogConfigCheckInput(ConfigPathInput):
+    pass
 
 
 class WorkspaceIntegrityCheckInput(BaseModel):
@@ -446,58 +444,28 @@ class NodeVersionCheckInput(BaseModel):
         return _check_no_traversal(v, "node_binary")
 
 
-class SecretsWorkflowCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class SecretsWorkflowCheckInput(ConfigPathInput):
+    pass
 
 
-class HttpHeadersCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class HttpHeadersCheckInput(ConfigPathInput):
+    pass
 
 
-class NodesCommandsCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class NodesCommandsCheckInput(ConfigPathInput):
+    pass
 
 
-class TrustedProxyCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class TrustedProxyCheckInput(ConfigPathInput):
+    pass
 
 
-class SessionDiskBudgetCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class SessionDiskBudgetCheckInput(ConfigPathInput):
+    pass
 
 
-class DmAllowlistCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class DmAllowlistCheckInput(ConfigPathInput):
+    pass
 
 
 # ════════════════════════════════════════════════════════════
@@ -505,76 +473,36 @@ class DmAllowlistCheckInput(BaseModel):
 # ════════════════════════════════════════════════════════════
 
 
-class SecretsLifecycleCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class SecretsLifecycleCheckInput(ConfigPathInput):
+    pass
 
 
-class ChannelAuthCanonCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class ChannelAuthCanonCheckInput(ConfigPathInput):
+    pass
 
 
-class ExecApprovalFreezeCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class ExecApprovalFreezeCheckInput(ConfigPathInput):
+    pass
 
 
-class HookSessionRoutingCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class HookSessionRoutingCheckInput(ConfigPathInput):
+    pass
 
 
-class ConfigIncludeCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class ConfigIncludeCheckInput(ConfigPathInput):
+    pass
 
 
-class ConfigPrototypeCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class ConfigPrototypeCheckInput(ConfigPathInput):
+    pass
 
 
-class SafeBinsProfileCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class SafeBinsProfileCheckInput(ConfigPathInput):
+    pass
 
 
-class GroupPolicyDefaultCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class GroupPolicyDefaultCheckInput(ConfigPathInput):
+    pass
 
 
 # ════════════════════════════════════════════════════════════
@@ -582,49 +510,24 @@ class GroupPolicyDefaultCheckInput(BaseModel):
 # ════════════════════════════════════════════════════════════
 
 
-class ShellEnvCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class ShellEnvCheckInput(ConfigPathInput):
+    pass
 
 
-class PluginIntegrityCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class PluginIntegrityCheckInput(ConfigPathInput):
+    pass
 
 
-class TokenSeparationCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class TokenSeparationCheckInput(ConfigPathInput):
+    pass
 
 
-class OtelRedactionCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class OtelRedactionCheckInput(ConfigPathInput):
+    pass
 
 
-class RpcRateLimitCheckInput(BaseModel):
-    config_path: str | None = Field(default=None, max_length=4096)
-
-    @field_validator("config_path")
-    @classmethod
-    def no_traversal(cls, v):
-        return _check_no_traversal(v, "config_path")
+class RpcRateLimitCheckInput(ConfigPathInput):
+    pass
 
 
 # ════════════════════════════════════════════════════════════
@@ -635,7 +538,10 @@ class RpcRateLimitCheckInput(BaseModel):
 class ObservabilityPipelineInput(BaseModel):
     jsonl_path: Annotated[str, Field(min_length=1, max_length=4096)]
     db_path: str | None = Field(default=None, max_length=4096)
-    table_name: Annotated[str, Field(min_length=1, max_length=128)] = "traces"
+    table_name: Annotated[str, Field(
+        min_length=1, max_length=128,
+        pattern=r"^[a-zA-Z_][a-zA-Z0-9_]{0,127}$",
+    )] = "traces"
     max_lines: int = Field(default=50_000, ge=1, le=500_000)
 
     @field_validator("jsonl_path")

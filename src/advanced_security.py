@@ -31,6 +31,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from src.config_helpers import load_config as _load_config_base, get_nested as _get_nested  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 # ── Default paths (overridable via env) ──────────────────────────────────────
@@ -70,27 +72,11 @@ _ENCODED_TRAVERSAL_PATTERNS = [
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Helpers
+# Helper — delegates to shared config_helpers
 # ════════════════════════════════════════════════════════════════════════════
 
 def _load_config(config_path: str | None) -> tuple[dict[str, Any], str]:
-    """Return (config_dict, resolved_path_str). Raises on error."""
-    p = Path(config_path) if config_path else _CONFIG_PATH
-    resolved = str(p.resolve())
-    if not p.exists():
-        return {}, resolved
-    with p.open("r", encoding="utf-8") as fh:
-        return json.load(fh), resolved
-
-
-def _get_nested(d: dict, *keys: str, default: Any = None) -> Any:
-    """Safe nested dict accessor."""
-    cur = d
-    for k in keys:
-        if not isinstance(cur, dict):
-            return default
-        cur = cur.get(k, default)  # type: ignore[assignment]
-    return cur
+    return _load_config_base(config_path, default_path=_CONFIG_PATH)
 
 
 def _scan_proto_keys(

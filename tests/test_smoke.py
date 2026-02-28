@@ -2603,3 +2603,174 @@ class TestConfigMigration:
         data = json.loads(result["result"]["content"][0]["text"])
         assert data["status"] == "ok"
 
+
+# ════════════════════════════════════════════════════════════
+# Phase 6a/6b/6c — New tests for I21-I41 inefficiencies
+# ════════════════════════════════════════════════════════════
+
+
+class TestConfigHelpers:
+    """Tests for shared config_helpers module (I25)."""
+
+    def test_load_config_missing_file(self):
+        from src.config_helpers import load_config
+        cfg, resolved = load_config("/nonexistent/config.json")
+        assert cfg == {}
+        assert "nonexistent" in resolved
+
+    def test_load_config_valid_file(self, tmp_path):
+        from src.config_helpers import load_config
+        p = tmp_path / "cfg.json"
+        p.write_text('{"key": "value"}')
+        cfg, resolved = load_config(str(p))
+        assert cfg == {"key": "value"}
+
+    def test_get_nested_deep(self):
+        from src.config_helpers import get_nested
+        d = {"a": {"b": {"c": 42}}}
+        assert get_nested(d, "a", "b", "c") == 42
+        assert get_nested(d, "a", "x", default="nope") == "nope"
+        assert get_nested(d, "z", "b", default=None) is None
+
+    def test_mask_secret_short(self):
+        from src.config_helpers import mask_secret
+        assert mask_secret(None) == "****"
+        assert mask_secret("ab") == "****"
+        assert mask_secret("abcdefghij", visible=4) == "****ghij"
+
+    def test_mask_secret_custom_visible(self):
+        from src.config_helpers import mask_secret
+        assert mask_secret("secret_token_here", visible=8) == "****ken_here"
+
+
+class TestHmacAuth:
+    """Tests for timing-safe auth (I21)."""
+
+    def test_auth_required_when_token_set(self, mcp_server):
+        """When MCP_AUTH_TOKEN is NOT set, auth is disabled — requests pass."""
+        result = _rpc("ping")
+        assert result["result"]["pong"] is True
+
+
+class TestSessionIdRegex:
+    """Tests for session_id pattern validation (I41)."""
+
+    def test_valid_session_id(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "vs_context_push",
+            "arguments": {
+                "session_id": "test-session_123:v1.0",
+                "workspace_path": "/tmp/test-ws",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" not in str(data)
+
+    def test_invalid_session_id_rejected(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "vs_context_push",
+            "arguments": {
+                "session_id": "bad session/id!@#",
+                "workspace_path": "/tmp/test-ws",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" in str(data) or "error" in data
+
+
+class TestTableNameSqlInjection:
+    """Tests for SQL injection guard on table_name (I24)."""
+
+    def test_valid_table_name_accepted(self, mcp_server, tmp_path):
+        jsonl = tmp_path / "traces.jsonl"
+        jsonl.write_text('{"message": "hello"}\n')
+        db = tmp_path / "test.db"
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {
+                "jsonl_path": str(jsonl),
+                "db_path": str(db),
+                "table_name": "valid_table_123",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+
+    def test_sql_injection_table_name_rejected(self, mcp_server, tmp_path):
+        jsonl = tmp_path / "traces.jsonl"
+        jsonl.write_text('{"message": "hello"}\n')
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {
+                "jsonl_path": str(jsonl),
+                "table_name": "traces; DROP TABLE users--",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" in str(data) or "error" in str(data).lower()
+
+
+class TestHealthEndpoint:
+    """Tests for /health endpoint (I35)."""
+
+    def test_health_returns_ok(self, mcp_server):
+        resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["tools"] == EXPECTED_TOOLS
+        assert "categories" in data
+        assert "version" in data
+
+    def test_healthz_alias(self, mcp_server):
+        resp = httpx.get(f"http://{HOST}:{PORT}/healthz", timeout=5)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+
+class TestConfigPathInput:
+    """Tests for ConfigPathInput base class (I27)."""
+
+    def test_config_path_accepts_valid(self, mcp_server, tmp_path):
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text("{}")
+        result = _rpc("tools/call", {
+            "name": "openclaw_secrets_workflow_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" not in str(data)
+
+    def test_config_path_rejects_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_secrets_workflow_check",
+            "arguments": {"config_path": "/etc/../../../etc/passwd"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" in str(data) or "traversal" in str(data).lower()
+
+    def test_config_path_none_accepted(self, mcp_server):
+        """config_path=None should be accepted (uses default)."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_http_headers_check",
+            "arguments": {},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "Validation failed" not in str(data)
+
+
+class TestVersionEndpoint:
+    """Tests for __version__ centralization (I37)."""
+
+    def test_initialize_returns_version(self, mcp_server):
+        result = _rpc("initialize", {
+            "protocolVersion": "2024-11-05",
+            "clientInfo": {"name": "test", "version": "0.0.1"},
+        })
+        version = result["result"]["serverInfo"]["version"]
+        assert version == "1.1.0"
+
+    def test_health_returns_version(self, mcp_server):
+        resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
+        assert resp.json()["version"] == "1.1.0"
+

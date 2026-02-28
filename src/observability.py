@@ -62,6 +62,10 @@ async def openclaw_observability_pipeline(
     actual_db = db_path or _DEFAULT_DB_PATH
     jsonl = Path(jsonl_path)
 
+    # Defence-in-depth: whitelist table_name even though Pydantic already validates
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]{0,127}$", table_name):
+        return {"ok": False, "error": f"Invalid table_name: {table_name!r}"}
+
     if not jsonl.exists():
         return {"ok": False, "error": f"JSONL file not found: {jsonl_path}"}
 

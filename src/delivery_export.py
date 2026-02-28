@@ -57,10 +57,8 @@ def _truncate(text: str, limit: int = MAX_BODY_CHARS) -> str:
     return text[: limit - 100] + "\n\n---\n_[truncated — full output in memory:delivery/latest]_"
 
 
-def _mask_secret(val: str | None, visible: int = 4) -> str:
-    if not val:
-        return "(not set)"
-    return val[:visible] + "****"
+# Use shared mask_secret from config_helpers (I26 — DRY)
+from src.config_helpers import mask_secret as _mask_secret  # noqa: E402
 
 
 def _ai_footer(objective: str, departments: list[str]) -> str:

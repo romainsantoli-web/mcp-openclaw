@@ -64,8 +64,22 @@ Exemple:
 - `firm_load_agent`: charge le contenu d'un agent (`.agent.md`).
 - `firm_load_prompt`: charge le contenu d'un prompt.
 - `firm_validate_layout`: valide la structure attendue du repo source.
+- `firm_run_delivery_workflow`: prépare un run CEO -> départements avec mémoire et dispatch OpenClaw optionnel.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
+
+## Workflow orchestration (V2)
+
+- Tool principal: `firm_run_delivery_workflow`.
+- Paramètres clés:
+   - `objective` (obligatoire)
+   - `departments` (optionnel, sinon tous)
+   - `prompt_name` (défaut: `firm-delivery.prompt.md`)
+   - `memory_key` (défaut: `delivery/latest`)
+   - `push_to_openclaw` (défaut: `false`)
+   - `openclaw_method` (défaut: `agent.run`)
+- Si `push_to_openclaw=true`, le payload est envoyé à la Gateway.
+- Si `READ_ONLY_MODE=false`, un résumé du run est écrit en mémoire locale.
 
 ## Sécurité
 

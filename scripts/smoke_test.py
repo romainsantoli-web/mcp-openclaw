@@ -19,6 +19,21 @@ async def run_smoke(url: str) -> None:
             status = await session.call_tool("firm_repo_status", {})
             print("firm_repo_status:", status.structuredContent)
 
+            workflow = await session.call_tool(
+                "firm_run_delivery_workflow",
+                {
+                    "objective": "Smoke test delivery workflow",
+                    "departments": ["communications", "social-media"],
+                    "push_to_openclaw": False,
+                },
+            )
+            workflow_content = workflow.structuredContent
+            print("workflow_ok:", workflow_content.get("ok"))
+            print(
+                "workflow_departments:",
+                workflow_content.get("selected_departments", []),
+            )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()

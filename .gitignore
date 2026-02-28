@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.mcp-openclaw.pid
+.mcp-openclaw.log

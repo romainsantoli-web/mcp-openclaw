@@ -126,14 +126,13 @@ def build_server(settings: Settings) -> Any:
         except FirmRepoError as exc:
             return {"ok": False, "error": str(exc)}
 
-    @mcp.tool()
-    async def firm_run_delivery_workflow(
+    async def _execute_delivery_workflow(
         objective: str,
-        departments: list[str] | None = None,
-        prompt_name: str = "firm-delivery.prompt.md",
-        memory_key: str = "delivery/latest",
-        push_to_openclaw: bool = False,
-        openclaw_method: str = "agent.run",
+        departments: list[str] | None,
+        prompt_name: str,
+        memory_key: str,
+        push_to_openclaw: bool,
+        openclaw_method: str,
     ) -> dict[str, Any]:
         try:
             prompts = list_prompts(settings)
@@ -234,6 +233,74 @@ def build_server(settings: Settings) -> Any:
                 "Aucun appel OpenClaw n'est fait si push_to_openclaw=false.",
                 "La mémoire locale n'est écrite que si READ_ONLY_MODE=false.",
             ],
+        }
+
+    @mcp.tool()
+    async def firm_run_delivery_workflow(
+        objective: str,
+        departments: list[str] | None = None,
+        prompt_name: str = "firm-delivery.prompt.md",
+        memory_key: str = "delivery/latest",
+        push_to_openclaw: bool = False,
+        openclaw_method: str = "agent.run",
+    ) -> dict[str, Any]:
+        return await _execute_delivery_workflow(
+            objective=objective,
+            departments=departments,
+            prompt_name=prompt_name,
+            memory_key=memory_key,
+            push_to_openclaw=push_to_openclaw,
+            openclaw_method=openclaw_method,
+        )
+
+    @mcp.tool()
+    async def firm_run_delivery_and_dispatch(
+        objective: str,
+        departments: list[str] | None = None,
+        prompt_name: str = "firm-delivery.prompt.md",
+        memory_key: str = "delivery/latest",
+        openclaw_method: str = "agent.run",
+        require_openclaw_success: bool = False,
+    ) -> dict[str, Any]:
+        result = await _execute_delivery_workflow(
+            objective=objective,
+            departments=departments,
+            prompt_name=prompt_name,
+            memory_key=memory_key,
+            push_to_openclaw=True,
+            openclaw_method=openclaw_method,
+        )
+
+        if not result.get("ok"):
+            return result
+
+        openclaw_result = result.get("openclaw_result") or {
+            "ok": False,
+            "error": "Aucune réponse OpenClaw",
+        }
+        dispatch_ok = bool(openclaw_result.get("ok"))
+        if require_openclaw_success and not dispatch_ok:
+            return {
+                "ok": False,
+                "error": "Dispatch OpenClaw échoué",
+                "objective": objective,
+                "openclaw_result": openclaw_result,
+            }
+
+        return {
+            "ok": True,
+            "objective": objective,
+            "dispatch_ok": dispatch_ok,
+            "departments_count": len(result.get("selected_departments", [])),
+            "memory_key": memory_key,
+            "openclaw_request_id": openclaw_result.get("request_id"),
+            "openclaw_error": openclaw_result.get("error"),
+            "openclaw_result": openclaw_result.get("result"),
+            "summary": {
+                "selected_departments": result.get("selected_departments", []),
+                "prompt": result.get("prompt"),
+                "memory_context_items": result.get("memory_context_items", 0),
+            },
         }
 
     @mcp.tool()

@@ -65,6 +65,7 @@ Exemple:
 - `firm_load_prompt`: charge le contenu d'un prompt.
 - `firm_validate_layout`: valide la structure attendue du repo source.
 - `firm_run_delivery_workflow`: prépare un run CEO -> départements avec mémoire et dispatch OpenClaw optionnel.
+- `firm_run_delivery_and_dispatch`: exécute workflow + dispatch OpenClaw avec un résumé compact.
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
@@ -80,6 +81,13 @@ Exemple:
    - `openclaw_method` (défaut: `agent.run`)
 - Si `push_to_openclaw=true`, le payload est envoyé à la Gateway.
 - Si `READ_ONLY_MODE=false`, un résumé du run est écrit en mémoire locale.
+
+### Dispatch direct (V2.2)
+
+- Tool: `firm_run_delivery_and_dispatch`.
+- Comportement: force le dispatch OpenClaw (`agent.run` par défaut).
+- Retour: statut compact (`dispatch_ok`, `openclaw_request_id`, résumé départements/prompt).
+- Option `require_openclaw_success=true`: la tool retourne `ok=false` si l'envoi OpenClaw échoue.
 
 ## Sécurité
 

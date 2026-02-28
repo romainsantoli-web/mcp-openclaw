@@ -34,6 +34,21 @@ async def run_smoke(url: str) -> None:
                 workflow_content.get("selected_departments", []),
             )
 
+            dispatch = await session.call_tool(
+                "firm_run_delivery_and_dispatch",
+                {
+                    "objective": "Smoke test delivery+dispatch",
+                    "departments": ["communications"],
+                    "require_openclaw_success": False,
+                },
+            )
+            dispatch_content = dispatch.structuredContent
+            print("dispatch_ok:", dispatch_content.get("dispatch_ok"))
+            print(
+                "dispatch_request_id:",
+                dispatch_content.get("openclaw_request_id"),
+            )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()

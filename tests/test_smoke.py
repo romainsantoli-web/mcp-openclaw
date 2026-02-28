@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 16  # 4 vs_bridge + 6 fleet + 6 delivery
+EXPECTED_TOOLS = 30  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -124,6 +124,15 @@ class TestToolsList:
             # delivery
             "firm_export_github_pr", "firm_export_jira_ticket", "firm_export_linear_issue",
             "firm_export_slack_digest", "firm_export_document", "firm_export_auto",
+            # security_audit (C1, C2, C3, H8)
+            "openclaw_security_scan", "openclaw_sandbox_audit",
+            "openclaw_session_config_check", "openclaw_rate_limit_check",
+            # acp_bridge (C4, H3, H4, H5)
+            "acp_session_persist", "acp_session_restore", "acp_session_list_active",
+            "fleet_session_inject_env", "fleet_cron_schedule", "openclaw_workspace_lock",
+            # reliability_probe (H6, H7, M1, M5, M6)
+            "openclaw_gateway_probe", "openclaw_doc_sync_check",
+            "openclaw_channel_audit", "firm_adr_generate",
         }
         missing = required - names
         assert not missing, f"Missing tools: {missing}"
@@ -296,3 +305,374 @@ class TestPydanticValidation:
         # Must succeed (no validation error)
         assert "error" not in data or data.get("error") != "Validation failed"
         assert data.get("ok") is True or "file_path" in data
+
+
+class TestSecurityAudit:
+    """Tests for the 4 security_audit tools (gaps C1, C2, C3, H8)."""
+
+    def test_security_scan_nonexistent_path(self, mcp_server):
+        """Scanning a path that doesn't exist must return ok:False with an error."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_security_scan",
+            "arguments": {
+                "target_path": "/nonexistent/path/to/nowhere",
+            },
+        })
+        assert "result" in result
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "error" in data
+
+    def test_security_scan_path_traversal_rejected(self, mcp_server):
+        """target_path with .. must be rejected by Pydantic before reaching the handler."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_security_scan",
+            "arguments": {
+                "target_path": "../../etc/passwd",
+            },
+        })
+        assert "result" in result
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    def test_sandbox_audit_nonexistent_config(self, mcp_server):
+        """Auditing a config that doesn't exist must return ok:False."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_sandbox_audit",
+            "arguments": {
+                "config_path": "/nonexistent/config.yaml",
+            },
+        })
+        assert "result" in result
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+
+    def test_sandbox_audit_config_path_traversal_rejected(self, mcp_server):
+        """config_path with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_sandbox_audit",
+            "arguments": {"config_path": "../../etc/openclaw.yaml"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_sandbox_audit_detects_off(self, mcp_server, tmp_path):
+        """A config with sandbox.mode: off must return severity CRITICAL."""
+        config = tmp_path / "config.yaml"
+        config.write_text("agents:\n  defaults:\n    sandbox:\n      mode: off\n")
+        result = _rpc("tools/call", {
+            "name": "openclaw_sandbox_audit",
+            "arguments": {"config_path": str(config)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["severity"] == "CRITICAL"
+        assert "fix_snippet" in data
+
+    def test_sandbox_audit_detects_non_main_ok(self, mcp_server, tmp_path):
+        """A config with sandbox.mode: non-main must return severity OK."""
+        config = tmp_path / "config.yaml"
+        config.write_text("agents:\n  defaults:\n    sandbox:\n      mode: non-main\n")
+        result = _rpc("tools/call", {
+            "name": "openclaw_sandbox_audit",
+            "arguments": {"config_path": str(config)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["severity"] == "OK"
+
+    def test_session_config_check_no_args(self, mcp_server):
+        """With no args, checks the current process env — must return ok:True."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_session_config_check",
+            "arguments": {},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert "severity" in data
+        assert data["severity"] in ("OK", "HIGH")
+
+    def test_session_config_check_detects_missing_secret(self, mcp_server, tmp_path):
+        """docker-compose without SESSION_SECRET must be flagged HIGH."""
+        compose = tmp_path / "docker-compose.yml"
+        compose.write_text(
+            "services:\n  openclaw:\n    image: ghcr.io/openclaw/openclaw:stable\n"
+        )
+        result = _rpc("tools/call", {
+            "name": "openclaw_session_config_check",
+            "arguments": {"compose_file_path": str(compose)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["severity"] == "HIGH"
+        assert data["fix_docker"] is not None
+
+    def test_rate_limit_check_nonexistent_config(self, mcp_server):
+        """Rate limit check on nonexistent file must return ok:False."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_rate_limit_check",
+            "arguments": {"gateway_config_path": "/nonexistent/config.yaml"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+
+    def test_rate_limit_check_detects_funnel_no_proxy(self, mcp_server, tmp_path):
+        """Config with funnel:true and no Nginx/Caddy must return CRITICAL."""
+        config = tmp_path / "config.yaml"
+        config.write_text("gateway:\n  funnel: true\n  port: 18789\n")
+        result = _rpc("tools/call", {
+            "name": "openclaw_rate_limit_check",
+            "arguments": {
+                "gateway_config_path": str(config),
+                "check_funnel": True,
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["severity"] == "CRITICAL"
+        assert data["funnel_active"] is True
+        assert data["fix_nginx"] is not None
+
+
+class TestAcpBridge:
+    """Tests for the 6 acp_bridge tools (gaps C4, H3, H4, H5)."""
+
+    def test_acp_session_persist_and_restore(self, mcp_server, tmp_path, monkeypatch):
+        """Persist a session, then restore it — roundtrip must work."""
+        import src.acp_bridge as ab
+        monkeypatch.setattr(ab, "ACP_SESSIONS_PATH", str(tmp_path / "acp_sessions.json"))
+
+        # Persist
+        r1 = _rpc("tools/call", {
+            "name": "acp_session_persist",
+            "arguments": {
+                "run_id": "test-run-001",
+                "gateway_session_key": "gw-key-abc123",
+                "metadata": {"ide": "vscode"},
+            },
+        })
+        d1 = json.loads(r1["result"]["content"][0]["text"])
+        assert d1["ok"] is True
+        assert d1["run_id"] == "test-run-001"
+
+        # Restore
+        r2 = _rpc("tools/call", {
+            "name": "acp_session_restore",
+            "arguments": {"max_age_hours": 24},
+        })
+        d2 = json.loads(r2["result"]["content"][0]["text"])
+        assert d2["ok"] is True
+        assert d2["restored"] >= 1
+
+    def test_acp_session_persist_missing_run_id(self, mcp_server):
+        """run_id is required — Pydantic must reject missing field."""
+        result = _rpc("tools/call", {
+            "name": "acp_session_persist",
+            "arguments": {
+                # run_id missing
+                "gateway_session_key": "gw-key-xyz",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+        assert any(e["loc"] == ["run_id"] for e in data["details"])
+
+    def test_acp_session_list_active(self, mcp_server):
+        """list_active must return ok:True and a sessions list."""
+        result = _rpc("tools/call", {
+            "name": "acp_session_list_active",
+            "arguments": {"include_stale": False},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert "sessions" in data
+        assert isinstance(data["sessions"], list)
+
+    def test_fleet_cron_schedule_valid(self, mcp_server):
+        """Valid cron schedule on main session must succeed."""
+        result = _rpc("tools/call", {
+            "name": "fleet_cron_schedule",
+            "arguments": {
+                "command": "node scripts/report.js",
+                "schedule": "0 9 * * 1-5",
+                "session": "main",
+                "description": "Daily report",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert "cron_id" in data
+
+    def test_fleet_cron_schedule_invalid_command_chars(self, mcp_server):
+        """Command with semicolons must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "fleet_cron_schedule",
+            "arguments": {
+                "command": "rm -rf /; echo pwned",
+                "schedule": "0 9 * * 1-5",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_fleet_inject_env_invalid_empty_vars(self, mcp_server):
+        """Empty env_vars dict must be rejected by Pydantic (min_length=1)."""
+        result = _rpc("tools/call", {
+            "name": "fleet_session_inject_env",
+            "arguments": {"env_vars": {}},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_workspace_lock_acquire_and_release(self, mcp_server):
+        """Acquire a lock then release it — both must succeed."""
+        # Status first
+        r1 = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {
+                "path": "smoke-test/resource.json",
+                "action": "status",
+                "owner": "test-agent",
+            },
+        })
+        d1 = json.loads(r1["result"]["content"][0]["text"])
+        assert d1["ok"] is True
+
+        # Acquire
+        r2 = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {
+                "path": "smoke-test/resource.json",
+                "action": "acquire",
+                "owner": "test-agent",
+                "timeout_s": 5.0,
+            },
+        })
+        d2 = json.loads(r2["result"]["content"][0]["text"])
+        assert d2["ok"] is True
+        assert d2["locked"] is True
+
+        # Release
+        r3 = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {
+                "path": "smoke-test/resource.json",
+                "action": "release",
+                "owner": "test-agent",
+            },
+        })
+        d3 = json.loads(r3["result"]["content"][0]["text"])
+        assert d3["ok"] is True
+
+    def test_workspace_lock_path_traversal_rejected(self, mcp_server):
+        """Lock path with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {
+                "path": "../../etc/shadow",
+                "action": "acquire",
+                "owner": "attacker",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+
+class TestReliabilityProbe:
+    """Tests for the 4 reliability_probe tools (gaps H6, H7, M1, M5, M6)."""
+
+    def test_gateway_probe_unreachable(self, mcp_server):
+        """Probing an unreachable URL must return ok:False with restart_command."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_probe",
+            "arguments": {
+                "gateway_url": "ws://127.0.0.1:1",  # port 1 is always closed
+                "max_retries": 1,
+                "backoff_factor": 0.1,
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert data["status"] == "unreachable"
+        assert "restart_command" in data
+        assert "launchctl" in data["restart_command"]
+
+    def test_gateway_probe_invalid_url_scheme(self, mcp_server):
+        """gateway_url must start with ws:// or wss:// — http:// is rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_gateway_probe",
+            "arguments": {"gateway_url": "http://127.0.0.1:18789"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    def test_doc_sync_check_nonexistent_package_json(self, mcp_server):
+        """Non-existent package.json must return ok:False."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_doc_sync_check",
+            "arguments": {"package_json_path": "/nonexistent/package.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+
+    def test_channel_audit_detects_zombie_dep(self, mcp_server, tmp_path):
+        """@line/bot-sdk in package.json but not in README must be reported as zombie."""
+        pkg = tmp_path / "package.json"
+        pkg.write_text(json.dumps({
+            "dependencies": {"@line/bot-sdk": "^10.6.0", "grammy": "^1.0.0"}
+        }))
+        readme = tmp_path / "README.md"
+        readme.write_text("# OpenClaw\n\n## Channels\n\n- Telegram (grammY)\n")
+        result = _rpc("tools/call", {
+            "name": "openclaw_channel_audit",
+            "arguments": {
+                "package_json_path": str(pkg),
+                "readme_path": str(readme),
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        # @line/bot-sdk (LINE) should be flagged as zombie
+        zombie_packages = [z["package"] for z in data["zombie_details"]]
+        assert "@line/bot-sdk" in zombie_packages
+
+    def test_adr_generate_valid(self, mcp_server):
+        """Valid ADR input must produce a markdown document with correct fields."""
+        result = _rpc("tools/call", {
+            "name": "firm_adr_generate",
+            "arguments": {
+                "title": "Use mcporter for MCP instead of native support",
+                "context": "VISION.md explicitly excludes MCP in core.",
+                "decision": "Route all MCP via external mcporter bridge.",
+                "alternatives": ["Native MCP support in core", "No MCP support"],
+                "consequences": [
+                    "Positive: keeps core lean",
+                    "Negative: users must install mcporter separately",
+                ],
+                "status": "accepted",
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert "markdown" in data
+        assert "# " in data["markdown"]  # Has a heading
+        assert "mcporter" in data["markdown"]
+        assert "commit_path" in data
+        assert data["status"] == "accepted"
+
+    def test_adr_generate_invalid_status(self, mcp_server):
+        """Invalid status must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "firm_adr_generate",
+            "arguments": {
+                "title": "Test decision",
+                "context": "Some context here that is long enough.",
+                "decision": "Some decision that was made here.",
+                "alternatives": ["Alt A"],
+                "consequences": ["Con A"],
+                "status": "maybe",  # invalid
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"

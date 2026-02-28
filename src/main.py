@@ -41,10 +41,17 @@ MCP_HOST: str = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
 
 # ── Import tool modules ───────────────────────────────────────────────────────
-from src import delivery_export, gateway_fleet, vs_bridge  # noqa: E402
+from src import (  # noqa: E402
+    acp_bridge,
+    delivery_export,
+    gateway_fleet,
+    reliability_probe,
+    security_audit,
+    vs_bridge,
+)
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}

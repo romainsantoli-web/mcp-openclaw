@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 55  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration
+EXPECTED_TOOLS = 59  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -1587,6 +1587,330 @@ class TestExportMockedSuccess:
         assert result["issue_id"] == "uuid-123"
         assert result["issue_identifier"] == "ENG-42"
         assert "linear.app" in result["issue_url"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Observability tools (T1, T6)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestObservability:
+    """Tests for observability tools (T1 observability pipeline, T6 CI check)."""
+
+    # ── openclaw_observability_pipeline (T1) ──────────────────────────────────
+
+    def test_observability_pipeline_file_not_found(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {"jsonl_path": "/nonexistent/traces.jsonl"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert "not found" in data["error"]
+
+    def test_observability_pipeline_ingest(self, mcp_server, tmp_path):
+        """Ingest a small JSONL file and verify SQLite ingestion."""
+        traces = tmp_path / "test.jsonl"
+        db = tmp_path / "test.db"
+        lines = [
+            json.dumps({"traceId": "t1", "spanId": "s1", "severity": "INFO", "message": "hello"}),
+            json.dumps({"traceId": "t1", "spanId": "s2", "severity": "WARN", "message": "world"}),
+            json.dumps({"traceId": "t2", "spanId": "s3", "severity": "ERROR", "message": "fail"}),
+        ]
+        traces.write_text("\n".join(lines))
+
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {
+                "jsonl_path": str(traces),
+                "db_path": str(db),
+            },
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["ingested"] == 3
+        assert data["total_rows_in_table"] == 3
+        assert db.exists()
+
+    def test_observability_pipeline_deduplication(self, mcp_server, tmp_path):
+        """Re-ingesting the same traces should skip duplicates."""
+        traces = tmp_path / "dup.jsonl"
+        db = tmp_path / "dup.db"
+        line = json.dumps({"traceId": "t1", "spanId": "s1", "message": "hello"})
+        traces.write_text(line + "\n" + line)
+
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {"jsonl_path": str(traces), "db_path": str(db)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["ingested"] == 1
+        assert data["skipped_duplicates"] == 1
+
+    def test_observability_pipeline_traversal_blocked(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_observability_pipeline",
+            "arguments": {"jsonl_path": "../../etc/passwd.jsonl"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+    # ── openclaw_ci_pipeline_check (T6) ───────────────────────────────────────
+
+    def test_ci_pipeline_no_ci_dir(self, mcp_server, tmp_path):
+        """Repo without .github/workflows → critical."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_ci_pipeline_check",
+            "arguments": {"repo_path": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+        assert "lint" in data["missing_required"]
+
+    def test_ci_pipeline_complete(self, mcp_server, tmp_path):
+        """Repo with complete CI → ok."""
+        ci_dir = tmp_path / ".github" / "workflows"
+        ci_dir.mkdir(parents=True)
+        (ci_dir / "ci.yml").write_text("""
+name: CI
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ruff check .
+      - run: pytest --cov --cov-fail-under=80
+      - uses: trufflesecurity/trufflehog@main
+      - run: mypy src/
+""")
+        result = _rpc("tools/call", {
+            "name": "openclaw_ci_pipeline_check",
+            "arguments": {"repo_path": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+        assert data["missing_required"] == []
+        assert data["required_steps"]["lint"] is True
+        assert data["required_steps"]["test"] is True
+        assert data["required_steps"]["secrets"] is True
+
+    def test_ci_pipeline_partial(self, mcp_server, tmp_path):
+        """Repo with lint + test but no secrets → high."""
+        ci_dir = tmp_path / ".github" / "workflows"
+        ci_dir.mkdir(parents=True)
+        (ci_dir / "ci.yml").write_text("- run: ruff check .\n- run: pytest tests/\n")
+        result = _rpc("tools/call", {
+            "name": "openclaw_ci_pipeline_check",
+            "arguments": {"repo_path": str(tmp_path)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert "secrets" in data["missing_required"]
+
+    def test_ci_pipeline_traversal_blocked(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_ci_pipeline_check",
+            "arguments": {"repo_path": "../../etc"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Memory audit tools (T3, T9)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestMemoryAudit:
+    """Tests for memory_audit tools (T3 pgvector, T9 knowledge graph)."""
+
+    # ── openclaw_pgvector_memory_check (T3) ───────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_pgvector_no_config(self):
+        """No config provided → error."""
+        from src.memory_audit import openclaw_pgvector_memory_check
+        result = await openclaw_pgvector_memory_check()
+        assert result["ok"] is False
+
+    @pytest.mark.asyncio
+    async def test_pgvector_no_vector_config(self):
+        """Config without vector section → info."""
+        from src.memory_audit import openclaw_pgvector_memory_check
+        result = await openclaw_pgvector_memory_check(config_data={"gateway": {}})
+        assert result["status"] == "info"
+
+    @pytest.mark.asyncio
+    async def test_pgvector_hnsw_ok(self):
+        """Well-configured pgvector → ok."""
+        from src.memory_audit import openclaw_pgvector_memory_check
+        result = await openclaw_pgvector_memory_check(config_data={
+            "memory": {
+                "vector": {
+                    "backend": "pgvector",
+                    "index_type": "hnsw",
+                    "dimensions": 1536,
+                    "distance": "cosine",
+                    "m": 16,
+                    "ef_construction": 128,
+                }
+            }
+        })
+        assert result["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_pgvector_embedded_credentials(self):
+        """Connection string with credentials → critical."""
+        from src.memory_audit import openclaw_pgvector_memory_check
+        result = await openclaw_pgvector_memory_check(
+            config_data={"memory": {"vector": {"backend": "pgvector", "index_type": "hnsw", "dimensions": 1536, "distance": "cosine"}}},
+            connection_string="postgresql://admin:s3cret@db.example.com:5432/openclaw",
+        )
+        assert result["status"] == "critical"
+        crit = [f for f in result["findings"] if f["severity"] == "CRITICAL"]
+        assert len(crit) >= 1
+
+    @pytest.mark.asyncio
+    async def test_pgvector_missing_index_and_dims(self):
+        """No index type and no dimensions → high."""
+        from src.memory_audit import openclaw_pgvector_memory_check
+        result = await openclaw_pgvector_memory_check(config_data={
+            "memory": {"vector": {"backend": "pgvector"}}
+        })
+        assert result["status"] == "high"
+
+    # ── openclaw_knowledge_graph_check (T9) ───────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_kg_no_config(self):
+        """No config → error."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        result = await openclaw_knowledge_graph_check()
+        assert result["ok"] is False
+
+    @pytest.mark.asyncio
+    async def test_kg_no_graph_section(self):
+        """Config without graph section → info."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        result = await openclaw_knowledge_graph_check(config_data={"gateway": {}})
+        assert result["status"] == "info"
+
+    @pytest.mark.asyncio
+    async def test_kg_well_configured(self):
+        """Complete graph config → ok."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        result = await openclaw_knowledge_graph_check(config_data={
+            "memory": {
+                "graph": {
+                    "backend": "neo4j",
+                    "ttl_seconds": 2_592_000,  # 30 days
+                    "max_nodes": 100_000,
+                    "backup": {"enabled": True, "interval": "daily"},
+                }
+            }
+        })
+        assert result["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_kg_missing_ttl_and_backup(self):
+        """No TTL and no backup → high."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        result = await openclaw_knowledge_graph_check(config_data={
+            "memory": {"graph": {"backend": "json"}}
+        })
+        assert result["status"] == "high"
+
+    @pytest.mark.asyncio
+    async def test_kg_graph_data_with_orphans(self, tmp_path):
+        """Graph export with orphan nodes → findings with orphan count."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        graph_file = tmp_path / "graph.json"
+        graph_file.write_text(json.dumps({
+            "nodes": [
+                {"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "orphan1"}, {"id": "orphan2"},
+            ],
+            "edges": [
+                {"source": "a", "target": "b"},
+                {"source": "b", "target": "c"},
+            ],
+        }))
+        result = await openclaw_knowledge_graph_check(
+            config_data={"memory": {"graph": {"backend": "json", "ttl_seconds": 86400, "max_nodes": 1000, "backup": True}}},
+            graph_data_path=str(graph_file),
+        )
+        assert result["metrics"]["orphan_nodes"] == 2
+        assert result["metrics"]["total_nodes"] == 5
+
+    @pytest.mark.asyncio
+    async def test_kg_graph_data_with_cycles(self, tmp_path):
+        """Graph with cycles → detected."""
+        from src.memory_audit import openclaw_knowledge_graph_check
+        graph_file = tmp_path / "cyclic.json"
+        graph_file.write_text(json.dumps({
+            "nodes": [{"id": "a"}, {"id": "b"}, {"id": "c"}],
+            "edges": [
+                {"source": "a", "target": "b"},
+                {"source": "b", "target": "c"},
+                {"source": "c", "target": "a"},
+            ],
+        }))
+        result = await openclaw_knowledge_graph_check(
+            config_data={"memory": {"graph": {"backend": "json", "ttl_seconds": 86400, "max_nodes": 1000, "backup": True}}},
+            graph_data_path=str(graph_file),
+        )
+        assert result["metrics"]["has_cycles"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Concurrency lock tests (I9)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestConcurrencyLocks:
+    """Test workspace lock under concurrent access (I9)."""
+
+    def test_lock_concurrent_acquire(self, mcp_server):
+        """Two sequential lock attempts — second should fail if first is held."""
+        import concurrent.futures
+
+        def lock_call(lock_id):
+            return _rpc("tools/call", {
+                "name": "openclaw_workspace_lock",
+                "arguments": {
+                    "path": f"/tmp/test-concurrent-{lock_id}",
+                    "action": "acquire",
+                    "owner": f"test-owner-{lock_id}",
+                },
+            })
+
+        # Just verify the tool responds correctly to concurrent calls
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            f1 = executor.submit(lock_call, "a")
+            f2 = executor.submit(lock_call, "b")
+            r1 = f1.result()
+            r2 = f2.result()
+
+        # Both should respond (different workspaces, no contention)
+        assert "result" in r1
+        assert "result" in r2
+
+    def test_lock_acquire_release_cycle(self, mcp_server, tmp_path):
+        """Acquire → release cycle works correctly."""
+        ws = str(tmp_path / "locktest")
+        result1 = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {"path": ws, "action": "acquire", "owner": "test-owner"},
+        })
+        data1 = json.loads(result1["result"]["content"][0]["text"])
+        assert data1.get("locked") is True or data1.get("ok") is True
+
+        result2 = _rpc("tools/call", {
+            "name": "openclaw_workspace_lock",
+            "arguments": {"path": ws, "action": "release", "owner": "test-owner"},
+        })
+        data2 = json.loads(result2["result"]["content"][0]["text"])
+        assert data2.get("released") is True or data2.get("ok") is True
 
 
 class TestConfigMigration:

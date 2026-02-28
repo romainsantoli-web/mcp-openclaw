@@ -49,6 +49,8 @@ from src import (  # noqa: E402
     delivery_export,
     gateway_fleet,
     gateway_hardening,
+    memory_audit,
+    observability,
     reliability_probe,
     runtime_audit,
     security_audit,
@@ -56,7 +58,7 @@ from src import (  # noqa: E402
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}

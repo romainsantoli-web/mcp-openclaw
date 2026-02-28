@@ -611,6 +611,73 @@ class RpcRateLimitCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# observability (T1, T6)
+# ════════════════════════════════════════════════════════════
+
+
+class ObservabilityPipelineInput(BaseModel):
+    jsonl_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    db_path: str | None = Field(default=None, max_length=4096)
+    table_name: Annotated[str, Field(min_length=1, max_length=128)] = "traces"
+    max_lines: int = Field(default=50_000, ge=1, le=500_000)
+
+    @field_validator("jsonl_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "jsonl_path")
+
+    @field_validator("db_path")
+    @classmethod
+    def no_traversal_db(cls, v):
+        return _check_no_traversal(v, "db_path")
+
+
+class CiPipelineCheckInput(BaseModel):
+    repo_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    ci_dir: Annotated[str, Field(max_length=256)] = ".github/workflows"
+
+    @field_validator("repo_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "repo_path")
+
+    @field_validator("ci_dir")
+    @classmethod
+    def no_traversal_ci(cls, v):
+        return _check_no_traversal(v, "ci_dir")
+
+
+# ════════════════════════════════════════════════════════════
+# memory_audit (T3, T9)
+# ════════════════════════════════════════════════════════════
+
+
+class PgvectorMemoryCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+    connection_string: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class KnowledgeGraphCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+    graph_data_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+    @field_validator("graph_data_path")
+    @classmethod
+    def no_traversal_graph(cls, v):
+        return _check_no_traversal(v, "graph_data_path")
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -680,4 +747,10 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_token_separation_check":       TokenSeparationCheckInput,
     "openclaw_otel_redaction_check":         OtelRedactionCheckInput,
     "openclaw_rpc_rate_limit_check":         RpcRateLimitCheckInput,
+    # observability (T1, T6)
+    "openclaw_observability_pipeline":          ObservabilityPipelineInput,
+    "openclaw_ci_pipeline_check":               CiPipelineCheckInput,
+    # memory_audit (T3, T9)
+    "openclaw_pgvector_memory_check":            PgvectorMemoryCheckInput,
+    "openclaw_knowledge_graph_check":            KnowledgeGraphCheckInput,
 }

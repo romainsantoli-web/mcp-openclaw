@@ -66,6 +66,9 @@ Exemple:
 - `firm_validate_layout`: valide la structure attendue du repo source.
 - `firm_run_delivery_workflow`: prépare un run CEO -> départements avec mémoire et dispatch OpenClaw optionnel.
 - `firm_run_delivery_and_dispatch`: exécute workflow + dispatch OpenClaw avec un résumé compact.
+- `routing_profiles_list`: liste les profils de modèles par famille de tâche.
+- `routing_preview`: simule le choix de profil de modèle avant exécution.
+- `routing_explain`: explique pourquoi un profil de modèle a été sélectionné.
 - `openclaw_dispatch_diagnostics`: affiche la stratégie de dispatch active (mode, allowlist, endpoints).
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
@@ -82,6 +85,28 @@ Exemple:
    - `openclaw_method` (défaut: `agent.run`)
 - Si `push_to_openclaw=true`, le payload est envoyé à la Gateway.
 - Si `READ_ONLY_MODE=false`, un résumé du run est écrit en mémoire locale.
+- Paramètres routing supportés:
+   - `task_family` (`marketing|translation|debug|research`)
+   - `quality_tier` (`high` recommandé)
+   - `latency_budget_ms` (optionnel)
+   - `model_override` (optionnel)
+
+## Routage modèles (V2.4)
+
+- Compatibilité Copilot via métadonnées de routage incluses dans le payload (`routing`, `copilot_hints`).
+- Le routeur choisit un `model_profile` selon la famille de tâche et la qualité demandée.
+- Profils par défaut:
+   - `marketing` -> `creative-premium`
+   - `translation` -> `translation-precision`
+   - `debug` -> `reasoning-technical`
+   - `research` -> `analysis-deep`
+- Config env:
+   - `ROUTING_MODE`
+   - `ROUTING_DEFAULT_TASK_FAMILY`
+   - `ROUTING_DEFAULT_QUALITY_TIER`
+   - `ROUTING_DEFAULT_PROFILE`
+   - `ROUTING_ALLOWED_PROFILES`
+   - `ROUTING_ENABLE_COPILOT_HINTS`
 
 ### Dispatch direct (V2.2)
 

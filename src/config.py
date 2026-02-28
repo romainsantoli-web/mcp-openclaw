@@ -33,6 +33,12 @@ class Settings:
     firm_repo_url: str
     firm_repo_branch: str
     firm_repo_auto_sync: bool
+    routing_mode: str
+    routing_default_task_family: str
+    routing_default_quality_tier: str
+    routing_default_profile: str
+    routing_allowed_profiles: tuple[str, ...]
+    routing_enable_copilot_hints: bool
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -47,6 +53,14 @@ def load_settings(env_file: Path | None = None) -> Settings:
     )
     allowed_methods = tuple(
         item.strip() for item in allowed_raw.split(",") if item.strip()
+    )
+
+    allowed_profiles_raw = os.getenv(
+        "ROUTING_ALLOWED_PROFILES",
+        "creative-premium,translation-precision,reasoning-technical,analysis-deep",
+    )
+    allowed_profiles = tuple(
+        item.strip() for item in allowed_profiles_raw.split(",") if item.strip()
     )
 
     repo_path = os.getenv("FIRM_REPO_PATH", "").strip()
@@ -82,4 +96,13 @@ def load_settings(env_file: Path | None = None) -> Settings:
         ),
         firm_repo_branch=os.getenv("FIRM_REPO_BRANCH", "main"),
         firm_repo_auto_sync=_to_bool(os.getenv("FIRM_REPO_AUTO_SYNC"), default=False),
+        routing_mode=os.getenv("ROUTING_MODE", "quality-first"),
+        routing_default_task_family=os.getenv("ROUTING_DEFAULT_TASK_FAMILY", "research"),
+        routing_default_quality_tier=os.getenv("ROUTING_DEFAULT_QUALITY_TIER", "high"),
+        routing_default_profile=os.getenv("ROUTING_DEFAULT_PROFILE", "analysis-deep"),
+        routing_allowed_profiles=allowed_profiles,
+        routing_enable_copilot_hints=_to_bool(
+            os.getenv("ROUTING_ENABLE_COPILOT_HINTS"),
+            default=True,
+        ),
     )

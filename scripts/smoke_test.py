@@ -19,11 +19,24 @@ async def run_smoke(url: str) -> None:
             status = await session.call_tool("firm_repo_status", {})
             print("firm_repo_status:", status.structuredContent)
 
+            routing = await session.call_tool(
+                "routing_preview",
+                {
+                    "objective": "Créer une campagne social media B2B IA",
+                    "task_family": "marketing",
+                    "quality_tier": "high",
+                    "latency_budget_ms": 15000,
+                },
+            )
+            print("routing_profile:", routing.structuredContent.get("routing", {}).get("model_profile"))
+
             workflow = await session.call_tool(
                 "firm_run_delivery_workflow",
                 {
                     "objective": "Smoke test delivery workflow",
                     "departments": ["communications", "social-media"],
+                    "task_family": "marketing",
+                    "quality_tier": "high",
                     "push_to_openclaw": False,
                 },
             )
@@ -33,12 +46,17 @@ async def run_smoke(url: str) -> None:
                 "workflow_departments:",
                 workflow_content.get("selected_departments", []),
             )
+            print(
+                "workflow_model_profile:",
+                workflow_content.get("routing", {}).get("model_profile"),
+            )
 
             dispatch = await session.call_tool(
                 "firm_run_delivery_and_dispatch",
                 {
                     "objective": "Smoke test delivery+dispatch",
                     "departments": ["communications"],
+                    "task_family": "research",
                     "require_openclaw_success": False,
                 },
             )

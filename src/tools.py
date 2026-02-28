@@ -16,6 +16,7 @@ from .firm_repo import (
 from .health import gateway_health
 from .memory_adapter import MemoryAdapter
 from .openclaw_dispatcher import OpenClawDispatcher
+from .model_router import list_profiles, route_task
 from .openclaw_ws_client import OpenClawError, OpenClawWsClient
 
 
@@ -51,6 +52,7 @@ def _build_orchestration_payload(
     selected_departments: list[str],
     department_agents: dict[str, str],
     memory_context: list[dict[str, Any]],
+    routing_metadata: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "objective": objective,
@@ -61,6 +63,7 @@ def _build_orchestration_payload(
         "departments": selected_departments,
         "agents": department_agents,
         "memory_context": memory_context,
+        "routing": routing_metadata,
     }
 
 
@@ -137,6 +140,64 @@ def build_server(settings: Settings) -> Any:
             "allowlist_policy": settings.openclaw_allowlist_policy,
             "allowed_methods": list(settings.openclaw_allowed_methods),
             "read_only_mode": settings.read_only_mode,
+            "routing_mode": settings.routing_mode,
+            "routing_default_task_family": settings.routing_default_task_family,
+            "routing_default_quality_tier": settings.routing_default_quality_tier,
+            "routing_default_profile": settings.routing_default_profile,
+            "routing_allowed_profiles": list(settings.routing_allowed_profiles),
+            "routing_enable_copilot_hints": settings.routing_enable_copilot_hints,
+        }
+
+    @mcp.tool()
+    def routing_profiles_list() -> dict[str, Any]:
+        return {
+            "profiles": list_profiles(),
+            "default_profile": settings.routing_default_profile,
+            "allowed_profiles": list(settings.routing_allowed_profiles),
+        }
+
+    @mcp.tool()
+    def routing_preview(
+        objective: str,
+        task_family: str | None = None,
+        quality_tier: str | None = None,
+        latency_budget_ms: int | None = None,
+        model_override: str | None = None,
+    ) -> dict[str, Any]:
+        decision = route_task(
+            settings=settings,
+            objective=objective,
+            task_family=task_family,
+            quality_tier=quality_tier,
+            latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
+        )
+        return {"ok": True, "routing": decision}
+
+    @mcp.tool()
+    def routing_explain(
+        objective: str,
+        task_family: str | None = None,
+        quality_tier: str | None = None,
+        latency_budget_ms: int | None = None,
+        model_override: str | None = None,
+    ) -> dict[str, Any]:
+        decision = route_task(
+            settings=settings,
+            objective=objective,
+            task_family=task_family,
+            quality_tier=quality_tier,
+            latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
+        )
+        return {
+            "ok": True,
+            "explanation": {
+                "model_profile": decision["model_profile"],
+                "task_family": decision["task_family"],
+                "quality_tier": decision["quality_tier"],
+                "rationale": decision["rationale"],
+            },
         }
 
     async def _execute_delivery_workflow(
@@ -146,6 +207,10 @@ def build_server(settings: Settings) -> Any:
         memory_key: str,
         push_to_openclaw: bool,
         openclaw_method: str,
+        task_family: str | None,
+        quality_tier: str | None,
+        latency_budget_ms: int | None,
+        model_override: str | None,
     ) -> dict[str, Any]:
         try:
             prompts = list_prompts(settings)
@@ -189,18 +254,32 @@ def build_server(settings: Settings) -> Any:
             department_agents[department] = agent_data["content"]
 
         memory_context = memory.retrieve(memory_key)
+        routing_metadata = route_task(
+            settings=settings,
+            objective=objective,
+            task_family=task_family,
+            quality_tier=quality_tier,
+            latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
+        )
+
+        effective_method = openclaw_method
+        if not effective_method:
+            effective_method = routing_metadata.get("default_method", "agent.run")
+
         orchestration_payload = _build_orchestration_payload(
             objective=objective,
             prompt_content=prompt_data["content"],
             selected_departments=selected_departments,
             department_agents=department_agents,
             memory_context=memory_context,
+            routing_metadata=routing_metadata,
         )
 
         openclaw_result: dict[str, Any] | None = None
         if push_to_openclaw:
             dispatch = await dispatcher.dispatch(
-                method=openclaw_method,
+                method=effective_method,
                 payload=orchestration_payload,
             )
             openclaw_result = {
@@ -223,6 +302,8 @@ def build_server(settings: Settings) -> Any:
                     "openclaw_ok": openclaw_result.get("ok")
                     if openclaw_result is not None
                     else None,
+                    "model_profile": routing_metadata.get("model_profile"),
+                    "task_family": routing_metadata.get("task_family"),
                 },
             )
 
@@ -235,6 +316,8 @@ def build_server(settings: Settings) -> Any:
             "memory_key": memory_key,
             "memory_context_items": len(memory_context),
             "memory_write": memory_write,
+            "routing": routing_metadata,
+            "effective_openclaw_method": effective_method,
             "orchestration_payload": orchestration_payload,
             "openclaw_result": openclaw_result,
             "notes": [
@@ -251,6 +334,10 @@ def build_server(settings: Settings) -> Any:
         memory_key: str = "delivery/latest",
         push_to_openclaw: bool = False,
         openclaw_method: str = "agent.run",
+        task_family: str | None = None,
+        quality_tier: str | None = None,
+        latency_budget_ms: int | None = None,
+        model_override: str | None = None,
     ) -> dict[str, Any]:
         return await _execute_delivery_workflow(
             objective=objective,
@@ -259,6 +346,10 @@ def build_server(settings: Settings) -> Any:
             memory_key=memory_key,
             push_to_openclaw=push_to_openclaw,
             openclaw_method=openclaw_method,
+            task_family=task_family,
+            quality_tier=quality_tier,
+            latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
         )
 
     @mcp.tool()
@@ -269,6 +360,10 @@ def build_server(settings: Settings) -> Any:
         memory_key: str = "delivery/latest",
         openclaw_method: str = "agent.run",
         require_openclaw_success: bool = False,
+        task_family: str | None = None,
+        quality_tier: str | None = None,
+        latency_budget_ms: int | None = None,
+        model_override: str | None = None,
     ) -> dict[str, Any]:
         result = await _execute_delivery_workflow(
             objective=objective,
@@ -277,6 +372,10 @@ def build_server(settings: Settings) -> Any:
             memory_key=memory_key,
             push_to_openclaw=True,
             openclaw_method=openclaw_method,
+            task_family=task_family,
+            quality_tier=quality_tier,
+            latency_budget_ms=latency_budget_ms,
+            model_override=model_override,
         )
 
         if not result.get("ok"):
@@ -309,6 +408,8 @@ def build_server(settings: Settings) -> Any:
                 "selected_departments": result.get("selected_departments", []),
                 "prompt": result.get("prompt"),
                 "memory_context_items": result.get("memory_context_items", 0),
+                "model_profile": (result.get("routing") or {}).get("model_profile"),
+                "task_family": (result.get("routing") or {}).get("task_family"),
             },
         }
 

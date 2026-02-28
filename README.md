@@ -2,6 +2,8 @@
 
 Wrapper MCP Python pour exposer les artefacts `setup-vs-agent-firm` à OpenClaw via une intégration contrôlée.
 
+**Transformez OpenClaw en une IA d'entreprise multi-agents : un objectif envoyé au CEO, dispatché automatiquement aux bons départements.**
+
 ## Schéma simple (TL;DR)
 
 ```mermaid
@@ -60,9 +62,18 @@ Plan de migration recommandé:
 
 ## État Git
 
-- Dernier commit publié: `1e4292e`
+- Dernier commit publié: `16d74cf`
 - Branche: `main`
 - Remote: `origin/main`
+
+## Produit complet (2 repos publics)
+
+Le produit est composé de deux repos publics complémentaires:
+
+- Wrapper d'orchestration MCP/OpenClaw: https://github.com/romainsantoli-web/mcp-openclaw
+- Firm multi-agents (CEO + départements + services): https://github.com/romainsantoli-web/setup-vs-agent-firm
+
+Positionnement: **un seul produit, deux couches** (core orchestration + extension firm).
 
 ## Prérequis
 
@@ -175,6 +186,34 @@ Exemple:
 - Prometheus health: `http://127.0.0.1:9108/healthz`
 - Memory Bridge query: `http://127.0.0.1:9120/context/query`
 - Memory Bridge health: `http://127.0.0.1:9120/healthz`
+
+## Distribution
+
+### ClawHub (skill marketplace)
+
+- Skill cible: `firm-orchestration`
+- Valeur: installer une orchestration multi-agents complète en une commande côté OpenClaw.
+- Kit de publication prêt: voir `docs/clawhub-firm-orchestration.md`.
+
+### Awesome OpenClaw
+
+- Cible recommandée: https://github.com/SamurAIGPT/awesome-openclaw
+- Option skills: https://github.com/VoltAgent/awesome-openclaw-skills
+- Template PR prêt: voir `docs/awesome-openclaw-pr.md`.
+
+## Démo GIF (WhatsApp / Telegram / Discord)
+
+- Storyboard prêt pour capture virale: voir `docs/demo-gif-storyboard.md`.
+- Scénario: brief marketing envoyé au CEO, puis réponses parallèles de 3 départements.
+
+## Positionnement sécurité (différenciateur)
+
+Ce wrapper se positionne comme **the enterprise-safe way to run OpenClaw agents**:
+
+- `policy_engine` (garde-fous tools/catégories)
+- allowlist + dispatch policy (`strict|warn`)
+- `audit_logger` (traçabilité exhaustive)
+- mémoire structurée + observabilité + coûts
 
 ## Endpoint Prometheus (Phase 4)
 

@@ -678,6 +678,73 @@ class KnowledgeGraphCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# agent_orchestration (T4)
+# ════════════════════════════════════════════════════════════
+
+
+class AgentTeamOrchestrateInput(BaseModel):
+    tasks: list[dict[str, Any]] = Field(..., min_length=1, max_length=100)
+    objective: str = Field(default="", max_length=1024)
+    aggregation_strategy: str = Field(
+        default="collect", pattern=r"^(collect|vote|first_success)$"
+    )
+    timeout_s: float = Field(default=120.0, ge=1.0, le=600.0)
+
+
+class AgentTeamStatusInput(BaseModel):
+    orchestration_id: str | None = Field(default=None, max_length=256)
+
+
+# ════════════════════════════════════════════════════════════
+# i18n_audit (T5)
+# ════════════════════════════════════════════════════════════
+
+
+class I18nAuditInput(BaseModel):
+    project_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    base_locale: str = Field(default="en", min_length=2, max_length=10)
+    locale_dir: str | None = Field(default=None, max_length=4096)
+    file_format: str = Field(default="json", pattern=r"^(json|yaml|properties)$")
+
+    @field_validator("project_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "project_path")
+
+    @field_validator("locale_dir")
+    @classmethod
+    def no_traversal_locale(cls, v):
+        return _check_no_traversal(v, "locale_dir")
+
+
+# ════════════════════════════════════════════════════════════
+# skill_loader (T7)
+# ════════════════════════════════════════════════════════════
+
+
+class SkillLazyLoaderInput(BaseModel):
+    skills_dir: Annotated[str, Field(min_length=1, max_length=4096)]
+    skill_name: str | None = Field(default=None, max_length=256)
+    refresh: bool = False
+
+    @field_validator("skills_dir")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "skills_dir")
+
+
+class SkillSearchInput(BaseModel):
+    skills_dir: Annotated[str, Field(min_length=1, max_length=4096)]
+    query: Annotated[str, Field(min_length=1, max_length=512)]
+    tags: list[str] | None = Field(default=None, max_length=20)
+
+    @field_validator("skills_dir")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "skills_dir")
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -753,4 +820,12 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     # memory_audit (T3, T9)
     "openclaw_pgvector_memory_check":            PgvectorMemoryCheckInput,
     "openclaw_knowledge_graph_check":            KnowledgeGraphCheckInput,
+    # agent_orchestration (T4)
+    "openclaw_agent_team_orchestrate":           AgentTeamOrchestrateInput,
+    "openclaw_agent_team_status":                AgentTeamStatusInput,
+    # i18n_audit (T5)
+    "openclaw_i18n_audit":                       I18nAuditInput,
+    # skill_loader (T7)
+    "openclaw_skill_lazy_loader":                SkillLazyLoaderInput,
+    "openclaw_skill_search":                     SkillSearchInput,
 }

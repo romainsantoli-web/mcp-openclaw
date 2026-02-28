@@ -45,20 +45,23 @@ MCP_AUTH_TOKEN: str | None = os.getenv("MCP_AUTH_TOKEN")  # Optional Bearer auth
 from src import (  # noqa: E402
     acp_bridge,
     advanced_security,
+    agent_orchestration,
     config_migration,
     delivery_export,
     gateway_fleet,
     gateway_hardening,
+    i18n_audit,
     memory_audit,
     observability,
     reliability_probe,
     runtime_audit,
     security_audit,
+    skill_loader,
     vs_bridge,
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, agent_orchestration, i18n_audit, skill_loader]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}

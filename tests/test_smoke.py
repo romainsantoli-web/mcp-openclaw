@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 42  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit
+EXPECTED_TOOLS = 55  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -1087,3 +1087,474 @@ class TestRuntimeAudit:
         data = json.loads(result["result"]["content"][0]["text"])
         assert data["status"] == "high"
         assert len(data["channel_findings"]) >= 2
+
+
+class TestAdvancedSecurity:
+    """Tests for advanced_security tools (C7, C8, C9, H12, H13, H14, H15, H16)."""
+
+    # ── openclaw_secrets_lifecycle_check (C7) ─────────────────────────────────
+
+    def test_secrets_lifecycle_inline_creds(self, mcp_server, tmp_path):
+        """Inline credentials in auth profiles → CRITICAL."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "auth": {
+                "profiles": {
+                    "openai": {"apiKey": "sk-realkey123456789realkey12345"},
+                    "anthropic": {"apiKey": "$ANTHROPIC_API_KEY"},
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_secrets_lifecycle_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+        assert data["inline_credential_count"] == 1
+
+    def test_secrets_lifecycle_all_refs_ok(self, mcp_server, tmp_path):
+        """All credentials use env-var refs → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "auth": {
+                "profiles": {
+                    "openai": {"apiKey": "$OPENAI_API_KEY"},
+                    "anthropic": {"apiKey": "{{ANTHROPIC_KEY}}"},
+                }
+            },
+            "secrets": {"managed": True, "snapshotActivated": True},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_secrets_lifecycle_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+        assert data["inline_credential_count"] == 0
+
+    def test_secrets_lifecycle_traversal_rejected(self, mcp_server):
+        """config_path with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_secrets_lifecycle_check",
+            "arguments": {"config_path": "../../etc/openclaw.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    # ── openclaw_channel_auth_canon_check (C8) ────────────────────────────────
+
+    def test_channel_auth_canon_auth_none_remote(self, mcp_server, tmp_path):
+        """auth.mode=none on non-loopback → CRITICAL."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {
+                "auth": {"mode": "none"},
+                "bind": "lan",
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_channel_auth_canon_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+
+    def test_channel_auth_canon_loopback_ok(self, mcp_server, tmp_path):
+        """Loopback with token auth → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {
+                "auth": {"mode": "token"},
+                "bind": "loopback",
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_channel_auth_canon_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_exec_approval_freeze_check (C9) ──────────────────────────────
+
+    def test_exec_approval_no_sandbox(self, mcp_server, tmp_path):
+        """exec.host != sandbox with sandbox.mode off → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "tools": {"exec": {"host": "gateway"}},
+            "agents": {"defaults": {"sandbox": {"mode": "off"}}},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_exec_approval_freeze_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+
+    def test_exec_approval_sandbox_ok(self, mcp_server, tmp_path):
+        """exec.host=sandbox → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "tools": {"exec": {"host": "sandbox"}},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_exec_approval_freeze_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_hook_session_routing_check (H12) ─────────────────────────────
+
+    def test_hook_session_unrestricted(self, mcp_server, tmp_path):
+        """allowRequestSessionKey=true without prefixes → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "hooks": {
+                "allowRequestSessionKey": True,
+                "mappings": {"test": "/hook/test"},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_hook_session_routing_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+
+    def test_hook_session_with_prefixes_ok(self, mcp_server, tmp_path):
+        """allowRequestSessionKey=true with prefixes → ok (INFO only)."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "hooks": {
+                "allowRequestSessionKey": True,
+                "allowedSessionKeyPrefixes": ["hook:"],
+                "defaultSessionKey": "hook:default",
+                "token": "a" * 32,
+                "mappings": {"test": "/hook/test"},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_hook_session_routing_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_config_include_check (H13) ───────────────────────────────────
+
+    def test_config_include_traversal(self, mcp_server, tmp_path):
+        """$include with path traversal → CRITICAL."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "server": {"$include": "../../etc/secret.json"}
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_config_include_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+
+    def test_config_include_clean(self, mcp_server, tmp_path):
+        """No $include directives → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"gateway": {"bind": "loopback"}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_config_include_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_config_prototype_check (H14) ─────────────────────────────────
+
+    def test_config_prototype_pollution(self, mcp_server, tmp_path):
+        """Config with __proto__ key → CRITICAL."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {"bind": "loopback"},
+            "__proto__": {"isAdmin": True},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_config_prototype_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+        assert data["prototype_key_count"] >= 1
+
+    def test_config_prototype_clean(self, mcp_server, tmp_path):
+        """Clean config → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"gateway": {"bind": "loopback"}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_config_prototype_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_safe_bins_profile_check (H15) ────────────────────────────────
+
+    def test_safe_bins_interpreter_no_profile(self, mcp_server, tmp_path):
+        """safeBins with python but no profile → CRITICAL."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "tools": {
+                "exec": {
+                    "safeBins": ["python3", "cat"],
+                    "safeBinProfiles": {},
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_safe_bins_profile_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "critical"
+        assert any("python3" in f["message"] for f in data["findings"])
+
+    def test_safe_bins_no_bins_ok(self, mcp_server, tmp_path):
+        """No safeBins → ok (INFO)."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"tools": {"exec": {}}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_safe_bins_profile_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_group_policy_default_check (H16) ─────────────────────────────
+
+    def test_group_policy_permissive_default(self, mcp_server, tmp_path):
+        """defaults.groupPolicy='all' → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "channels": {
+                "defaults": {"groupPolicy": "all"},
+                "telegram": {"enabled": True},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_group_policy_default_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+
+    def test_group_policy_allowlist_default_ok(self, mcp_server, tmp_path):
+        """defaults.groupPolicy='allowlist' → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "channels": {
+                "defaults": {"groupPolicy": "allowlist"},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_group_policy_default_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+
+class TestConfigMigration:
+    """Tests for config_migration tools (H17, H18, H19, M17, M21)."""
+
+    # ── openclaw_shell_env_check (H17) ────────────────────────────────────────
+
+    def test_shell_env_ld_preload_rejected(self, mcp_server, tmp_path):
+        """LD_PRELOAD in agents.defaults.env → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "agents": {
+                "defaults": {
+                    "env": {"LD_PRELOAD": "/tmp/evil.so", "HOME": "/home/agent"},
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_shell_env_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert any("LD_PRELOAD" in f["message"] for f in data["findings"])
+
+    def test_shell_env_clean(self, mcp_server, tmp_path):
+        """No dangerous env vars → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "agents": {
+                "defaults": {
+                    "env": {"PATH": "/usr/bin:/usr/local/bin"},
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_shell_env_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    def test_shell_env_traversal_rejected(self, mcp_server):
+        """config_path with .. must be rejected by Pydantic."""
+        result = _rpc("tools/call", {
+            "name": "openclaw_shell_env_check",
+            "arguments": {"config_path": "../../etc/openclaw.json"},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["error"] == "Validation failed"
+
+    # ── openclaw_plugin_integrity_check (H18) ─────────────────────────────────
+
+    def test_plugin_no_version_pin(self, mcp_server, tmp_path):
+        """Plugin without version → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "plugins": {
+                "entries": {
+                    "my-plugin": {"source": "npm"},
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_plugin_integrity_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert any("no version" in f["message"].lower() for f in data["findings"])
+
+    def test_plugin_pinned_ok(self, mcp_server, tmp_path):
+        """Plugin with exact version + integrity → ok or medium."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "plugins": {
+                "entries": {
+                    "my-plugin": {
+                        "source": "npm",
+                        "version": "1.2.3",
+                        "integrity": "sha256-abc123",
+                    },
+                }
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_plugin_integrity_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] in ("ok", "medium")  # medium if no manifest file
+
+    # ── openclaw_token_separation_check (H19) ─────────────────────────────────
+
+    def test_token_reuse_detected(self, mcp_server, tmp_path):
+        """Same token for hooks and gateway → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "hooks": {"token": "shared-secret-token-12345678901234"},
+            "gateway": {"auth": {"token": "shared-secret-token-12345678901234"}},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_token_separation_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert any("identical" in f["message"].lower() for f in data["findings"])
+
+    def test_token_separated_ok(self, mcp_server, tmp_path):
+        """Different tokens → ok."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "hooks": {"token": "a" * 32},
+            "gateway": {"auth": {"token": "b" * 32}},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_token_separation_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_otel_redaction_check (M17) ───────────────────────────────────
+
+    def test_otel_redaction_disabled(self, mcp_server, tmp_path):
+        """Redaction explicitly disabled → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "otel": {
+                "endpoint": "https://otel.example.com",
+                "redaction": {"enabled": False},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_otel_redaction_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert any("redaction" in f["message"].lower() for f in data["findings"])
+
+    def test_otel_inline_auth_endpoint(self, mcp_server, tmp_path):
+        """Endpoint with user:pass@host → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "otel": {
+                "endpoint": "https://admin:secret@otel.example.com",
+                "redaction": {"enabled": True},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_otel_redaction_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+
+    def test_otel_no_config_ok(self, mcp_server, tmp_path):
+        """No otel config → ok (INFO)."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({"gateway": {"bind": "loopback"}}))
+        result = _rpc("tools/call", {
+            "name": "openclaw_otel_redaction_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+
+    # ── openclaw_rpc_rate_limit_check (M21) ───────────────────────────────────
+
+    def test_rpc_rate_limit_remote_no_limit(self, mcp_server, tmp_path):
+        """Remote bind without rate limit → HIGH."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {"bind": "lan"},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_rpc_rate_limit_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "high"
+        assert data["is_remote"] is True
+
+    def test_rpc_rate_limit_loopback_ok(self, mcp_server, tmp_path):
+        """Loopback without rate limit → ok (INFO only)."""
+        cfg = tmp_path / "openclaw.json"
+        cfg.write_text(json.dumps({
+            "gateway": {"bind": "loopback"},
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_rpc_rate_limit_check",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["status"] == "ok"
+

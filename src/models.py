@@ -515,6 +515,159 @@ class DmAllowlistCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# advanced_security (C7, C8, C9, H12, H13, H14, H15, H16)
+# ════════════════════════════════════════════════════════════
+
+
+class SecretsLifecycleCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class ChannelAuthCanonCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class ExecApprovalFreezeCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class HookSessionRoutingCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class ConfigIncludeCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class ConfigPrototypeCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class SafeBinsProfileCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class GroupPolicyDefaultCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
+# config_migration (H17, H18, H19, M17, M21)
+# ════════════════════════════════════════════════════════════
+
+
+class ShellEnvCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class PluginIntegrityCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class TokenSeparationCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class OtelRedactionCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+class RpcRateLimitCheckInput(BaseModel):
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v: str | None) -> str | None:
+        if v and ".." in v:
+            raise ValueError("config_path must not contain path traversal (..)")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -569,4 +722,19 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_trusted_proxy_check":       TrustedProxyCheckInput,
     "openclaw_session_disk_budget_check": SessionDiskBudgetCheckInput,
     "openclaw_dm_allowlist_check":        DmAllowlistCheckInput,
+    # advanced_security (C7, C8, C9, H12, H13, H14, H15, H16)
+    "openclaw_secrets_lifecycle_check":       SecretsLifecycleCheckInput,
+    "openclaw_channel_auth_canon_check":      ChannelAuthCanonCheckInput,
+    "openclaw_exec_approval_freeze_check":    ExecApprovalFreezeCheckInput,
+    "openclaw_hook_session_routing_check":    HookSessionRoutingCheckInput,
+    "openclaw_config_include_check":          ConfigIncludeCheckInput,
+    "openclaw_config_prototype_check":        ConfigPrototypeCheckInput,
+    "openclaw_safe_bins_profile_check":       SafeBinsProfileCheckInput,
+    "openclaw_group_policy_default_check":    GroupPolicyDefaultCheckInput,
+    # config_migration (H17, H18, H19, M17, M21)
+    "openclaw_shell_env_check":              ShellEnvCheckInput,
+    "openclaw_plugin_integrity_check":       PluginIntegrityCheckInput,
+    "openclaw_token_separation_check":       TokenSeparationCheckInput,
+    "openclaw_otel_redaction_check":         OtelRedactionCheckInput,
+    "openclaw_rpc_rate_limit_check":         RpcRateLimitCheckInput,
 }

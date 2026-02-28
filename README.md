@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (42)
+## Tools (55)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -50,6 +50,19 @@
 | runtime_audit | `openclaw_trusted_proxy_check` | Verify trusted-proxy config coherence (bind + trustedProxies + auth mode) | H11 |
 | runtime_audit | `openclaw_session_disk_budget_check` | Verify session.maintenance.maxDiskBytes / highWaterBytes configured | M15 |
 | runtime_audit | `openclaw_dm_allowlist_check` | Detect dmPolicy=allowlist with empty allowFrom (fail-closed) across 9 channels | M16 |
+| advanced_security | `openclaw_secrets_lifecycle_check` | Verify External Secrets lifecycle (audit/configure/apply/reload) | C7 |
+| advanced_security | `openclaw_channel_auth_canon_check` | Verify channel auth path canonicalization (encoded traversal) | C8 |
+| advanced_security | `openclaw_exec_approval_freeze_check` | Verify exec approval plan immutability (symlink cwd rebind) | C9 |
+| advanced_security | `openclaw_hook_session_routing_check` | Verify hook session-key routing hardening | H12 |
+| advanced_security | `openclaw_config_include_check` | Verify $include hardlink escape + file-size guardrails | H13 |
+| advanced_security | `openclaw_config_prototype_check` | Detect prototype pollution (__proto__, constructor, prototype) in config | H14 |
+| advanced_security | `openclaw_safe_bins_profile_check` | Verify safeBins entries have explicit profiles | H15 |
+| advanced_security | `openclaw_group_policy_default_check` | Verify group policy default is fail-closed (allowlist) | H16 |
+| config_migration | `openclaw_shell_env_check` | Verify shell env sanitization (LD_PRELOAD, DYLD_*, ZDOTDIR) | H17 |
+| config_migration | `openclaw_plugin_integrity_check` | Verify plugin install integrity/pin + drift detection | H18 |
+| config_migration | `openclaw_token_separation_check` | Verify hooks.token ≠ gateway.auth.token | H19 |
+| config_migration | `openclaw_otel_redaction_check` | Verify OTEL secret redaction in diagnostics export | M17 |
+| config_migration | `openclaw_rpc_rate_limit_check` | Verify control-plane RPC rate limiting config | M21 |
 
 ## Quick start
 
@@ -125,5 +138,18 @@ python -m pytest tests/test_smoke.py -v
 | H11 | HIGH | Trusted-proxy misconfigured (bind+proxies+auth mode) | `openclaw_trusted_proxy_check` |
 | M15 | MEDIUM | Session disk budget not configured (maxDiskBytes) | `openclaw_session_disk_budget_check` |
 | M16 | MEDIUM | dmPolicy=allowlist with empty allowFrom (fail-open) | `openclaw_dm_allowlist_check` |
+| C7 | CRITICAL | External Secrets lifecycle not validated (inline creds) | `openclaw_secrets_lifecycle_check` |
+| C8 | CRITICAL | Plugin channel HTTP auth bypass (path canonicalization) | `openclaw_channel_auth_canon_check` |
+| C9 | CRITICAL | Exec approval plan mutability (symlink cwd rebind) | `openclaw_exec_approval_freeze_check` |
+| H12 | HIGH | Hook session-key routing unrestricted | `openclaw_hook_session_routing_check` |
+| H13 | HIGH | Config $include hardlink escape + file-size | `openclaw_config_include_check` |
+| H14 | HIGH | Prototype pollution in config merge | `openclaw_config_prototype_check` |
+| H15 | HIGH | SafeBins without explicit profile = unrestricted interpreter | `openclaw_safe_bins_profile_check` |
+| H16 | HIGH | Group policy default not fail-closed | `openclaw_group_policy_default_check` |
+| H17 | HIGH | Shell env not sanitized (LD_PRELOAD, DYLD_*) | `openclaw_shell_env_check` |
+| H18 | HIGH | Plugin install integrity/pin not tracked | `openclaw_plugin_integrity_check` |
+| H19 | HIGH | hooks.token = gateway.auth.token (reuse) | `openclaw_token_separation_check` |
+| M17 | MEDIUM | OTEL secret redaction missing in diagnostics | `openclaw_otel_redaction_check` |
+| M21 | MEDIUM | Control-plane RPC rate limiting absent | `openclaw_rpc_rate_limit_check` |
 
 > ⚠️ Contenu généré par IA — validation humaine requise avant utilisation.

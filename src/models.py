@@ -1,5 +1,5 @@
 """
-models.py — Pydantic v2 input models for all 67 MCP tools.
+models.py — Pydantic v2 input models for all 75 MCP tools.
 
 Validated in main.py before dispatching to handlers.
 ValidationError is caught and returned as a structured tool error.
@@ -601,6 +601,130 @@ class KnowledgeGraphCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# hebbian_memory — Adaptive Hebbian memory system
+# ════════════════════════════════════════════════════════════
+
+
+class HebbianHarvestInput(BaseModel):
+    """Ingest JSONL session logs into the local Hebbian SQLite database."""
+    session_jsonl_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    claude_md_path: str | None = Field(default=None, max_length=4096)
+    db_path: str | None = Field(default=None, max_length=4096)
+    max_lines: int = Field(default=50_000, ge=1, le=200_000)
+
+    @field_validator("session_jsonl_path")
+    @classmethod
+    def no_traversal_jsonl(cls, v):
+        return _check_no_traversal(v, "session_jsonl_path")
+
+    @field_validator("claude_md_path")
+    @classmethod
+    def no_traversal_md(cls, v):
+        return _check_no_traversal(v, "claude_md_path")
+
+    @field_validator("db_path")
+    @classmethod
+    def no_traversal_db(cls, v):
+        return _check_no_traversal(v, "db_path")
+
+
+class HebbianWeightUpdateInput(BaseModel):
+    """Compute or apply Hebbian weight updates on Layer 2 rules."""
+    claude_md_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    db_path: str | None = Field(default=None, max_length=4096)
+    learning_rate: float = Field(default=0.05, ge=0.001, le=0.5)
+    decay: float = Field(default=0.02, ge=0.001, le=0.2)
+    dry_run: bool = Field(default=True)
+
+    @field_validator("claude_md_path")
+    @classmethod
+    def no_traversal_md(cls, v):
+        return _check_no_traversal(v, "claude_md_path")
+
+    @field_validator("db_path")
+    @classmethod
+    def no_traversal_db(cls, v):
+        return _check_no_traversal(v, "db_path")
+
+
+class HebbianAnalyzeInput(BaseModel):
+    """Analyze co-activation patterns from harvested sessions."""
+    db_path: str | None = Field(default=None, max_length=4096)
+    since_days: int = Field(default=90, ge=1, le=365)
+    min_cluster_size: int = Field(default=5, ge=2, le=100)
+
+    @field_validator("db_path")
+    @classmethod
+    def no_traversal_db(cls, v):
+        return _check_no_traversal(v, "db_path")
+
+
+class HebbianStatusInput(BaseModel):
+    """Dashboard: session count, rule weights, atrophy/promotion candidates."""
+    db_path: str | None = Field(default=None, max_length=4096)
+    claude_md_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("db_path")
+    @classmethod
+    def no_traversal_db(cls, v):
+        return _check_no_traversal(v, "db_path")
+
+    @field_validator("claude_md_path")
+    @classmethod
+    def no_traversal_md(cls, v):
+        return _check_no_traversal(v, "claude_md_path")
+
+
+class HebbianLayerValidateInput(BaseModel):
+    """Validate the 4-layer structure of a Hebbian-augmented Claude.md."""
+    claude_md_path: Annotated[str, Field(min_length=1, max_length=4096)]
+
+    @field_validator("claude_md_path")
+    @classmethod
+    def no_traversal_md(cls, v):
+        return _check_no_traversal(v, "claude_md_path")
+
+
+class HebbianPiiCheckInput(BaseModel):
+    """Audit PII stripping configuration for Hebbian memory storage."""
+    config_path: str | None = Field(default=None, max_length=4096)
+    config_data: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class HebbianDecayConfigCheckInput(BaseModel):
+    """Validate Hebbian learning rate, decay, and consolidation thresholds."""
+    config_path: str | None = Field(default=None, max_length=4096)
+    config_data: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class HebbianDriftCheckInput(BaseModel):
+    """Compare Claude.md against a baseline to detect semantic drift."""
+    claude_md_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    baseline_path: str | None = Field(default=None, max_length=4096)
+    threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+
+    @field_validator("claude_md_path")
+    @classmethod
+    def no_traversal_md(cls, v):
+        return _check_no_traversal(v, "claude_md_path")
+
+    @field_validator("baseline_path")
+    @classmethod
+    def no_traversal_baseline(cls, v):
+        return _check_no_traversal(v, "baseline_path")
+
+
+# ════════════════════════════════════════════════════════════
 # agent_orchestration (T4)
 # ════════════════════════════════════════════════════════════
 
@@ -811,6 +935,15 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     # memory_audit (T3, T9)
     "openclaw_pgvector_memory_check":            PgvectorMemoryCheckInput,
     "openclaw_knowledge_graph_check":            KnowledgeGraphCheckInput,
+    # hebbian_memory
+    "openclaw_hebbian_harvest":                  HebbianHarvestInput,
+    "openclaw_hebbian_weight_update":            HebbianWeightUpdateInput,
+    "openclaw_hebbian_analyze":                  HebbianAnalyzeInput,
+    "openclaw_hebbian_status":                   HebbianStatusInput,
+    "openclaw_hebbian_layer_validate":           HebbianLayerValidateInput,
+    "openclaw_hebbian_pii_check":                HebbianPiiCheckInput,
+    "openclaw_hebbian_decay_config_check":       HebbianDecayConfigCheckInput,
+    "openclaw_hebbian_drift_check":              HebbianDriftCheckInput,
     # agent_orchestration (T4)
     "openclaw_agent_team_orchestrate":           AgentTeamOrchestrateInput,
     "openclaw_agent_team_status":                AgentTeamStatusInput,

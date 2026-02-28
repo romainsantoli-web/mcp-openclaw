@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -55,6 +55,7 @@ from src import (  # noqa: E402
     delivery_export,
     gateway_fleet,
     gateway_hardening,
+    hebbian_memory,
     i18n_audit,
     memory_audit,
     n8n_bridge,
@@ -67,7 +68,7 @@ from src import (  # noqa: E402
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}

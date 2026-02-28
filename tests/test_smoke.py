@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 67  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit
+EXPECTED_TOOLS = 75  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -2768,9 +2768,450 @@ class TestVersionEndpoint:
             "clientInfo": {"name": "test", "version": "0.0.1"},
         })
         version = result["result"]["serverInfo"]["version"]
-        assert version == "1.1.0"
+        assert version == "1.2.0"
 
     def test_health_returns_version(self, mcp_server):
         resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
-        assert resp.json()["version"] == "1.1.0"
+        assert resp.json()["version"] == "1.2.0"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Hebbian Memory tests
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+class TestHebbianMemory:
+    """Tests for hebbian_memory tools (8 tools — adaptive Hebbian memory system)."""
+
+    # ── openclaw_hebbian_harvest ──────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_harvest_valid_jsonl(self, tmp_path):
+        """Valid JSONL with 3 sessions → 3 ingested."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+
+        jsonl_file = tmp_path / "sessions.jsonl"
+        lines = [
+            json.dumps({"session_id": "s1", "summary": "Fixed auth bug", "tags": ["auth", "bugfix"], "quality_score": 0.9}),
+            json.dumps({"session_id": "s2", "summary": "Added pagination", "tags": ["feature"], "quality_score": 1.0}),
+            json.dumps({"session_id": "s3", "summary": "Refactored tests", "tags": ["tests", "refactor"], "quality_score": 0.8}),
+        ]
+        jsonl_file.write_text("\n".join(lines))
+        db = str(tmp_path / "test.db")
+
+        result = await openclaw_hebbian_harvest(str(jsonl_file), db_path=db)
+        assert result["ok"] is True
+        assert result["ingested"] == 3
+        assert result["pii_stripping"] == "enabled"
+
+    @pytest.mark.asyncio
+    async def test_harvest_missing_file(self):
+        """Non-existent JSONL → error."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+
+        result = await openclaw_hebbian_harvest("/nonexistent/sessions.jsonl")
+        assert result["ok"] is False
+        assert "not found" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_harvest_pii_stripping(self, tmp_path):
+        """PII in session summary is stripped before storage."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+        import sqlite3
+
+        jsonl_file = tmp_path / "sessions.jsonl"
+        jsonl_file.write_text(json.dumps({
+            "session_id": "pii-test",
+            "summary": "User john@example.com fixed the bug with sk-abc123def456ghi789jkl",
+            "tags": ["bugfix"],
+            "quality_score": 1.0,
+        }))
+        db = str(tmp_path / "pii.db")
+
+        result = await openclaw_hebbian_harvest(str(jsonl_file), db_path=db)
+        assert result["ok"] is True
+
+        # Verify PII was stripped in the stored data
+        conn = sqlite3.connect(db)
+        row = conn.execute("SELECT summary FROM hebbian_sessions WHERE session_id='pii-test'").fetchone()
+        conn.close()
+        assert row is not None
+        assert "john@example.com" not in row[0]
+        assert "REDACTED" in row[0]
+
+    @pytest.mark.asyncio
+    async def test_harvest_duplicate_sessions(self, tmp_path):
+        """Duplicate session_id → skipped."""
+        from src.hebbian_memory import openclaw_hebbian_harvest
+
+        jsonl_file = tmp_path / "dup.jsonl"
+        line = json.dumps({"session_id": "dup1", "summary": "test", "tags": []})
+        jsonl_file.write_text(f"{line}\n{line}")
+        db = str(tmp_path / "dup.db")
+
+        result = await openclaw_hebbian_harvest(str(jsonl_file), db_path=db)
+        assert result["ok"] is True
+        assert result["ingested"] >= 1
+
+    # ── openclaw_hebbian_weight_update ────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_weight_update_dry_run(self, tmp_path):
+        """Claude.md with Layer 2 rules + dry_run=True → proposed changes."""
+        from src.hebbian_memory import openclaw_hebbian_weight_update
+
+        md_file = tmp_path / "CLAUDE.md"
+        md_file.write_text("""\
+# ═══════════════════════════════════════════
+# LAYER 2 — CONSOLIDATED PATTERNS
+# ═══════════════════════════════════════════
+
+## Patterns forts [poids > 0.8]
+- [0.90] Always run tests before commit
+- [0.85] Use type hints everywhere
+
+## Patterns émergents [poids 0.4–0.8]
+- [0.60] Check coverage before PR
+""")
+
+        result = await openclaw_hebbian_weight_update(str(md_file), dry_run=True)
+        assert result["ok"] is True
+        assert result["dry_run"] is True
+        assert result["total_rules"] == 3
+        # With no DB, all rules decay
+        assert result["rules_changed"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_weight_update_no_rules(self, tmp_path):
+        """Claude.md without Layer 2 weighted rules → no_rules."""
+        from src.hebbian_memory import openclaw_hebbian_weight_update
+
+        md_file = tmp_path / "CLAUDE.md"
+        md_file.write_text("# Simple Claude.md\n\nNo weighted rules here.")
+
+        result = await openclaw_hebbian_weight_update(str(md_file), dry_run=True)
+        assert result["ok"] is True
+        assert result["status"] == "no_rules"
+
+    @pytest.mark.asyncio
+    async def test_weight_update_missing_file(self):
+        """Missing Claude.md → error."""
+        from src.hebbian_memory import openclaw_hebbian_weight_update
+
+        result = await openclaw_hebbian_weight_update("/nonexistent/CLAUDE.md")
+        assert result["ok"] is False
+
+    # ── openclaw_hebbian_analyze ──────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_analyze_with_data(self, tmp_path):
+        """Pre-populated DB with sessions → patterns returned."""
+        from src.hebbian_memory import openclaw_hebbian_analyze, _init_db
+
+        db = str(tmp_path / "analyze.db")
+        conn = _init_db(db)
+        # Insert 10 sessions with overlapping tags
+        for i in range(10):
+            tags = ["auth", "bugfix"] if i % 2 == 0 else ["auth", "feature"]
+            rules = ["rule-tdd", "rule-tests"] if i < 7 else ["rule-tdd"]
+            conn.execute(
+                """INSERT INTO hebbian_sessions (session_id, summary, tags, quality_score, rules_activated)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (f"s{i}", f"Session {i}", json.dumps(tags), 0.9, json.dumps(rules)),
+            )
+        conn.commit()
+        conn.close()
+
+        result = await openclaw_hebbian_analyze(db_path=db, min_cluster_size=3)
+        assert result["ok"] is True
+        assert result["session_count"] == 10
+        assert len(result["top_tags"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_analyze_empty_db(self, tmp_path):
+        """Empty DB → no_recent_data."""
+        from src.hebbian_memory import openclaw_hebbian_analyze, _init_db
+
+        db = str(tmp_path / "empty.db")
+        _init_db(db)
+
+        result = await openclaw_hebbian_analyze(db_path=db)
+        assert result["ok"] is True
+        assert result["session_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_analyze_no_db(self):
+        """No DB file → no_data status."""
+        from src.hebbian_memory import openclaw_hebbian_analyze
+
+        result = await openclaw_hebbian_analyze(db_path="/nonexistent/hebbian.db")
+        assert result["ok"] is True
+        assert result["status"] == "no_data"
+
+    # ── openclaw_hebbian_status ───────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_status_with_db_and_md(self, tmp_path):
+        """DB with sessions + Claude.md → dashboard."""
+        from src.hebbian_memory import openclaw_hebbian_status, _init_db
+
+        db = str(tmp_path / "status.db")
+        conn = _init_db(db)
+        conn.execute(
+            "INSERT INTO hebbian_sessions (session_id, summary, tags, quality_score, rules_activated) VALUES (?, ?, ?, ?, ?)",
+            ("s1", "Test session", '[]', 0.9, '[]'),
+        )
+        conn.commit()
+        conn.close()
+
+        md_file = tmp_path / "CLAUDE.md"
+        md_file.write_text("- [0.95] High weight rule\n- [0.05] Low weight rule")
+
+        result = await openclaw_hebbian_status(db_path=db, claude_md_path=str(md_file))
+        assert result["ok"] is True
+        assert result["total_sessions"] == 1
+        assert len(result["promotions"]) >= 1  # 0.95 >= threshold
+        assert len(result["atrophy"]) >= 1     # 0.05 < 0.10
+
+    @pytest.mark.asyncio
+    async def test_status_no_db(self):
+        """No DB → graceful fallback."""
+        from src.hebbian_memory import openclaw_hebbian_status
+
+        result = await openclaw_hebbian_status(db_path="/nonexistent/hebbian.db")
+        assert result["ok"] is True
+        assert result["db_exists"] is False
+        assert result["total_sessions"] == 0
+
+    # ── openclaw_hebbian_layer_validate ───────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_layer_validate_complete(self, tmp_path):
+        """Well-formed 4-layer Claude.md → ok."""
+        from src.hebbian_memory import openclaw_hebbian_layer_validate
+
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("""\
+# ═══════════════════════════════════════════
+# LAYER 1 — CORE (immuable)
+# ═══════════════════════════════════════════
+
+## Règles non-négociables
+- Never commit secrets
+
+# ═══════════════════════════════════════════
+# LAYER 2 — CONSOLIDATED PATTERNS
+# ═══════════════════════════════════════════
+
+- [0.90] Always run tests
+- [0.60] Check coverage
+
+# ═══════════════════════════════════════════
+# LAYER 3 — EPISODIC INDEX
+# ═══════════════════════════════════════════
+
+- sid:a3f9c2 | Migration session
+
+# ═══════════════════════════════════════════
+# LAYER 4 — META INSTRUCTIONS
+# ═══════════════════════════════════════════
+
+- Résumer chaque session en 3 lignes max
+""")
+
+        result = await openclaw_hebbian_layer_validate(str(md))
+        assert result["ok"] is True
+        assert result["status"] == "ok"
+        assert all(result["layers_found"].values())
+        assert result["total_rules"] == 2
+
+    @pytest.mark.asyncio
+    async def test_layer_validate_missing_layers(self, tmp_path):
+        """Missing layers → findings."""
+        from src.hebbian_memory import openclaw_hebbian_layer_validate
+
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("# Simple Claude.md\n\nNo layers here.")
+
+        result = await openclaw_hebbian_layer_validate(str(md))
+        assert result["ok"] is True
+        assert result["status"] in ("high", "incomplete")
+        assert len(result["findings"]) >= 4  # all 4 layers missing
+
+    @pytest.mark.asyncio
+    async def test_layer_validate_missing_file(self):
+        """Missing file → error."""
+        from src.hebbian_memory import openclaw_hebbian_layer_validate
+
+        result = await openclaw_hebbian_layer_validate("/nonexistent/CLAUDE.md")
+        assert result["ok"] is False
+
+    # ── openclaw_hebbian_pii_check ───────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_pii_check_well_configured(self):
+        """Full PII config → ok."""
+        from src.hebbian_memory import openclaw_hebbian_pii_check
+
+        result = await openclaw_hebbian_pii_check(config_data={
+            "hebbian": {
+                "pii_stripping": {
+                    "enabled": True,
+                    "patterns": ["email", "phone", "ip", "api_key", "ssn"],
+                    "ner_model": "spacy-en-core-web-sm",
+                },
+                "security": {
+                    "secret_detection": True,
+                    "access_restriction": "localhost",
+                    "embedding_rotation": "on_breach",
+                },
+            }
+        })
+        assert result["ok"] is True
+        assert result["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_pii_check_missing_patterns(self):
+        """Missing PII patterns → critical."""
+        from src.hebbian_memory import openclaw_hebbian_pii_check
+
+        result = await openclaw_hebbian_pii_check(config_data={
+            "hebbian": {
+                "pii_stripping": {"enabled": False},
+                "security": {},
+            }
+        })
+        assert result["status"] == "critical"
+
+    @pytest.mark.asyncio
+    async def test_pii_check_no_config(self):
+        """No config → error."""
+        from src.hebbian_memory import openclaw_hebbian_pii_check
+
+        result = await openclaw_hebbian_pii_check()
+        assert result["ok"] is False
+
+    # ── openclaw_hebbian_decay_config_check ───────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_decay_config_ok(self):
+        """Default CDC parameters → ok."""
+        from src.hebbian_memory import openclaw_hebbian_decay_config_check
+
+        result = await openclaw_hebbian_decay_config_check(config_data={
+            "hebbian": {
+                "parameters": {
+                    "learning_rate": 0.05,
+                    "decay": 0.02,
+                    "poids_min": 0.0,
+                    "poids_max": 0.95,
+                },
+                "thresholds": {
+                    "episodic_to_emergent": 5,
+                    "emergent_to_strong": 0.8,
+                },
+                "anti_drift": {"max_consecutive_auto_changes": 3},
+            }
+        })
+        assert result["ok"] is True
+        assert result["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_decay_config_bad_lr(self):
+        """learning_rate out of range → critical."""
+        from src.hebbian_memory import openclaw_hebbian_decay_config_check
+
+        result = await openclaw_hebbian_decay_config_check(config_data={
+            "hebbian": {
+                "parameters": {"learning_rate": 2.0, "decay": 0.02},
+            }
+        })
+        assert result["status"] == "critical"
+
+    @pytest.mark.asyncio
+    async def test_decay_config_poids_max_too_high(self):
+        """poids_max > 0.95 → high."""
+        from src.hebbian_memory import openclaw_hebbian_decay_config_check
+
+        result = await openclaw_hebbian_decay_config_check(config_data={
+            "hebbian": {
+                "parameters": {"poids_max": 1.0},
+            }
+        })
+        assert result["status"] == "high"
+
+    # ── openclaw_hebbian_drift_check ─────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_drift_check_identical(self, tmp_path):
+        """Identical Claude.md and baseline → similarity=1.0, ok."""
+        from src.hebbian_memory import openclaw_hebbian_drift_check
+
+        content = "# Claude.md\n\nSome rules and patterns here.\n"
+        current = tmp_path / "CLAUDE.md"
+        current.write_text(content)
+        baseline = tmp_path / "claude-md-baseline.md"
+        baseline.write_text(content)
+
+        result = await openclaw_hebbian_drift_check(
+            str(current), baseline_path=str(baseline)
+        )
+        assert result["ok"] is True
+        assert result["status"] == "ok"
+        assert result["similarity"] == 1.0
+        assert result["drift_detected"] is False
+
+    @pytest.mark.asyncio
+    async def test_drift_check_diverged(self, tmp_path):
+        """Completely different content → drift detected."""
+        from src.hebbian_memory import openclaw_hebbian_drift_check
+
+        current = tmp_path / "CLAUDE.md"
+        current.write_text("alpha beta gamma delta epsilon zeta eta theta iota kappa")
+        baseline = tmp_path / "claude-md-baseline.md"
+        baseline.write_text("lorem ipsum dolor sit amet consectetur adipiscing elit sed do")
+
+        result = await openclaw_hebbian_drift_check(
+            str(current), baseline_path=str(baseline), threshold=0.7
+        )
+        assert result["ok"] is True
+        assert result["drift_detected"] is True
+        assert result["similarity"] < 0.3
+
+    @pytest.mark.asyncio
+    async def test_drift_check_no_baseline(self, tmp_path):
+        """No baseline file → no_baseline status."""
+        from src.hebbian_memory import openclaw_hebbian_drift_check
+
+        current = tmp_path / "CLAUDE.md"
+        current.write_text("# Claude.md")
+
+        result = await openclaw_hebbian_drift_check(str(current))
+        assert result["ok"] is True
+        assert result["status"] == "no_baseline"
+
+    # ── Pydantic model validation ────────────────────────────────────────────
+
+    def test_hebbian_harvest_input_traversal(self):
+        """Path traversal in session_jsonl_path → rejected."""
+        from src.models import HebbianHarvestInput
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            HebbianHarvestInput(session_jsonl_path="../../etc/passwd")
+
+    def test_hebbian_weight_update_input_valid(self):
+        """Valid input accepted."""
+        from src.models import HebbianWeightUpdateInput
+
+        inp = HebbianWeightUpdateInput(claude_md_path="/home/user/CLAUDE.md")
+        assert inp.dry_run is True
+        assert inp.learning_rate == 0.05
+
+    def test_hebbian_drift_input_valid(self):
+        """Valid drift check input accepted."""
+        from src.models import HebbianDriftCheckInput
+
+        inp = HebbianDriftCheckInput(claude_md_path="/proj/CLAUDE.md", threshold=0.5)
+        assert inp.threshold == 0.5
 

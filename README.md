@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (67)
+## Tools (75)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -75,6 +75,14 @@
 | n8n_bridge | `openclaw_n8n_workflow_export` | Export agent pipeline as n8n-compatible workflow JSON | T8 |
 | n8n_bridge | `openclaw_n8n_workflow_import` | Validate & import n8n workflow JSON into workspace | T8 |
 | browser_audit | `openclaw_browser_context_check` | Validate Playwright/Puppeteer headless config for agents | T10 |
+| hebbian_memory | `openclaw_hebbian_harvest` | Ingest JSONL session logs → SQLite (PII stripped) — CDC §4.1 | — |
+| hebbian_memory | `openclaw_hebbian_weight_update` | Compute/apply Hebbian weight updates on Layer 2 — CDC §4.3 | — |
+| hebbian_memory | `openclaw_hebbian_analyze` | Co-activation pattern analysis (Jaccard similarity) — CDC §4.3 | — |
+| hebbian_memory | `openclaw_hebbian_status` | Dashboard: weights, atrophy, promotions — CDC §7 | — |
+| hebbian_memory | `openclaw_hebbian_layer_validate` | Validate 4-layer Claude.md structure — CDC §3.3 | — |
+| hebbian_memory | `openclaw_hebbian_pii_check` | Audit PII stripping config — CDC §5.2 | — |
+| hebbian_memory | `openclaw_hebbian_decay_config_check` | Validate learning rate, decay, thresholds — CDC §4.3 | — |
+| hebbian_memory | `openclaw_hebbian_drift_check` | Cosine similarity drift detection vs baseline — CDC §5.1 | — |
 
 ## Quick start
 
@@ -107,10 +115,10 @@ pip install -r requirements-dev.txt
 python -m pytest tests/test_smoke.py -v
 ```
 
-**177 tests**, 100% pass — covering:
+**207 tests**, 100% pass — covering:
 - Server starts and answers `ping`
 - `initialize` returns correct capabilities + `__version__`
-- All 67 tools registered with valid `inputSchema`
+- All 75 tools registered with valid `inputSchema`
 - `vs_context_push` degrades gracefully without Gateway
 - `firm_export_document` writes local file
 - Unknown method returns JSON-RPC error -32601
@@ -119,6 +127,7 @@ python -m pytest tests/test_smoke.py -v
 - ConfigPathInput traversal blocking across all 21 config-path models (I27)
 - Health/healthz endpoints return correct tool count + version (I35)
 - Shared `config_helpers`: `load_config`, `get_nested`, `mask_secret` (I25)
+- Hebbian memory: harvest PII stripping, weight update dry-run, layer validation, drift detection, Pydantic traversal guards
 
 ## Security
 
@@ -130,6 +139,9 @@ python -m pytest tests/test_smoke.py -v
 - **Centralized version**: `__version__` in `main.py` — single source of truth (I37)
 - **DRY helpers**: `config_helpers.py` — shared `load_config`, `get_nested`, `mask_secret` (I25)
 - **ConfigPathInput base**: 21 models inherit traversal guard from single base class (I27)
+- **Hebbian PII stripping**: 9 regex patterns (email, phone, IP, API keys, SSN, JWT, AWS keys) applied before any session storage — CDC §5.2
+- **Hebbian drift detection**: TF-IDF cosine similarity vs baseline (no external API) — CDC §5.1
+- **Hebbian weight caps**: auto-update capped at 0.95, atrophy floor at 0.0, dry_run=True default — CDC §4.3
 - GitHub PRs always created as **drafts** with `needs-review` label
 - Tokens masked in logs (last 4 chars only) via `mask_secret()`
 - Context capped at 32 KB per WS payload

@@ -221,6 +221,10 @@ Variables principales:
    - `MEMORY_OS_AI_EVENTS_PATH` (JSONL)
    - `external/memory-os-ai/pdfs/mcp_openclaw_events/` (miroir texte ingérable par Memory OS AI)
 - Avant les exécutions critiques (`workflow`, `openclaw_invoke`), le wrapper récupère un contexte mémoire global et l'injecte dans le payload pour améliorer la pertinence.
+- Le contexte global utilise désormais **2 sources en parallèle**:
+   - source locale (`memory_os_ai_store`)
+   - source passerelle API Memory Bridge (`/context/query`)
+- Le résultat est fusionné et dédupliqué avant injection pour donner un contexte maximal.
 
 Variables principales:
 
@@ -228,6 +232,22 @@ Variables principales:
 - `MEMORY_OS_AI_REPO_PATH`
 - `MEMORY_OS_AI_EVENTS_PATH`
 - `MEMORY_OS_AI_CONTEXT_LIMIT`
+
+### Memory Bridge API (contexte enrichi)
+
+- Service local démarré avec le serveur MCP.
+- Endpoint query: `POST http://127.0.0.1:9120/context/query`
+- Endpoint health: `GET http://127.0.0.1:9120/healthz`
+- Tool MCP de debug: `memory_context_preview`
+
+Variables principales:
+
+- `MEMORY_BRIDGE_ENABLED`
+- `MEMORY_BRIDGE_HOST`
+- `MEMORY_BRIDGE_PORT`
+- `MEMORY_BRIDGE_QUERY_PATH`
+- `MEMORY_BRIDGE_TIMEOUT_SECONDS`
+- `MEMORY_BRIDGE_USE_IN_CONTEXT`
 
 ## Sécurité
 

@@ -3,6 +3,11 @@ from __future__ import annotations
 import logging
 
 from .config import load_settings
+from .memory_bridge_server import (
+    MemoryBridgeIndex,
+    MemoryBridgeSettings,
+    start_memory_bridge,
+)
 from .prometheus_exporter import start_prometheus_exporter
 from .tools import build_server
 
@@ -12,6 +17,25 @@ def main() -> None:
     logging.basicConfig(level=settings.log_level)
 
     server = build_server(settings)
+
+    if settings.memory_bridge_enabled:
+        start_memory_bridge(
+            host=settings.memory_bridge_host,
+            port=settings.memory_bridge_port,
+            query_path=settings.memory_bridge_query_path,
+            index=MemoryBridgeIndex(
+                MemoryBridgeSettings(
+                    repo_path=settings.memory_os_ai_repo_path,
+                    events_path=settings.memory_os_ai_events_path,
+                )
+            ),
+        )
+        logging.getLogger(__name__).info(
+            "Memory bridge active on %s:%s%s",
+            settings.memory_bridge_host,
+            settings.memory_bridge_port,
+            settings.memory_bridge_query_path,
+        )
 
     if settings.prometheus_exporter_enabled:
         snapshot_provider = getattr(server, "_openclaw_metrics_snapshot", None)

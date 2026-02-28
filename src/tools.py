@@ -379,6 +379,17 @@ def build_server(settings: Settings) -> Any:
         }
 
     @mcp.tool()
+    def memory_context_preview(query: str, limit: int = 16) -> dict[str, Any]:
+        combined = _memory_context(query=query, limit=max(1, limit))
+        return {
+            "ok": True,
+            "query": query,
+            "requested_limit": max(1, limit),
+            "combined_count": len(combined),
+            "items": combined,
+        }
+
+    @mcp.tool()
     def routing_profiles_list() -> dict[str, Any]:
         return {
             "profiles": list_profiles(),

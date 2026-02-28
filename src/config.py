@@ -51,6 +51,12 @@ class Settings:
     memory_os_ai_repo_path: Path
     memory_os_ai_events_path: Path
     memory_os_ai_context_limit: int
+    memory_bridge_enabled: bool
+    memory_bridge_host: str
+    memory_bridge_port: int
+    memory_bridge_query_path: str
+    memory_bridge_timeout_seconds: int
+    memory_bridge_use_in_context: bool
     telemetry_enabled: bool
     workflow_max_attempts: int
     workflow_idempotency_enabled: bool
@@ -206,6 +212,18 @@ def load_settings(env_file: Path | None = None) -> Settings:
         memory_os_ai_repo_path=memory_os_ai_repo_path,
         memory_os_ai_events_path=memory_os_ai_events_path,
         memory_os_ai_context_limit=int(os.getenv("MEMORY_OS_AI_CONTEXT_LIMIT", "16")),
+        memory_bridge_enabled=_to_bool(
+            os.getenv("MEMORY_BRIDGE_ENABLED"),
+            default=True,
+        ),
+        memory_bridge_host=os.getenv("MEMORY_BRIDGE_HOST", "127.0.0.1").strip(),
+        memory_bridge_port=int(os.getenv("MEMORY_BRIDGE_PORT", "9120")),
+        memory_bridge_query_path=os.getenv("MEMORY_BRIDGE_QUERY_PATH", "/context/query").strip() or "/context/query",
+        memory_bridge_timeout_seconds=int(os.getenv("MEMORY_BRIDGE_TIMEOUT_SECONDS", "3")),
+        memory_bridge_use_in_context=_to_bool(
+            os.getenv("MEMORY_BRIDGE_USE_IN_CONTEXT"),
+            default=True,
+        ),
         telemetry_enabled=_to_bool(os.getenv("TELEMETRY_ENABLED"), default=True),
         workflow_max_attempts=int(os.getenv("WORKFLOW_MAX_ATTEMPTS", "2")),
         workflow_idempotency_enabled=_to_bool(

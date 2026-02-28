@@ -129,6 +129,18 @@ async def run_smoke(url: str) -> None:
             dashboard = await session.call_tool("ops_dashboard_snapshot", {"limit": 3})
             print("dashboard_ok:", dashboard.structuredContent.get("ok"))
 
+            memory_preview = await session.call_tool(
+                "memory_context_preview",
+                {
+                    "query": "dispatch openclaw workflow marketing",
+                    "limit": 8,
+                },
+            )
+            print(
+                "memory_context_combined_count:",
+                memory_preview.structuredContent.get("combined_count"),
+            )
+
 
 def check_metrics_endpoint(metrics_url: str) -> None:
     with urlopen(metrics_url, timeout=3) as response:
@@ -139,13 +151,21 @@ def check_metrics_endpoint(metrics_url: str) -> None:
     print("metrics_has_counter:", has_counter)
 
 
+def check_memory_bridge_health(bridge_health_url: str) -> None:
+    with urlopen(bridge_health_url, timeout=3) as response:
+        payload = response.read().decode("utf-8").strip()
+    print("memory_bridge_health:", payload)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:8011/mcp")
     parser.add_argument("--metrics-url", default="http://127.0.0.1:9108/metrics")
+    parser.add_argument("--bridge-health-url", default="http://127.0.0.1:9120/healthz")
     args = parser.parse_args()
     anyio.run(run_smoke, args.url)
     check_metrics_endpoint(args.metrics_url)
+    check_memory_bridge_health(args.bridge_health_url)
 
 
 if __name__ == "__main__":

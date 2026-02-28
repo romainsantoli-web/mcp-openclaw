@@ -792,4 +792,6 @@ def build_server(settings: Settings) -> Any:
         telemetry.observe_ms("openclaw_invoke.duration_ms", (time.monotonic() - invoke_start) * 1000)
         return {"ok": True, "request_id": response.request_id, "result": response.result}
 
+    setattr(mcp, "_openclaw_metrics_snapshot", telemetry.snapshot)
+
     return mcp

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from urllib.request import urlopen
 
 import anyio
 from mcp.client.session import ClientSession
@@ -129,11 +130,22 @@ async def run_smoke(url: str) -> None:
             print("dashboard_ok:", dashboard.structuredContent.get("ok"))
 
 
+def check_metrics_endpoint(metrics_url: str) -> None:
+    with urlopen(metrics_url, timeout=3) as response:
+        payload = response.read().decode("utf-8")
+    has_enabled = "mcp_openclaw_telemetry_enabled" in payload
+    has_counter = "mcp_openclaw_counter" in payload
+    print("metrics_has_enabled:", has_enabled)
+    print("metrics_has_counter:", has_counter)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:8011/mcp")
+    parser.add_argument("--metrics-url", default="http://127.0.0.1:9108/metrics")
     args = parser.parse_args()
     anyio.run(run_smoke, args.url)
+    check_metrics_endpoint(args.metrics_url)
 
 
 if __name__ == "__main__":

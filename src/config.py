@@ -60,6 +60,10 @@ class Settings:
     cost_guard_per_run_budget: float
     cost_guard_daily_budget: float
     cost_guard_ledger_path: Path
+    prometheus_exporter_enabled: bool
+    prometheus_exporter_host: str
+    prometheus_exporter_port: int
+    prometheus_exporter_path: str
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -199,4 +203,11 @@ def load_settings(env_file: Path | None = None) -> Settings:
         cost_guard_per_run_budget=float(os.getenv("COST_GUARD_PER_RUN_BUDGET", "2.5")),
         cost_guard_daily_budget=float(os.getenv("COST_GUARD_DAILY_BUDGET", "25.0")),
         cost_guard_ledger_path=cost_guard_ledger_path,
+        prometheus_exporter_enabled=_to_bool(
+            os.getenv("PROMETHEUS_EXPORTER_ENABLED"),
+            default=True,
+        ),
+        prometheus_exporter_host=os.getenv("PROMETHEUS_EXPORTER_HOST", "127.0.0.1").strip(),
+        prometheus_exporter_port=int(os.getenv("PROMETHEUS_EXPORTER_PORT", "9108")),
+        prometheus_exporter_path=os.getenv("PROMETHEUS_EXPORTER_PATH", "/metrics").strip() or "/metrics",
     )

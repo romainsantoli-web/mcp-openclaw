@@ -82,6 +82,24 @@ Exemple:
 - `openclaw_health`: vérifie la connectivité Gateway.
 - `openclaw_invoke`: envoie une requête contrôlée vers la Gateway OpenClaw.
 
+## Endpoint Prometheus (Phase 4)
+
+- Un exporter Prometheus local est exposé par défaut sur `http://127.0.0.1:9108/metrics`.
+- Le payload suit le format texte Prometheus (`version=0.0.4`) avec:
+   - `mcp_openclaw_telemetry_enabled`
+   - `mcp_openclaw_counter{name="..."}`
+   - `mcp_openclaw_latency_count{name="..."}`
+   - `mcp_openclaw_latency_avg_ms{name="..."}`
+   - `mcp_openclaw_latency_max_ms{name="..."}`
+- Health simple disponible sur `http://127.0.0.1:9108/healthz`.
+
+Variables principales:
+
+- `PROMETHEUS_EXPORTER_ENABLED`
+- `PROMETHEUS_EXPORTER_HOST`
+- `PROMETHEUS_EXPORTER_PORT`
+- `PROMETHEUS_EXPORTER_PATH`
+
 ## Workflow orchestration (V2)
 
 - Tool principal: `firm_run_delivery_workflow`.
@@ -199,3 +217,14 @@ Variables principales:
 - Possibilité de mode lecture seule (`READ_ONLY_MODE=true`).
 
 Voir `docs/security.md` et `docs/access.md`.
+
+## SDK Python léger (Phase 4)
+
+- Client async inclus: [src/sdk_client.py](src/sdk_client.py)
+- Classe: `McpOpenClawClient`
+- Usage rapide:
+
+   - `from src.sdk_client import McpOpenClawClient`
+   - `async with McpOpenClawClient("http://127.0.0.1:8011/mcp") as client:`
+   - `tools = await client.list_tools()`
+   - `snapshot = await client.dashboard_snapshot(limit=5)`

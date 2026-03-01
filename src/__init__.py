@@ -1,1 +1,31 @@
-# mcp-openclaw-extensions top-level package
+"""mcp-openclaw-extensions — OpenClaw MCP server with 113+ tools across 22 categories."""
+
+__all__ = [
+    "config_helpers",
+    "main",
+    "a2a_bridge",
+    "acp_bridge",
+    "advanced_security",
+    "agent_orchestration",
+    "auth_compliance",
+    "browser_audit",
+    "compliance_medium",
+    "config_migration",
+    "delivery_export",
+    "ecosystem_audit",
+    "gateway_fleet",
+    "gateway_hardening",
+    "hebbian_memory",
+    "i18n_audit",
+    "memory_audit",
+    "n8n_bridge",
+    "observability",
+    "platform_audit",
+    "prompt_security",
+    "reliability_probe",
+    "runtime_audit",
+    "security_audit",
+    "skill_loader",
+    "spec_compliance",
+    "vs_bridge",
+]

@@ -14,38 +14,26 @@ import os
 import re
 from typing import Any
 
+from src.config_helpers import load_config as _load_config_shared, get_nested as _get_nested_shared  # noqa: E402
+
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
 
 def _load_config(config_path: str | None) -> tuple[dict, str]:
-    """Load JSON config from path, with fallback to default."""
-    path = config_path or "openclaw.json"
-    if ".." in path:
-        return {}, path
-    if not os.path.isfile(path):
-        return {}, path
-    try:
-        with open(path) as f:
-            return json.load(f), path
-    except (json.JSONDecodeError, OSError):
-        return {}, path
+    """Load config — delegates to config_helpers.load_config."""
+    return _load_config_shared(config_path)
+
 
 
 def _get_nested(data: dict, dotpath: str, default: Any = None) -> Any:
-    """Get a nested dict value by dot-separated path."""
-    keys = dotpath.split(".")
-    current = data
-    for k in keys:
-        if isinstance(current, dict):
-            current = current.get(k, default)
-        else:
-            return default
-    return current
+    """Get nested value by dot-path — delegates to config_helpers.get_nested."""
+    return _get_nested_shared(data, *dotpath.split("."), default=default)
+
 
 
 # ─── H4: OAuth / OIDC Compliance Audit ────────────────────────────────────
 
-async def handle_oauth_oidc_audit(config_path: str | None = None) -> dict[str, Any]:
+async def oauth_oidc_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit OAuth 2.1 / OIDC Discovery compliance (MCP 2025-06-18 / 2025-11-25).
 
     Checks:
@@ -159,7 +147,7 @@ async def handle_oauth_oidc_audit(config_path: str | None = None) -> dict[str, A
 
 # ─── OAuth Token Scope Check ──────────────────────────────────────────────
 
-async def handle_token_scope_check(config_path: str | None = None) -> dict[str, Any]:
+async def token_scope_check(config_path: str | None = None) -> dict[str, Any]:
     """Check if OAuth scopes properly restrict tool access.
 
     Verifies that each tool has scope requirements and that
@@ -248,7 +236,7 @@ TOOLS: list[dict[str, Any]] = [
             "token validation, scope enforcement, resource indicators (RFC 8707)."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_oauth_oidc_audit,
+        "handler": oauth_oidc_audit,
         "category": "auth_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -262,7 +250,7 @@ TOOLS: list[dict[str, Any]] = [
             "and identifies unscoped tools."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_token_scope_check,
+        "handler": token_scope_check,
         "category": "auth_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,

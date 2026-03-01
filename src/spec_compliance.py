@@ -15,38 +15,26 @@ import os
 import re
 from typing import Any
 
+from src.config_helpers import load_config as _load_config_shared, get_nested as _get_nested_shared  # noqa: E402
+
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
 
 def _load_config(config_path: str | None) -> tuple[dict, str]:
-    """Load JSON config from path, with fallback to default."""
-    path = config_path or "openclaw.json"
-    if ".." in path:
-        return {}, path
-    if not os.path.isfile(path):
-        return {}, path
-    try:
-        with open(path) as f:
-            return json.load(f), path
-    except (json.JSONDecodeError, OSError):
-        return {}, path
+    """Load config — delegates to config_helpers.load_config."""
+    return _load_config_shared(config_path)
+
 
 
 def _get_nested(data: dict, dotpath: str, default: Any = None) -> Any:
-    """Get a nested dict value by dot-separated path."""
-    keys = dotpath.split(".")
-    current = data
-    for k in keys:
-        if isinstance(current, dict):
-            current = current.get(k, default)
-        else:
-            return default
-    return current
+    """Get nested value by dot-path — delegates to config_helpers.get_nested."""
+    return _get_nested_shared(data, *dotpath.split("."), default=default)
+
 
 
 # ─── S4: Elicitation Audit ─────────────────────────────────────────────────
 
-async def handle_elicitation_audit(config_path: str | None = None) -> dict[str, Any]:
+async def elicitation_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit MCP elicitation capability compliance (2025-06-18+).
 
     Checks:
@@ -116,7 +104,7 @@ async def handle_elicitation_audit(config_path: str | None = None) -> dict[str, 
 
 # ─── S5: Tasks (Durable Requests) Audit ───────────────────────────────────
 
-async def handle_tasks_audit(config_path: str | None = None) -> dict[str, Any]:
+async def tasks_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit MCP Tasks capability compliance (2025-11-25 experimental).
 
     Checks:
@@ -178,7 +166,7 @@ async def handle_tasks_audit(config_path: str | None = None) -> dict[str, Any]:
 
 # ─── S6: Resources & Prompts Audit ────────────────────────────────────────
 
-async def handle_resources_prompts_audit(config_path: str | None = None) -> dict[str, Any]:
+async def resources_prompts_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit MCP Resources & Prompts capability compliance.
 
     Checks:
@@ -240,7 +228,7 @@ async def handle_resources_prompts_audit(config_path: str | None = None) -> dict
 
 # ─── H3: Audio Content Audit ──────────────────────────────────────────────
 
-async def handle_audio_content_audit(config_path: str | None = None) -> dict[str, Any]:
+async def audio_content_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit MCP audio content support (2025-06-18+).
 
     Checks:
@@ -300,7 +288,7 @@ async def handle_audio_content_audit(config_path: str | None = None) -> dict[str
 
 # ─── H5: JSON Schema 2020-12 Dialect ──────────────────────────────────────
 
-async def handle_json_schema_dialect_check(config_path: str | None = None) -> dict[str, Any]:
+async def json_schema_dialect_check(config_path: str | None = None) -> dict[str, Any]:
     """Audit JSON Schema dialect compliance (MCP 2025-11-25).
 
     Checks:
@@ -358,7 +346,7 @@ async def handle_json_schema_dialect_check(config_path: str | None = None) -> di
 
 # ─── H6: SSE Transport Audit ──────────────────────────────────────────────
 
-async def handle_sse_transport_audit(config_path: str | None = None) -> dict[str, Any]:
+async def sse_transport_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit Streamable HTTP / SSE transport compliance (MCP 2025-11-25).
 
     Checks:
@@ -423,7 +411,7 @@ async def handle_sse_transport_audit(config_path: str | None = None) -> dict[str
 
 # ─── H7: Icon Metadata Audit ──────────────────────────────────────────────
 
-async def handle_icon_metadata_audit(config_path: str | None = None) -> dict[str, Any]:
+async def icon_metadata_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit icon metadata support (MCP 2025-11-25).
 
     Checks:
@@ -509,7 +497,7 @@ TOOLS: list[dict[str, Any]] = [
             "URL mode support (2025-11-25), and schema type restrictions."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_elicitation_audit,
+        "handler": elicitation_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -523,7 +511,7 @@ TOOLS: list[dict[str, Any]] = [
             "max concurrent tasks, deferred result retrieval."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_tasks_audit,
+        "handler": tasks_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -537,7 +525,7 @@ TOOLS: list[dict[str, Any]] = [
             "resource URI schemes, and prompt field completeness."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_resources_prompts_audit,
+        "handler": resources_prompts_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -551,7 +539,7 @@ TOOLS: list[dict[str, Any]] = [
             "and base64 encoding configuration."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_audio_content_audit,
+        "handler": audio_content_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -565,7 +553,7 @@ TOOLS: list[dict[str, Any]] = [
             "(definitions, dependencies, additionalItems)."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_json_schema_dialect_check,
+        "handler": json_schema_dialect_check,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -579,7 +567,7 @@ TOOLS: list[dict[str, Any]] = [
             "Origin validation, MCP-Protocol-Version header."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_sse_transport_audit,
+        "handler": sse_transport_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -593,7 +581,7 @@ TOOLS: list[dict[str, Any]] = [
             "validates icon URLs use HTTPS or data: URI."
         ),
         "inputSchema": _CONFIG_PATH_SCHEMA,
-        "handler": handle_icon_metadata_audit,
+        "handler": icon_metadata_audit,
         "category": "spec_compliance",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,

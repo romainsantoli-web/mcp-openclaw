@@ -76,7 +76,9 @@ _ENCODED_TRAVERSAL_PATTERNS = [
 # ════════════════════════════════════════════════════════════════════════════
 
 def _load_config(config_path: str | None) -> tuple[dict[str, Any], str]:
-    return _load_config_base(config_path, default_path=_CONFIG_PATH)
+    """Load config — delegates to config_helpers.load_config."""
+    return _load_config_base(config_path)
+
 
 
 def _scan_proto_keys(

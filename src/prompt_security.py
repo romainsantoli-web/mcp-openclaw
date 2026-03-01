@@ -71,7 +71,7 @@ def _scan_text(text: str) -> list[dict[str, str]]:
 
 # ─── H2: Prompt Injection Check ───────────────────────────────────────────
 
-async def handle_prompt_injection_check(text: str = "", context: str = "user_input") -> dict[str, Any]:
+async def prompt_injection_check(text: str = "", context: str = "user_input") -> dict[str, Any]:
     """Scan text inputs for prompt injection and jailbreak patterns.
 
     Checks:
@@ -124,7 +124,7 @@ async def handle_prompt_injection_check(text: str = "", context: str = "user_inp
 
 # ─── Batch Scan ────────────────────────────────────────────────────────────
 
-async def handle_prompt_injection_batch(items: list | None = None) -> dict[str, Any]:
+async def prompt_injection_batch(items: list | None = None) -> dict[str, Any]:
     """Batch scan multiple text inputs for injection patterns.
 
     Accepts a list of {id, text} objects and returns per-item results.
@@ -211,7 +211,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["text"],
         },
-        "handler": handle_prompt_injection_check,
+        "handler": prompt_injection_check,
         "category": "prompt_security",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
@@ -242,7 +242,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["items"],
         },
-        "handler": handle_prompt_injection_batch,
+        "handler": prompt_injection_batch,
         "category": "prompt_security",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,

@@ -2768,11 +2768,11 @@ class TestVersionEndpoint:
             "clientInfo": {"name": "test", "version": "0.0.1"},
         })
         version = result["result"]["serverInfo"]["version"]
-        assert version == "2.2.0"
+        assert version == "3.0.0"
 
     def test_health_returns_version(self, mcp_server):
         resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
-        assert resp.json()["version"] == "2.2.0"
+        assert resp.json()["version"] == "3.0.0"
 
 
 # ════════════════════════════════════════════════════════════════════════════════

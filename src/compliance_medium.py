@@ -15,33 +15,21 @@ import os
 import re
 from typing import Any
 
+from src.config_helpers import load_config as _load_config_shared, get_nested as _get_nested_shared  # noqa: E402
+
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
 
 def _load_config(config_path: str | None) -> tuple[dict, str]:
-    """Load JSON config from path, with fallback to default."""
-    path = config_path or "openclaw.json"
-    if ".." in path:
-        return {}, path
-    if not os.path.isfile(path):
-        return {}, path
-    try:
-        with open(path) as f:
-            return json.load(f), path
-    except (json.JSONDecodeError, OSError):
-        return {}, path
+    """Load config — delegates to config_helpers.load_config."""
+    return _load_config_shared(config_path)
+
 
 
 def _get_nested(data: dict, dotpath: str, default: Any = None) -> Any:
-    """Get a nested dict value by dot-separated path."""
-    keys = dotpath.split(".")
-    current = data
-    for k in keys:
-        if isinstance(current, dict):
-            current = current.get(k, default)
-        else:
-            return default
-    return current
+    """Get nested value by dot-path — delegates to config_helpers.get_nested."""
+    return _get_nested_shared(data, *dotpath.split("."), default=default)
+
 
 
 # ─── M1: Tool Deprecation Lifecycle ───────────────────────────────────────
@@ -52,7 +40,7 @@ def _get_nested(data: dict, dotpath: str, default: Any = None) -> Any:
 _DEPRECATION_KEYS = {"deprecated", "sunset", "replacement", "deprecatedMessage"}
 
 
-async def handle_tool_deprecation_audit(config_path: str | None = None) -> dict[str, Any]:
+async def tool_deprecation_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit tool deprecation lifecycle compliance.
 
     Checks:
@@ -182,7 +170,7 @@ _EXTERNAL_CALL_PATTERNS = {
 }
 
 
-async def handle_circuit_breaker_audit(config_path: str | None = None) -> dict[str, Any]:
+async def circuit_breaker_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit circuit breaker / resilience patterns for external calls.
 
     Checks:
@@ -333,7 +321,7 @@ _VALID_REGIONS = {
 }
 
 
-async def handle_gdpr_residency_audit(config_path: str | None = None) -> dict[str, Any]:
+async def gdpr_residency_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit GDPR and data residency compliance.
 
     Checks:
@@ -474,7 +462,7 @@ _VALID_DID_METHODS = {"did:web", "did:key", "did:pkh", "did:ion", "did:ethr", "d
 _DID_PATTERN = re.compile(r"^did:[a-z]+:[a-zA-Z0-9._:%-]+$")
 
 
-async def handle_agent_identity_audit(config_path: str | None = None) -> dict[str, Any]:
+async def agent_identity_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit agent identity and DID (Decentralized Identifier) compliance.
 
     Checks:
@@ -603,7 +591,7 @@ _DANGEROUS_ROUTING_PATTERNS = {
 }
 
 
-async def handle_model_routing_audit(config_path: str | None = None) -> dict[str, Any]:
+async def model_routing_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit multi-model routing configuration.
 
     Checks:
@@ -743,7 +731,7 @@ async def handle_model_routing_audit(config_path: str | None = None) -> dict[str
 
 # ─── M6: Resource Links in Tool Results Audit ────────────────────────────
 
-async def handle_resource_links_audit(config_path: str | None = None) -> dict[str, Any]:
+async def resource_links_audit(config_path: str | None = None) -> dict[str, Any]:
     """Audit resource link usage in tool results (MCP 2025-06-18).
 
     Checks:
@@ -913,7 +901,7 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_tool_deprecation_audit,
+        "handler": tool_deprecation_audit,
     },
     {
         "name": "openclaw_circuit_breaker_audit",
@@ -928,7 +916,7 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_circuit_breaker_audit,
+        "handler": circuit_breaker_audit,
     },
     {
         "name": "openclaw_gdpr_residency_audit",
@@ -943,7 +931,7 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_gdpr_residency_audit,
+        "handler": gdpr_residency_audit,
     },
     {
         "name": "openclaw_agent_identity_audit",
@@ -958,7 +946,7 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_agent_identity_audit,
+        "handler": agent_identity_audit,
     },
     {
         "name": "openclaw_model_routing_audit",
@@ -973,7 +961,7 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_model_routing_audit,
+        "handler": model_routing_audit,
     },
     {
         "name": "openclaw_resource_links_audit",
@@ -988,6 +976,6 @@ TOOLS: list[dict[str, Any]] = [
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        "handler": handle_resource_links_audit,
+        "handler": resource_links_audit,
     },
 ]

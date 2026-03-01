@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "2.2.0"
+__version__ = "3.0.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -77,6 +77,32 @@ from src.models import TOOL_MODELS  # noqa: E402
 
 _ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit, a2a_bridge, platform_audit, ecosystem_audit, spec_compliance, prompt_security, auth_compliance, compliance_medium]
 
+# ── M-C1: Category → icon mapping (MCP 2025-11-25 SEP-973) ──────────────────
+CATEGORY_ICONS: dict[str, str] = {
+    "a2a":                 "🔗",
+    "acp":                 "💾",
+    "auth_compliance":     "🔐",
+    "browser_automation":  "🌐",
+    "compliance_medium":   "📋",
+    "ecosystem":           "🌍",
+    "export":              "📤",
+    "fleet":               "🚀",
+    "hebbian_memory":      "🧠",
+    "i18n":                "🌎",
+    "memory":              "💽",
+    "observability":       "📊",
+    "orchestration":       "🎯",
+    "other":               "🔧",
+    "performance":         "⚡",
+    "platform":            "🏗️",
+    "prompt_security":     "🛡️",
+    "reliability":         "✅",
+    "security":            "🔒",
+    "spec_compliance":     "📜",
+    "vs_bridge":           "🔌",
+    "workflow_automation":  "⚙️",
+}
+
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}
 for _mod in _ALL_MODULES:
@@ -85,17 +111,78 @@ for _mod in _ALL_MODULES:
 
 logger.info("Registered %d tools from %d modules", len(TOOL_REGISTRY), len(_ALL_MODULES))
 
+# ── MCP Resources registry (M-C3) ───────────────────────────────────────────
+_MCP_RESOURCES: list[dict[str, Any]] = [
+    {
+        "uri": "openclaw://config/main",
+        "name": "OpenClaw Configuration",
+        "description": "Main OpenClaw gateway configuration file",
+        "mimeType": "application/json",
+    },
+    {
+        "uri": "openclaw://health",
+        "name": "Server Health",
+        "description": "MCP extensions server health status and tool inventory",
+        "mimeType": "application/json",
+    },
+]
+
+# ── MCP Prompts registry (M-H1) ─────────────────────────────────────────────
+_MCP_PROMPTS: list[dict[str, Any]] = [
+    {
+        "name": "security-audit",
+        "description": "Run a comprehensive security audit on an OpenClaw configuration",
+        "arguments": [
+            {"name": "config_path", "description": "Path to OpenClaw config file", "required": False},
+            {"name": "severity_filter", "description": "Minimum severity: CRITICAL, HIGH, MEDIUM, LOW", "required": False},
+        ],
+    },
+    {
+        "name": "compliance-check",
+        "description": "Check MCP spec compliance for a given OpenClaw installation",
+        "arguments": [
+            {"name": "config_path", "description": "Path to OpenClaw config file", "required": False},
+            {"name": "spec_version", "description": "MCP spec version to check against (default: 2025-11-25)", "required": False},
+        ],
+    },
+    {
+        "name": "fleet-status",
+        "description": "Get the status of all gateway instances in the fleet",
+        "arguments": [],
+    },
+    {
+        "name": "hebbian-analysis",
+        "description": "Analyze memory patterns using Hebbian learning layers",
+        "arguments": [
+            {"name": "session_id", "description": "Session ID to analyze", "required": False},
+            {"name": "min_weight", "description": "Minimum connection weight threshold", "required": False},
+        ],
+    },
+]
+
 # ── MCP protocol helpers ─────────────────────────────────────────────────────
 
 def _mcp_tools_list() -> list[dict[str, Any]]:
-    return [
-        {
+    """Return MCP tools/list payload with icons (MCP 2025-11-25)."""
+    tools = []
+    for t in TOOL_REGISTRY.values():
+        cat = t.get("category", "other")
+        icon_emoji = CATEGORY_ICONS.get(cat, "🔧")
+        entry: dict[str, Any] = {
             "name": t["name"],
             "description": t["description"],
             "inputSchema": t["inputSchema"],
+            "icons": [{"uri": f"data:text/plain,{icon_emoji}", "mediaType": "text/plain"}],
         }
-        for t in TOOL_REGISTRY.values()
-    ]
+        # Include optional MCP 2025-11-25 fields if present
+        if "annotations" in t:
+            entry["annotations"] = t["annotations"]
+        if "outputSchema" in t:
+            entry["outputSchema"] = t["outputSchema"]
+        if "title" in t:
+            entry["title"] = t["title"]
+        tools.append(entry)
+    return tools
 
 
 async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -155,7 +242,87 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
 
     return {
         "content": [{"type": "text", "text": json.dumps(result, indent=2, default=str)}],
+        # M-C2: structuredContent alongside content (MCP 2025-06-18)
+        "structuredContent": result if isinstance(result, dict) else {"result": result},
     }
+
+
+# ── MCP Resources handlers (M-C3) ───────────────────────────────────────────
+
+async def _read_resource(uri: str) -> dict[str, Any]:
+    """Read a resource by URI."""
+    if uri == "openclaw://config/main":
+        from src.config_helpers import load_config
+        config, path = load_config(None)
+        return {
+            "contents": [{
+                "uri": uri,
+                "mimeType": "application/json",
+                "text": json.dumps(config, indent=2, default=str),
+            }],
+        }
+    elif uri == "openclaw://health":
+        categories: dict[str, int] = {}
+        for t in TOOL_REGISTRY.values():
+            cat = t.get("category", "other")
+            categories[cat] = categories.get(cat, 0) + 1
+        health = {
+            "status": "ok", "version": __version__,
+            "tools": len(TOOL_REGISTRY), "categories": categories,
+            "ts": time.time(),
+        }
+        return {
+            "contents": [{
+                "uri": uri,
+                "mimeType": "application/json",
+                "text": json.dumps(health, indent=2),
+            }],
+        }
+    return {"contents": [], "error": f"Unknown resource: {uri}"}
+
+
+# ── MCP Prompts handler (M-H1) ──────────────────────────────────────────────
+
+_PROMPT_TOOL_MAP: dict[str, list[str]] = {
+    "security-audit": [
+        "openclaw_security_scan", "openclaw_sandbox_audit",
+        "openclaw_session_config_check", "openclaw_rate_limit_check",
+        "openclaw_secrets_lifecycle_check", "openclaw_gateway_auth_check",
+    ],
+    "compliance-check": [
+        "openclaw_elicitation_audit", "openclaw_tasks_audit",
+        "openclaw_resources_prompts_audit", "openclaw_json_schema_dialect_check",
+        "openclaw_sse_transport_audit", "openclaw_icon_metadata_audit",
+    ],
+    "fleet-status": ["firm_gateway_fleet_status", "firm_gateway_fleet_list"],
+    "hebbian-analysis": [
+        "openclaw_hebbian_analyze", "openclaw_hebbian_status",
+        "openclaw_hebbian_weight_update",
+    ],
+}
+
+
+async def _get_prompt(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Generate prompt messages for a named prompt template."""
+    tools = _PROMPT_TOOL_MAP.get(name, [])
+    if not tools:
+        return {"messages": [], "error": f"Unknown prompt: {name}"}
+
+    tool_list = ", ".join(tools)
+    messages = [
+        {
+            "role": "user",
+            "content": {
+                "type": "text",
+                "text": (
+                    f"Run the following {name} audit using these tools: {tool_list}. "
+                    f"Parameters: {json.dumps(arguments)}. "
+                    f"Provide a structured report with severity levels."
+                ),
+            },
+        }
+    ]
+    return {"messages": messages}
 
 
 # ── Request router ───────────────────────────────────────────────────────────
@@ -209,15 +376,23 @@ async def _handle_mcp(request: web.Request) -> web.Response:
 
     # ── MCP methods ──────────────────────────────────────────────────────────
     if method == "initialize":
+        # M-H4: listChanged True for dynamic tool loading
+        # M-C3: resources capability
+        # M-H1: prompts capability
         return await respond({
             "protocolVersion": "2025-11-25",
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": {
+                "tools": {"listChanged": True},
+                "resources": {"subscribe": False, "listChanged": False},
+                "prompts": {"listChanged": False},
+            },
             "serverInfo": {
                 "name": "mcp-openclaw-extensions",
                 "version": __version__,
                 "description": (
-                    "VS Code↔OpenClaw bridge · Fleet manager · "
-                    "Delivery export pipeline"
+                    "OpenClaw MCP extensions server — 113 tools across 22 categories: "
+                    "security audit, compliance, A2A bridge, Hebbian memory, fleet management, "
+                    "delivery export, observability, and more."
                 ),
             },
         })
@@ -229,6 +404,25 @@ async def _handle_mcp(request: web.Request) -> web.Response:
         tool_name: str = params.get("name", "")
         arguments: dict[str, Any] = params.get("arguments", {})
         result = await _mcp_call_tool(tool_name, arguments)
+        return await respond(result)
+
+    # ── M-C3: Resources ─────────────────────────────────────────────────────
+    elif method == "resources/list":
+        return await respond({"resources": _MCP_RESOURCES})
+
+    elif method == "resources/read":
+        uri = params.get("uri", "")
+        result = await _read_resource(uri)
+        return await respond(result)
+
+    # ── M-H1: Prompts ───────────────────────────────────────────────────────
+    elif method == "prompts/list":
+        return await respond({"prompts": _MCP_PROMPTS})
+
+    elif method == "prompts/get":
+        prompt_name = params.get("name", "")
+        prompt_args = params.get("arguments", {})
+        result = await _get_prompt(prompt_name, prompt_args)
         return await respond(result)
 
     elif method == "ping":

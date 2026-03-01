@@ -468,6 +468,7 @@ async def firm_gateway_fleet_list(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "firm_gateway_fleet_status",
+        "title": "Fleet Health Check",
         "description": "Health check all registered OpenClaw Gateway instances. Runs parallel /health checks and returns latency, version and session counts.",
         "inputSchema": {
             "type": "object",
@@ -477,10 +478,15 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": firm_gateway_fleet_status,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_gateway_fleet_add",
+        "title": "Add Fleet Instance",
         "description": "Register a new OpenClaw Gateway instance in the fleet. Verifies connectivity before saving.",
         "inputSchema": {
             "type": "object",
@@ -495,10 +501,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["name", "ws_url", "http_url"],
         },
         "handler": firm_gateway_fleet_add,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_gateway_fleet_remove",
+        "title": "Remove Fleet Instance",
         "description": "Remove a Gateway instance from the fleet registry.",
         "inputSchema": {
             "type": "object",
@@ -506,10 +517,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["name"],
         },
         "handler": firm_gateway_fleet_remove,
+        "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_gateway_fleet_broadcast",
+        "title": "Fleet Broadcast Message",
         "description": "Broadcast a message to all (or filtered) Gateway instances. Useful for fleet-wide announcements and multi-department orchestration kickoffs.",
         "inputSchema": {
             "type": "object",
@@ -523,10 +539,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["message"],
         },
         "handler": firm_gateway_fleet_broadcast,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_gateway_fleet_sync",
+        "title": "Fleet Config Sync",
         "description": "Sync configuration or skills across all fleet instances in parallel.",
         "inputSchema": {
             "type": "object",
@@ -539,10 +560,15 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": firm_gateway_fleet_sync,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_gateway_fleet_list",
+        "title": "List Fleet Instances",
         "description": "List all registered Gateway instances with their configuration.",
         "inputSchema": {
             "type": "object",
@@ -552,6 +578,10 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": firm_gateway_fleet_list,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "fleet",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
 ]

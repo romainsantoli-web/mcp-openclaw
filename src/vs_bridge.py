@@ -301,6 +301,7 @@ async def vs_session_status(workspace_path: str | None = None) -> dict[str, Any]
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "vs_context_push",
+        "title": "Push VS Code Context",
         "description": (
             "Push the current VS Code workspace context (open files, active file, "
             "recent changes, last agent action) into an OpenClaw session so the "
@@ -321,10 +322,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["workspace_path"],
         },
         "handler": vs_context_push,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "vs_bridge",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "vs_context_pull",
+        "title": "Pull OpenClaw Context",
         "description": (
             "Pull the OpenClaw session context (model, tokens, last message, workspace) "
             "back into VS Code. Enables Copilot agents to know what OpenClaw has been doing."
@@ -337,10 +343,15 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": vs_context_pull,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "vs_bridge",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "vs_session_link",
+        "title": "Link VS Code Session",
         "description": (
             "Associate a VS Code workspace with a specific OpenClaw session. "
             "Once linked, push/pull calls use this session automatically."
@@ -354,10 +365,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["workspace_path", "session_id"],
         },
         "handler": vs_session_link,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "vs_bridge",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "vs_session_status",
+        "title": "VS Bridge Status",
         "description": "Return bridge status: linked sessions and gateway reachability.",
         "inputSchema": {
             "type": "object",
@@ -366,6 +382,10 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": vs_session_status,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "vs_bridge",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
 ]

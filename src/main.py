@@ -15,6 +15,7 @@ Or via scripts:
 from __future__ import annotations
 
 import asyncio
+import hmac
 import inspect
 import json
 import logging
@@ -23,6 +24,8 @@ import signal
 import sys
 import time
 from typing import Any
+
+__version__ = "2.2.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -39,12 +42,40 @@ logger = logging.getLogger("mcp_ext.main")
 # ── Configuration ────────────────────────────────────────────────────────────
 MCP_HOST: str = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
+MCP_AUTH_TOKEN: str | None = os.getenv("MCP_AUTH_TOKEN")  # Optional Bearer auth
+TOOL_TIMEOUT_S: float = float(os.getenv("TOOL_TIMEOUT_S", "120"))  # Per-tool timeout
 
 # ── Import tool modules ───────────────────────────────────────────────────────
-from src import delivery_export, gateway_fleet, vs_bridge  # noqa: E402
+from src import (  # noqa: E402
+    a2a_bridge,
+    acp_bridge,
+    advanced_security,
+    agent_orchestration,
+    auth_compliance,
+    browser_audit,
+    compliance_medium,
+    config_migration,
+    delivery_export,
+    ecosystem_audit,
+    gateway_fleet,
+    gateway_hardening,
+    hebbian_memory,
+    i18n_audit,
+    memory_audit,
+    n8n_bridge,
+    observability,
+    platform_audit,
+    prompt_security,
+    reliability_probe,
+    runtime_audit,
+    security_audit,
+    skill_loader,
+    spec_compliance,
+    vs_bridge,
+)
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit, a2a_bridge, platform_audit, ecosystem_audit, spec_compliance, prompt_security, auth_compliance, compliance_medium]
 
 # Build registry: tool_name → {handler, inputSchema, description, category}
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {}
@@ -101,9 +132,15 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
 
     try:
         if asyncio.iscoroutinefunction(handler):
-            result = await handler(**filtered)
+            result = await asyncio.wait_for(handler(**filtered), timeout=TOOL_TIMEOUT_S)
         else:
             result = handler(**filtered)
+    except asyncio.TimeoutError:
+        logger.error("Tool %s timed out after %.0fs", name, TOOL_TIMEOUT_S)
+        return {
+            "isError": True,
+            "content": [{"type": "text", "text": f"Tool timed out after {TOOL_TIMEOUT_S}s"}],
+        }
     except TypeError as exc:
         return {
             "isError": True,
@@ -123,11 +160,36 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
 
 # ── Request router ───────────────────────────────────────────────────────────
 
+
+def _check_auth(request: web.Request) -> web.Response | None:
+    """Verify Bearer token if MCP_AUTH_TOKEN is set. Returns error response or None."""
+    if not MCP_AUTH_TOKEN:
+        return None  # Auth disabled — no token configured
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return web.json_response(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": "Missing Authorization: Bearer <token>"}},
+            status=401,
+        )
+    token = auth_header[7:]
+    if not hmac.compare_digest(token, MCP_AUTH_TOKEN):
+        return web.json_response(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": "Invalid token"}},
+            status=403,
+        )
+    return None
+
+
 async def _handle_mcp(request: web.Request) -> web.Response:
     """
     Streamable HTTP MCP endpoint — handles all MCP JSON-RPC 2.0 messages.
     Supports: initialize, tools/list, tools/call, ping.
+    Protected by Bearer auth when MCP_AUTH_TOKEN is set.
     """
+    auth_error = _check_auth(request)
+    if auth_error is not None:
+        return auth_error
+
     try:
         body = await request.json()
     except Exception:
@@ -148,11 +210,11 @@ async def _handle_mcp(request: web.Request) -> web.Response:
     # ── MCP methods ──────────────────────────────────────────────────────────
     if method == "initialize":
         return await respond({
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2025-11-25",
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {
                 "name": "mcp-openclaw-extensions",
-                "version": "1.0.0",
+                "version": __version__,
                 "description": (
                     "VS Code↔OpenClaw bridge · Fleet manager · "
                     "Delivery export pipeline"
@@ -183,7 +245,7 @@ async def _handle_health(request: web.Request) -> web.Response:
         categories[cat] = categories.get(cat, 0) + 1
     return web.json_response({
         "status": "ok",
-        "version": "1.0.0",
+        "version": __version__,
         "tools": len(TOOL_REGISTRY),
         "categories": categories,
         "ts": time.time(),
@@ -193,9 +255,8 @@ async def _handle_health(request: web.Request) -> web.Response:
 # ── Server lifecycle ──────────────────────────────────────────────────────────
 
 async def _build_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(client_max_size=2 * 1024 * 1024)  # 2 MB request limit
     app.router.add_post("/mcp", _handle_mcp)
-    app.router.add_get("/mcp", _handle_mcp)   # For SSE-style discovery
     app.router.add_get("/health", _handle_health)
     app.router.add_get("/healthz", _handle_health)
     return app

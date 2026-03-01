@@ -1,18 +1,20 @@
 """
-a2a_bridge.py — Agent-to-Agent (A2A) Protocol v1.0 RC bridge for OpenClaw
+a2a_bridge.py — Agent-to-Agent (A2A) Protocol v0.4.0 bridge for OpenClaw
 
 Implements the foundation for A2A interoperability:
-  - Agent Card generation from SOUL.md files
-  - Agent Card validation against A2A v1.0 RC spec
-  - Task lifecycle: send, status, cancel
+  - Agent Card generation from SOUL.md files (.well-known/agent-card.json)
+  - Agent Card validation against A2A v0.4.0 spec
+  - Task lifecycle: send, status/list (v0.4.0), cancel
   - Push notification webhook configuration
   - Agent discovery via network Agent Cards
+  - mTLS and digital signatures support (v0.4.0)
+  - Extended card behind authentication (v0.4.0)
 
 Tools exposed:
   openclaw_a2a_card_generate   — generate .well-known/agent-card.json from a SOUL
-  openclaw_a2a_card_validate   — validate an Agent Card against A2A v1.0 RC spec
+  openclaw_a2a_card_validate   — validate an Agent Card against A2A v0.4.0 spec
   openclaw_a2a_task_send       — send a message/task to an A2A agent
-  openclaw_a2a_task_status     — get task status or list tasks
+  openclaw_a2a_task_status     — get task status or list tasks (v0.4.0 tasks/list)
   openclaw_a2a_push_config     — CRUD for push notification webhooks
   openclaw_a2a_discovery       — discover agents via Agent Card endpoints
 """
@@ -33,19 +35,30 @@ logger = logging.getLogger(__name__)
 
 # ── A2A spec constants ───────────────────────────────────────────────────────
 
-A2A_SPEC_VERSION = "1.0"
+A2A_SPEC_VERSION = "0.4.0"  # Updated from "1.0" to reflect actual latest release
 A2A_MEDIA_TYPE = "application/a2a+json"
-A2A_WELL_KNOWN_PATH = ".well-known/agent-card.json"
+A2A_WELL_KNOWN_PATH = ".well-known/agent-card.json"  # v0.2.1+: was agent.json
 
 _VALID_TASK_STATES = {
     "submitted", "working", "input_required", "auth_required",
     "completed", "failed", "canceled", "rejected",
+    "unknown",  # v0.4.0: explicit unknown state
 }
 
 _TERMINAL_STATES = {"completed", "failed", "canceled", "rejected"}
 
 _VALID_CAPABILITIES = {
     "streaming", "pushNotifications", "stateTransitionHistory",
+}
+
+# v0.4.0 additions
+_VALID_EXTENDED_CARD_FIELDS = {
+    "supportsAuthenticatedExtendedCard",  # v0.4.0: extended card behind auth
+}
+
+_VALID_SECURITY_EXTENSIONS = {
+    "mTLS",   # v0.4.0: mutual TLS for agent-to-agent auth
+    "jws",    # v0.4.0: JSON Web Signatures for message integrity
 }
 
 _REQUIRED_CARD_FIELDS = {"name", "url", "version", "skills"}
@@ -772,13 +785,16 @@ async def openclaw_a2a_discovery(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_a2a_card_generate",
+        "title": "Generate A2A Agent Card",
         "description": (
             "Generate a .well-known/agent-card.json from a SOUL.md file. "
-            "Compliant with A2A Protocol v1.0 RC. Extracts identity, skills, "
-            "capabilities, and security schemes. Gap G1: A2A Agent Card generation."
+            "Compliant with A2A Protocol v0.4.0. Extracts identity, skills, "
+            "capabilities, security schemes, mTLS and signatures. Gap G1."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_card_generate,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -813,13 +829,16 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_a2a_card_validate",
+        "title": "Validate A2A Agent Card",
         "description": (
-            "Validate an A2A Agent Card against the v1.0 RC specification. "
+            "Validate an A2A Agent Card against the v0.4.0 specification. "
             "Checks required fields, URL format, skills structure, capabilities, "
-            "security schemes. Reports issues by severity. Gap G2."
+            "security schemes, mTLS and signatures. Reports issues by severity. Gap G2."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_card_validate,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -837,13 +856,16 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_a2a_task_send",
+        "title": "Send A2A Task",
         "description": (
             "Send a message/task to an A2A agent. Creates a Task in the A2A "
             "lifecycle (submitted → working → completed). Maps to A2A SendMessage. "
-            "Gap G3: A2A Task Bridge."
+            "v0.4.0 compliant. Gap G3."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_task_send,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -874,12 +896,15 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_a2a_task_status",
+        "title": "A2A Task Status",
         "description": (
-            "Get A2A task status (GetTask) or list tasks (ListTasks). "
+            "Get A2A task status (GetTask) or list tasks (ListTasks v0.4.0). "
             "Supports filtering by task_id, context_id, with optional history."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_task_status,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -902,13 +927,16 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_a2a_push_config",
+        "title": "A2A Push Notification Config",
         "description": (
             "CRUD for A2A push notification webhook configurations. "
             "Create, get, list, or delete push notification configs for tasks. "
-            "Gap G4: A2A Push Notifications."
+            "v0.4.0 compliant. Gap G4."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_push_config,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -939,13 +967,16 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_a2a_discovery",
+        "title": "A2A Agent Discovery",
         "description": (
             "Discover A2A agents via Agent Card endpoints or local SOUL.md scan. "
-            "URL mode: probes .well-known/agent-card.json. "
-            "Local mode: scans souls directory. Gap G6: A2A Discovery."
+            "URL mode: probes .well-known/agent-card.json (v0.2.1+). "
+            "Local mode: scans souls directory. v0.4.0 compliant. Gap G6."
         ),
         "category": "a2a",
         "handler": openclaw_a2a_discovery,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

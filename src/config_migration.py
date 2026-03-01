@@ -636,6 +636,7 @@ async def openclaw_rpc_rate_limit_check(config_path: str | None = None) -> dict[
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_shell_env_check",
+        "title": "Shell Env Sanitization Check",
         "description": (
             "H17 — Vérifie l'assainissement des variables d'environnement shell. "
             "Détecte LD_PRELOAD / DYLD_LIBRARY_PATH dans les configs agents, "
@@ -651,9 +652,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_shell_env_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_plugin_integrity_check",
+        "title": "Plugin Integrity Check",
         "description": (
             "H18 — Vérifie l'intégrité et le pin des plugins installés. "
             "Détecte les versions non pinnées, les hash manquants, et les "
@@ -669,9 +683,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_plugin_integrity_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_token_separation_check",
+        "title": "Token Separation Check",
         "description": (
             "H19 — Vérifie que hooks.token ≠ gateway.auth.token. "
             "La réutilisation de token entre webhook et gateway "
@@ -687,9 +714,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_token_separation_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_otel_redaction_check",
+        "title": "OTEL Redaction Check",
         "description": (
             "M17 — Vérifie la rédaction des secrets dans l'export OTEL/diagnostics. "
             "Détecte les credentials inline dans endpoints, headers et span "
@@ -705,9 +745,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_otel_redaction_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_rpc_rate_limit_check",
+        "title": "RPC Rate Limit Check",
         "description": (
             "M21 — Vérifie la configuration du rate limiting pour le control-plane "
             "RPC. Détecte l'absence de rate limit sur les déploiements remote "
@@ -723,5 +776,17 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_rpc_rate_limit_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
 ]

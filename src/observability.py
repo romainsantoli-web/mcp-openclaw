@@ -316,13 +316,18 @@ async def openclaw_ci_pipeline_check(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_observability_pipeline",
+        "title": "Observability Pipeline Ingest",
         "description": (
             "Ingests JSONL structured logs/traces (OpenTelemetry format) into a local SQLite database "
             "for offline analysis. Handles trace_id/span_id deduplication, batch inserts, and flexible "
             "field extraction. Gap T1: no observability pipeline existed."
         ),
         "category": "observability",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_observability_pipeline,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -352,13 +357,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_ci_pipeline_check",
+        "title": "CI Pipeline Validation",
         "description": (
             "Validates CI workflow completeness: checks that .github/workflows/ contains lint, "
             "test, and secrets scanning steps. Also checks recommended steps (coverage, type_check). "
             "Gap T6: no CI validation tool existed."
         ),
         "category": "observability",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_ci_pipeline_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {

@@ -799,13 +799,38 @@ def openclaw_sqlite_vec_check(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_secrets_v2_audit",
+        "title": "Secrets v2 Lifecycle Audit",
         "description": (
             "Audit the OpenClaw secrets v2 lifecycle (2026.2.26+). "
             "Checks external provider, rotation policy, audit log, "
             "runtime snapshots, and hardcoded secret detection. Gap G12."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_secrets_v2_audit,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -817,12 +842,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_agent_routing_check",
+        "title": "Agent Routing Validation",
         "description": (
             "Validate agent routing bindings (2026.2.26+). "
             "Checks default route, scope isolation, circular routing. Gap G13."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_agent_routing_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -833,13 +883,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_voice_security_check",
+        "title": "Voice/TTS Security Audit",
         "description": (
             "TTS/voice channel security audit (2026.2.24+). "
             "Checks provider auth, rate limits, SSML injection, "
             "voice channel isolation. Gap G14."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_voice_security_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -850,12 +925,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_trust_model_check",
+        "title": "Trust Model Validation",
         "description": (
             "Validate trust model and multi-user heuristics (2026.2.24+). "
             "Checks multi-user DM scope, trust model, gateway hardening. Gap G15."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_trust_model_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -866,12 +966,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_autoupdate_check",
+        "title": "Auto-Update Integrity Check",
         "description": (
             "Self-update supply chain integrity check (2026.2.22+). "
             "Checks update channel, signature verification, rollout delay, rollback. Gap G16."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_autoupdate_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -882,13 +1007,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_plugin_sdk_check",
+        "title": "Plugin SDK Integrity",
         "description": (
             "Plugin SDK integrity validation (2026.1.16+). "
             "Checks plugin hooks, permissions, integrity hashes, "
             "package install restrictions. Gap G17."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_plugin_sdk_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -899,13 +1049,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_content_boundary_check",
+        "title": "Content Boundary Audit",
         "description": (
             "Content boundary & anti-prompt-injection audit (2026.2+). "
             "Checks wrapExternalContent, wrapWebContent, toolResult stripping, "
             "content boundary markers. Gap G19."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_content_boundary_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -916,13 +1091,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_sqlite_vec_check",
+        "title": "SQLite-vec Memory Check",
         "description": (
             "SQLite-vec memory backend validation (2026.1.12+). "
             "Checks backend config, db path, embedding model, chunking, "
             "index settings, lazy sync. Gap G20."
         ),
         "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_sqlite_vec_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {

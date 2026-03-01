@@ -519,13 +519,18 @@ async def openclaw_workspace_lock(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "acp_session_persist",
+        "title": "Persist ACP Session",
         "description": (
             "Persists an ACP run_id → gateway_session_key mapping to disk. "
             "Gap C4: ACP bridge sessions are in-memory only — a crash loses all sessions. "
             "Call immediately when an ACP session is created. Uses atomic file write."
         ),
         "category": "acp",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": acp_session_persist,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -538,13 +543,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "acp_session_restore",
+        "title": "Restore ACP Sessions",
         "description": (
             "Reloads ACP sessions from disk after a bridge crash or restart. "
             "Purges stale sessions (> max_age_hours) automatically. "
             "Call on bridge startup to restore all in-flight sessions."
         ),
         "category": "acp",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": acp_session_restore,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -559,9 +569,14 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "acp_session_list_active",
+        "title": "List Active ACP Sessions",
         "description": "Lists all persisted ACP sessions with their age and status (active/stale).",
         "category": "acp",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": acp_session_list_active,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -576,13 +591,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "fleet_session_inject_env",
+        "title": "Inject Fleet Env Vars",
         "description": (
             "Broadcasts provider env vars (API keys, model config) to all non-main Gateway sessions. "
             "Gap H3: isolated spawn/cron sessions cannot access provider env vars, blocking LLM calls. "
             "Enforces a strict key allowlist. Masks secrets in all logs and return values."
         ),
         "category": "acp",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": fleet_session_inject_env,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -611,13 +631,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "fleet_cron_schedule",
+        "title": "Schedule Cron Task",
         "description": (
             "Schedules a cron task on the main session, bypassing sandbox denylist. "
             "Gap H4: cron tools are on the denylist in Docker sessions, blocking autonomous scheduled workflows. "
             "Enforces strict command allowlist and blocklist for safety."
         ),
         "category": "acp",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": fleet_cron_schedule,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -644,13 +669,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_workspace_lock",
+        "title": "Workspace Advisory Lock",
         "description": (
             "Advisory file lock with timeout and owner tracking. "
             "Gap H5: race condition in shared-workspace read/modify/write — multiple agent sessions "
             "can corrupt shared resources. Actions: acquire / release / status."
         ),
         "category": "acp",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_workspace_lock,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

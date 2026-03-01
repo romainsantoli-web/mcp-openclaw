@@ -902,6 +902,7 @@ async def openclaw_group_policy_default_check(config_path: str | None = None) ->
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_secrets_lifecycle_check",
+        "title": "Secrets Lifecycle Check",
         "description": (
             "C7 — Vérifie le lifecycle complet du workflow External Secrets "
             "(audit/configure/apply/reload). Détecte les inline credentials, "
@@ -917,9 +918,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_secrets_lifecycle_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_channel_auth_canon_check",
+        "title": "Channel Auth Path Check",
         "description": (
             "C8 — Vérifie la canonicalisation des chemins auth pour les channel plugins. "
             "Détecte les encoded dot-segment traversal (%2e%2e) qui peuvent "
@@ -935,9 +949,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_channel_auth_canon_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_exec_approval_freeze_check",
+        "title": "Exec Plan Freeze Check",
         "description": (
             "C9 — Vérifie l'immutabilité des plans d'exécution (argv/cwd/agentId/sessionKey). "
             "Détecte les shell-wrapper allow-always patterns et les configs "
@@ -953,9 +980,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_exec_approval_freeze_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_hook_session_routing_check",
+        "title": "Hook Session Routing Check",
         "description": (
             "H12 — Vérifie le durcissement du routing session-key pour les hooks. "
             "Détecte allowRequestSessionKey sans prefix gates et les hooks "
@@ -971,9 +1011,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_hook_session_routing_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_config_include_check",
+        "title": "Config Include Guards",
         "description": (
             "H13 — Vérifie les guardrails $include dans la config. "
             "Détecte les hardlinks, les fichiers oversized, et les targets "
@@ -989,9 +1042,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_config_include_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_config_prototype_check",
+        "title": "Prototype Pollution Check",
         "description": (
             "H14 — Détecte les clés de prototype pollution (__proto__, constructor, "
             "prototype) dans openclaw.json. Bloquées dans config merge/patch "
@@ -1007,9 +1073,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_config_prototype_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_safe_bins_profile_check",
+        "title": "SafeBins Profile Check",
         "description": (
             "H15 — Vérifie que les safeBins ont des profils explicites dans "
             "safeBinProfiles. Détecte les interpréteurs sans restriction. "
@@ -1025,9 +1104,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_safe_bins_profile_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_group_policy_default_check",
+        "title": "Group Policy Default Check",
         "description": (
             "H16 — Vérifie que le group policy par défaut est fail-closed (allowlist). "
             "Détecte les canaux sans groupPolicy explicite. (Fix 2026.2.22)"
@@ -1042,5 +1134,17 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_group_policy_default_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
 ]

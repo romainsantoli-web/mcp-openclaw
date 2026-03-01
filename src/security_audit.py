@@ -488,6 +488,7 @@ async def openclaw_rate_limit_check(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_security_scan",
+        "title": "Security Source Scan",
         "description": (
             "Scans source files for SQL injection patterns and dangerous query constructs. "
             "Specifically targets the /api/metrics/database vulnerability (openclaw issue #29951). "
@@ -495,7 +496,31 @@ TOOLS: list[dict[str, Any]] = [
             "and ready-to-apply remediation snippets."
         ),
         "category": "security",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_security_scan,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -520,13 +545,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_sandbox_audit",
+        "title": "Sandbox Mode Audit",
         "description": (
             "Audits the OpenClaw config for sandbox.mode setting. "
             "CRITICAL gap C2: sandbox defaults to 'off', giving any agent session full host shell access. "
             "A prompt injection → RCE with mode:off. Returns: severity, current mode, fix snippet."
         ),
         "category": "security",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_sandbox_audit,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -540,6 +590,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_session_config_check",
+        "title": "Session Config Check",
         "description": (
             "Checks if the express-session secret is configured as a persistent env var. "
             "Gap C3: OpenClaw regenerates the session secret on every container restart, "
@@ -547,7 +598,31 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: severity, secret found?, Docker and .env fix snippets."
         ),
         "category": "security",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_session_config_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -565,13 +640,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_rate_limit_check",
+        "title": "Rate Limit Check",
         "description": (
             "Checks if a rate limiter is configured in front of the OpenClaw Gateway. "
             "Gap H8: no rate limiting means Tailscale Funnel exposure creates amplification risk. "
             "Returns: funnel status, rate limiter detected?, Nginx/Caddy fix snippets."
         ),
         "category": "security",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_rate_limit_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {

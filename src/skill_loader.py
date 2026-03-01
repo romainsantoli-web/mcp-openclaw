@@ -237,13 +237,18 @@ def _extract_metadata(skill_file: Path, dir_name: str) -> dict[str, Any]:
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_skill_lazy_loader",
+        "title": "Lazy Skill Loader",
         "description": (
             "Lazy-loads SKILL.md metadata (YAML front-matter) without parsing full content. "
             "Caches for 5 minutes. Supports per-skill or bulk loading. "
             "Gap T7/issue #26301: reduces startup time for large skill catalogs."
         ),
         "category": "performance",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_skill_lazy_loader,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -266,13 +271,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_skill_search",
+        "title": "Skill Keyword Search",
         "description": (
             "Search skills by keyword/tags across all SKILL.md files. "
             "Returns relevance-ranked results with metadata. "
             "Uses the lazy loader cache for performance."
         ),
         "category": "performance",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_skill_search,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

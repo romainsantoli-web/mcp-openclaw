@@ -711,6 +711,7 @@ async def openclaw_dm_allowlist_check(config_path: str | None = None) -> dict[st
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_node_version_check",
+        "title": "Node.js Version Check",
         "description": (
             "C5 — Vérifie que Node.js ≥ 22.12.0 est installé "
             "(CVE-2025-59466 async_hooks DoS + CVE-2026-21636 Permission model bypass). "
@@ -726,9 +727,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_node_version_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_secrets_workflow_check",
+        "title": "Hardcoded Secrets Check",
         "description": (
             "C6 — Détecte les secrets hardcodés dans openclaw.json "
             "(tokens, API keys, passwords). Guide la migration vers "
@@ -744,9 +758,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_secrets_workflow_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_http_headers_check",
+        "title": "HTTP Security Headers Check",
         "description": (
             "H9 — Vérifie la présence des HTTP security headers dans la config gateway "
             "(HSTS, X-Content-Type-Options, Referrer-Policy). "
@@ -762,9 +789,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_http_headers_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_nodes_commands_check",
+        "title": "Dangerous Commands Check",
         "description": (
             "H10 — Détecte les overrides dangereux de gateway.nodes.allowCommands. "
             "Remplace le finding `gateway.nodes.allow_commands_dangerous` "
@@ -780,9 +820,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_nodes_commands_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_trusted_proxy_check",
+        "title": "Trusted Proxy Check",
         "description": (
             "H11 — Vérifie la cohérence de la config trusted-proxy "
             "(auth.mode, bind, trustedProxies, real_ip_fallback_enabled). "
@@ -798,9 +851,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_trusted_proxy_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_session_disk_budget_check",
+        "title": "Session Disk Budget Check",
         "description": (
             "M15 — Vérifie que session.maintenance.maxDiskBytes et highWaterBytes "
             "sont configurés pour éviter la croissance illimitée des transcripts. "
@@ -816,9 +882,22 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_session_disk_budget_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
     {
         "name": "openclaw_dm_allowlist_check",
+        "title": "DM Allowlist Policy Check",
         "description": (
             "M16 — Vérifie que dmPolicy=allowlist avec allowFrom vide est détecté "
             "(fail-closed non appliqué). Vérifie tous les canaux : telegram, whatsapp, "
@@ -834,5 +913,17 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
         "handler": openclaw_dm_allowlist_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
     },
 ]

@@ -451,13 +451,18 @@ async def firm_adr_generate(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_gateway_probe",
+        "title": "Gateway Connectivity Probe",
         "description": (
             "Tests Gateway WebSocket connectivity with exponential backoff reconnection. "
             "Gaps H6+H7: Gateway unreachable after macOS sleep/wake, LaunchAgent WS 1006 closure. "
             "Returns: connection status, latency, close code, exact launchctl restart command."
         ),
         "category": "reliability",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_gateway_probe,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -484,13 +489,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_doc_sync_check",
+        "title": "Doc Version Sync Check",
         "description": (
             "Compares dependency versions in package.json against versions referenced in markdown docs. "
             "Gap M5: docs.acp.md says ACP SDK '0.13.x' but package.json has '0.14.1'. "
             "Returns: desynced dependencies, severity (HIGH for ACP SDK/Carbon), update instructions."
         ),
         "category": "reliability",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_doc_sync_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -509,13 +519,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_channel_audit",
+        "title": "Channel SDK Audit",
         "description": (
             "Detects channel SDK packages present in package.json but absent from README (zombie dependencies). "
             "Gap M1: @line/bot-sdk is in deps but LINE has zero documentation — a maintenance liability "
             "for 75M+ users in JP/TH. Returns: zombie deps, channel coverage matrix."
         ),
         "category": "reliability",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_channel_audit,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -533,6 +548,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "firm_adr_generate",
+        "title": "Generate ADR Document",
         "description": (
             "Generates a structured Architecture Decision Record (ADR) in MADR format. "
             "Gap M6: no ADRs exist for major OpenClaw architectural choices "
@@ -540,7 +556,11 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: ADR markdown, suggested commit path and git command."
         ),
         "category": "reliability",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": firm_adr_generate,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

@@ -643,6 +643,7 @@ async def firm_export_auto(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "firm_export_auto",
+        "title": "Auto-Route Export",
         "description": (
             "Auto-route firm workflow output to the correct export target "
             "(GitHub PR, Jira, Linear, Slack, or local document) based on delivery_format. "
@@ -669,10 +670,13 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["delivery_format", "content", "objective"],
         },
         "handler": firm_export_auto,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
     },
     {
         "name": "firm_export_github_pr",
+        "title": "Export to GitHub PR",
         "description": "Create a GitHub draft PR from firm workflow output. Always adds needs-review + ai-generated labels. Never auto-merges.",
         "inputSchema": {
             "type": "object",
@@ -691,10 +695,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["repo", "content", "objective"],
         },
         "handler": firm_export_github_pr,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_export_jira_ticket",
+        "title": "Export to Jira Ticket",
         "description": "Create a Jira issue from firm workflow output.",
         "inputSchema": {
             "type": "object",
@@ -711,10 +720,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["project_key", "content", "objective"],
         },
         "handler": firm_export_jira_ticket,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_export_linear_issue",
+        "title": "Export to Linear Issue",
         "description": "Create a Linear issue from firm workflow output.",
         "inputSchema": {
             "type": "object",
@@ -728,10 +742,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["team_id", "content", "objective"],
         },
         "handler": firm_export_linear_issue,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_export_slack_digest",
+        "title": "Export to Slack Digest",
         "description": "Post a formatted firm delivery digest to Slack via webhook.",
         "inputSchema": {
             "type": "object",
@@ -745,10 +764,15 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["content", "objective"],
         },
         "handler": firm_export_slack_digest,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
     {
         "name": "firm_export_document",
+        "title": "Export to Document",
         "description": "Write firm workflow output to a local Markdown document.",
         "inputSchema": {
             "type": "object",
@@ -766,6 +790,10 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["content", "objective"],
         },
         "handler": firm_export_document,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "category": "export",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
     },
 ]

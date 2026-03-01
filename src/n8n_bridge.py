@@ -350,13 +350,18 @@ async def openclaw_n8n_workflow_import(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_n8n_workflow_export",
+        "title": "Export to n8n Workflow",
         "description": (
             "Export an OpenClaw agent pipeline as an n8n-compatible workflow JSON. "
             "Converts pipeline steps (name, type, parameters, depends_on) to n8n format "
             "with proper node layout and connections. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_n8n_workflow_export,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -379,13 +384,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_n8n_workflow_import",
+        "title": "Import n8n Workflow",
         "description": (
             "Validate and import an n8n workflow JSON file. Checks structure (nodes, "
             "connections, required fields), detects credential references, and optionally "
             "copies to workspace. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_n8n_workflow_import,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

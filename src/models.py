@@ -1052,6 +1052,119 @@ class TokenBudgetOptimizerInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# spec_compliance models (S4, S5, S6, H3, H5, H6, H7)
+# ════════════════════════════════════════════════════════════
+
+class ElicitationAuditInput(BaseModel):
+    """MCP elicitation capability audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class TasksAuditInput(BaseModel):
+    """MCP Tasks (durable requests) audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class ResourcesPromptsAuditInput(BaseModel):
+    """MCP Resources & Prompts capability audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class AudioContentAuditInput(BaseModel):
+    """MCP audio content support audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class JsonSchemaDialectCheckInput(BaseModel):
+    """JSON Schema 2020-12 dialect compliance check."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class SseTransportAuditInput(BaseModel):
+    """SSE / Streamable HTTP transport compliance audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class IconMetadataAuditInput(BaseModel):
+    """Icon metadata support audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+# ════════════════════════════════════════════════════════════
+# prompt_security models (H2)
+# ════════════════════════════════════════════════════════════
+
+class PromptInjectionCheckInput(BaseModel):
+    """Prompt injection detection scan."""
+    text: str = Field(..., min_length=1, max_length=100000)
+    context: str = Field(default="user_input", max_length=256)
+
+
+class PromptInjectionBatchInput(BaseModel):
+    """Batch prompt injection scan."""
+    items: list[dict[str, str]] = Field(..., min_length=1, max_length=100)
+
+
+# ════════════════════════════════════════════════════════════
+# auth_compliance models (H4)
+# ════════════════════════════════════════════════════════════
+
+class OAuthOidcAuditInput(BaseModel):
+    """OAuth/OIDC compliance audit."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+class TokenScopeCheckInput(BaseModel):
+    """Token scope enforcement check."""
+    config_path: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("config_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "config_path")
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -1173,4 +1286,18 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_provenance_tracker":               ProvenanceTrackerInput,
     "openclaw_cost_analytics":                   CostAnalyticsInput,
     "openclaw_token_budget_optimizer":           TokenBudgetOptimizerInput,
+    # spec_compliance (S4, S5, S6, H3, H5, H6, H7)
+    "openclaw_elicitation_audit":                ElicitationAuditInput,
+    "openclaw_tasks_audit":                      TasksAuditInput,
+    "openclaw_resources_prompts_audit":           ResourcesPromptsAuditInput,
+    "openclaw_audio_content_audit":              AudioContentAuditInput,
+    "openclaw_json_schema_dialect_check":        JsonSchemaDialectCheckInput,
+    "openclaw_sse_transport_audit":              SseTransportAuditInput,
+    "openclaw_icon_metadata_audit":              IconMetadataAuditInput,
+    # prompt_security (H2)
+    "openclaw_prompt_injection_check":           PromptInjectionCheckInput,
+    "openclaw_prompt_injection_batch":           PromptInjectionBatchInput,
+    # auth_compliance (H4)
+    "openclaw_oauth_oidc_audit":                 OAuthOidcAuditInput,
+    "openclaw_token_scope_check":                TokenScopeCheckInput,
 }

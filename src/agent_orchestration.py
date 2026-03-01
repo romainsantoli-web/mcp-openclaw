@@ -315,13 +315,18 @@ async def openclaw_agent_team_status(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_agent_team_orchestrate",
+        "title": "Orchestrate Agent Team",
         "description": (
             "Execute a task DAG across the agent fleet with parallel layer execution, "
             "dependency resolution (topological sort), and configurable result aggregation "
             "(collect/vote/first_success). Gap T4/issue #10010: multi-agent coordination."
         ),
         "category": "orchestration",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_agent_team_orchestrate,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -360,12 +365,17 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_agent_team_status",
+        "title": "Agent Team Status",
         "description": (
             "Check status of running or completed fleet orchestrations. "
             "Returns task progress, layer execution state, elapsed time."
         ),
         "category": "orchestration",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_agent_team_status,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {

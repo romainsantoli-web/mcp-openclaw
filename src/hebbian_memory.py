@@ -1227,13 +1227,18 @@ async def openclaw_hebbian_drift_check(
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "openclaw_hebbian_harvest",
+        "title": "Hebbian Session Harvest",
         "description": (
             "Ingest JSONL session logs into the local Hebbian SQLite database. "
             "PII/secrets are stripped before storage (CDC §5.2). "
             "Supports session summary, tags, quality score, rule activations."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_hebbian_harvest,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1259,13 +1264,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_weight_update",
+        "title": "Hebbian Weight Update",
         "description": (
             "Compute or apply Hebbian weight updates on Layer 2 rules in Claude.md. "
             "Uses the formula: new = old + (lr × activation) - (decay × (1-activation)). "
             "Default dry_run=True (simulation only). CDC §4.3 + §4.4."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_hebbian_weight_update,
+        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1295,13 +1305,18 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_analyze",
+        "title": "Hebbian Co-Activation Analysis",
         "description": (
             "Analyze co-activation patterns from harvested sessions. "
             "Uses Jaccard similarity for tag co-occurrence and rule co-activation. "
             "Returns top pattern candidates. CDC §4.3 clustering."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_hebbian_analyze,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1323,12 +1338,17 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_status",
+        "title": "Hebbian Memory Dashboard",
         "description": (
             "Dashboard: total sessions, Layer 2 rule weights, atrophy/promotion candidates, "
             "last harvest timestamp, weight update history. CDC §7 monitoring."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_hebbian_status,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1346,13 +1366,38 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_layer_validate",
+        "title": "Hebbian Layer Validation",
         "description": (
             "Validate the 4-layer structure of a Hebbian-augmented Claude.md: "
             "CORE (L1), CONSOLIDATED PATTERNS (L2), EPISODIC INDEX (L3), META (L4). "
             "Checks weight syntax, PII presence, layer completeness. CDC §3.3."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_hebbian_layer_validate,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1366,12 +1411,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_pii_check",
+        "title": "Hebbian PII Stripping Check",
         "description": (
             "Audit PII stripping configuration: regex patterns (email, phone, IP, API keys), "
             "secret detection, embedding rotation policy, access restriction. CDC §5.2."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_hebbian_pii_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1389,12 +1459,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_decay_config_check",
+        "title": "Hebbian Decay Config Check",
         "description": (
             "Validate Hebbian parameters: learning_rate, decay, poids_min/max, "
             "consolidation thresholds (episodic→emergent, emergent→strong). CDC §4.3."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_hebbian_decay_config_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1412,12 +1507,37 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "openclaw_hebbian_drift_check",
+        "title": "Hebbian Semantic Drift Check",
         "description": (
             "Detect Claude.md semantic drift vs a baseline using TF-IDF cosine similarity. "
             "Alerts if similarity drops below threshold (default 0.7). CDC §5.1 anti-dérive."
         ),
         "category": "hebbian_memory",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "handler": openclaw_hebbian_drift_check,
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
         "inputSchema": {
             "type": "object",
             "properties": {

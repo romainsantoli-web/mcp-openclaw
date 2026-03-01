@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 113  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 6 a2a_bridge + 8 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance + 6 compliance_medium
+EXPECTED_TOOLS = 115  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 8 a2a_bridge + 8 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance + 6 compliance_medium
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

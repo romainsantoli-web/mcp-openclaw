@@ -860,17 +860,21 @@ class BrowserContextCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
-# a2a_bridge — 6 tools (G1-G6)
+# a2a_bridge — 8 tools (G1-G8)
 # ════════════════════════════════════════════════════════════
 
 class A2aCardGenerateInput(BaseModel):
-    """Generate an A2A Agent Card from a SOUL.md file."""
+    """Generate an A2A Agent Card from a SOUL.md file (RC v1.0)."""
     soul_path: Annotated[str, Field(min_length=1, max_length=4096)]
     base_url: Annotated[str, Field(min_length=7, max_length=2048)]
     output_path: str | None = Field(default=None, max_length=4096)
     capabilities: dict[str, bool] | None = None
     security_schemes: dict[str, Any] | None = None
     extensions: list[dict[str, Any]] | None = None
+    sign: bool = False
+    signing_key: str | None = Field(default=None, max_length=512)
+    default_input_modes: list[str] | None = None
+    default_output_modes: list[str] | None = None
 
     @field_validator("soul_path")
     @classmethod
@@ -923,6 +927,17 @@ class A2aPushConfigInput(BaseModel):
     webhook_url: str | None = Field(default=None, max_length=2048)
     auth_token: str | None = Field(default=None, max_length=512)
     config_id: str | None = Field(default=None, max_length=128)
+
+
+class A2aCancelTaskInput(BaseModel):
+    """Cancel a running A2A task (RC v1.0 CancelTask)."""
+    task_id: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class A2aSubscribeTaskInput(BaseModel):
+    """Subscribe to A2A task updates via SSE (RC v1.0 SubscribeToTask)."""
+    task_id: Annotated[str, Field(min_length=1, max_length=256)]
+    callback_url: str | None = Field(default=None, max_length=2048)
 
 
 class A2aDiscoveryInput(BaseModel):
@@ -1296,11 +1311,13 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_n8n_workflow_import":              N8nWorkflowImportInput,
     # browser_audit (T10)
     "openclaw_browser_context_check":            BrowserContextCheckInput,
-    # a2a_bridge (G1-G6)
+    # a2a_bridge (G1-G8)
     "openclaw_a2a_card_generate":                A2aCardGenerateInput,
     "openclaw_a2a_card_validate":                A2aCardValidateInput,
     "openclaw_a2a_task_send":                    A2aTaskSendInput,
     "openclaw_a2a_task_status":                  A2aTaskStatusInput,
+    "openclaw_a2a_cancel_task":                  A2aCancelTaskInput,
+    "openclaw_a2a_subscribe_task":               A2aSubscribeTaskInput,
     "openclaw_a2a_push_config":                  A2aPushConfigInput,
     "openclaw_a2a_discovery":                    A2aDiscoveryInput,
     # platform_audit (G12-G20)

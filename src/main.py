@@ -390,8 +390,8 @@ async def _handle_mcp(request: web.Request) -> web.Response:
                 "name": "mcp-openclaw-extensions",
                 "version": __version__,
                 "description": (
-                    "OpenClaw MCP extensions server — 113 tools across 22 categories: "
-                    "security audit, compliance, A2A bridge, Hebbian memory, fleet management, "
+                    "OpenClaw MCP extensions server — 115 tools across 22 categories: "
+                    "security audit, compliance, A2A bridge (RC v1.0), Hebbian memory, fleet management, "
                     "delivery export, observability, and more."
                 ),
             },

@@ -1165,6 +1165,40 @@ class TokenScopeCheckInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# compliance_medium models (M1–M6)
+# ════════════════════════════════════════════════════════════
+
+class ToolDeprecationAuditInput(ConfigPathInput):
+    """Tool deprecation lifecycle audit."""
+    pass
+
+
+class CircuitBreakerAuditInput(ConfigPathInput):
+    """Circuit breaker / resilience pattern audit."""
+    pass
+
+
+class GdprResidencyAuditInput(ConfigPathInput):
+    """GDPR and data residency compliance audit."""
+    pass
+
+
+class AgentIdentityAuditInput(ConfigPathInput):
+    """Agent identity / DID audit."""
+    pass
+
+
+class ModelRoutingAuditInput(ConfigPathInput):
+    """Multi-model routing configuration audit."""
+    pass
+
+
+class ResourceLinksAuditInput(ConfigPathInput):
+    """Resource links in tool results audit."""
+    pass
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -1300,4 +1334,11 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     # auth_compliance (H4)
     "openclaw_oauth_oidc_audit":                 OAuthOidcAuditInput,
     "openclaw_token_scope_check":                TokenScopeCheckInput,
+    # compliance_medium (M1–M6)
+    "openclaw_tool_deprecation_audit":           ToolDeprecationAuditInput,
+    "openclaw_circuit_breaker_audit":            CircuitBreakerAuditInput,
+    "openclaw_gdpr_residency_audit":             GdprResidencyAuditInput,
+    "openclaw_agent_identity_audit":             AgentIdentityAuditInput,
+    "openclaw_model_routing_audit":              ModelRoutingAuditInput,
+    "openclaw_resource_links_audit":             ResourceLinksAuditInput,
 }

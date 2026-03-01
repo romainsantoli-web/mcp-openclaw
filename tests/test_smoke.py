@@ -27,7 +27,7 @@ import pytest_asyncio
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 107  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 6 a2a_bridge + 8 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance
+EXPECTED_TOOLS = 113  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 6 a2a_bridge + 8 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance + 6 compliance_medium
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -2768,11 +2768,11 @@ class TestVersionEndpoint:
             "clientInfo": {"name": "test", "version": "0.0.1"},
         })
         version = result["result"]["serverInfo"]["version"]
-        assert version == "2.1.0"
+        assert version == "2.2.0"
 
     def test_health_returns_version(self, mcp_server):
         resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
-        assert resp.json()["version"] == "2.1.0"
+        assert resp.json()["version"] == "2.2.0"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -4557,3 +4557,241 @@ class TestAuthCompliance:
         })
         data = json.loads(result["result"]["content"][0]["text"])
         assert data["unscoped_tools"] == 2
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Compliance Medium tests (Sprint 3 — M1–M6)
+# ════════════════════════════════════════════════════════════════════════════════
+
+class TestComplianceMedium:
+    """Tests for compliance_medium.py — 6 tools (M1–M6)."""
+
+    # ── M1: Tool Deprecation ──────────────────────────────────────────────
+
+    def test_tool_deprecation_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_tool_deprecation_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert "feature" in data and data["feature"] == "tool_deprecation"
+
+    def test_tool_deprecation_with_config(self, mcp_server, tmp_path):
+        cfg = tmp_path / "depr.json"
+        cfg.write_text(json.dumps({
+            "mcp": {"tools": [
+                {"name": "old_tool", "annotations": {
+                    "deprecated": True, "sunset": "2026-06-01",
+                    "replacement": "new_tool", "deprecatedMessage": "Use new_tool"
+                }},
+                {"name": "new_tool", "annotations": {}},
+            ]}
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_tool_deprecation_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["deprecated_tool_count"] == 1
+
+    def test_tool_deprecation_circular(self, mcp_server, tmp_path):
+        cfg = tmp_path / "circ.json"
+        cfg.write_text(json.dumps({
+            "mcp": {"tools": [
+                {"name": "a", "annotations": {"deprecated": True, "sunset": "2026-01-01", "replacement": "b"}},
+                {"name": "b", "annotations": {"deprecated": True, "sunset": "2026-01-01", "replacement": "a"}},
+            ]}
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_tool_deprecation_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is False
+        assert any("Circular" in f for f in data["findings"])
+
+    def test_tool_deprecation_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_tool_deprecation_audit",
+            "arguments": {"config_path": "../etc/passwd"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text
+
+    # ── M2: Circuit Breaker ───────────────────────────────────────────────
+
+    def test_circuit_breaker_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_circuit_breaker_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["feature"] == "circuit_breaker"
+
+    def test_circuit_breaker_full(self, mcp_server, tmp_path):
+        cfg = tmp_path / "cb.json"
+        cfg.write_text(json.dumps({
+            "mcp": {"resilience": {
+                "circuitBreaker": {"failureThreshold": 5, "resetTimeoutMs": 30000},
+                "retry": {"maxRetries": 3, "backoff": 1000, "backoffType": "exponential"},
+                "timeout": 60000,
+                "fallback": {"type": "cached"},
+            }}
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_circuit_breaker_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+
+    def test_circuit_breaker_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_circuit_breaker_audit",
+            "arguments": {"config_path": "../../secret"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text
+
+    # ── M3: GDPR / Data Residency ────────────────────────────────────────
+
+    def test_gdpr_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_gdpr_residency_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["feature"] == "gdpr_residency"
+
+    def test_gdpr_compliant(self, mcp_server, tmp_path):
+        cfg = tmp_path / "gdpr.json"
+        cfg.write_text(json.dumps({
+            "mcp": {
+                "privacy": {"gdpr": {
+                    "legalBasis": "consent",
+                    "retentionDays": 365,
+                    "rightToErasure": {"endpoint": "/api/erasure"},
+                    "dpa": "https://example.com/dpa",
+                }},
+                "dataResidency": {"region": "eu"},
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_gdpr_residency_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+
+    def test_gdpr_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_gdpr_residency_audit",
+            "arguments": {"config_path": "../../../etc/shadow"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text
+
+    # ── M4: Agent Identity / DID ─────────────────────────────────────────
+
+    def test_agent_identity_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_agent_identity_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["feature"] == "agent_identity"
+
+    def test_agent_identity_valid_did(self, mcp_server, tmp_path):
+        cfg = tmp_path / "did.json"
+        cfg.write_text(json.dumps({
+            "mcp": {
+                "identity": {
+                    "did": "did:web:example.com",
+                    "verificationMethod": [{"type": "Ed25519VerificationKey2020"}],
+                    "signing": {"algorithm": "EdDSA"},
+                },
+                "agents": [
+                    {"name": "ceo", "did": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"},
+                ],
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_agent_identity_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["agents_with_did"] == 1
+
+    def test_agent_identity_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_agent_identity_audit",
+            "arguments": {"config_path": "../secret.json"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text
+
+    # ── M5: Multi-Model Routing ──────────────────────────────────────────
+
+    def test_model_routing_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_model_routing_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["feature"] == "model_routing"
+
+    def test_model_routing_multi_provider(self, mcp_server, tmp_path):
+        cfg = tmp_path / "routing.json"
+        cfg.write_text(json.dumps({
+            "mcp": {"routing": {
+                "strategy": "cost-aware",
+                "fallback": ["anthropic/claude-4", "openai/gpt-5"],
+                "budget": {"maxDailyCostUsd": 100},
+                "models": [
+                    {"id": "claude-4", "provider": "anthropic", "rateLimitRpm": 60, "capabilities": ["code"]},
+                    {"id": "gpt-5", "provider": "openai", "rateLimitRpm": 60, "capabilities": ["code"]},
+                ],
+            }}
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_model_routing_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["model_count"] == 2
+        assert len(data["providers"]) == 2
+
+    def test_model_routing_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_model_routing_audit",
+            "arguments": {"config_path": "../routing.json"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text
+
+    # ── M6: Resource Links ───────────────────────────────────────────────
+
+    def test_resource_links_no_config(self, mcp_server):
+        result = _rpc("tools/call", {"name": "openclaw_resource_links_audit", "arguments": {}})
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["feature"] == "resource_links"
+
+    def test_resource_links_full(self, mcp_server, tmp_path):
+        cfg = tmp_path / "resources.json"
+        cfg.write_text(json.dumps({
+            "mcp": {
+                "capabilities": {"resources": {"subscribe": True, "listChanged": True}},
+                "resources": {
+                    "static": [
+                        {"uri": "file:///data/readme.md", "name": "README", "mimeType": "text/markdown"},
+                    ],
+                    "templates": [
+                        {"uriTemplate": "file:///data/{id}.json", "name": "Data Item"},
+                    ],
+                },
+            }
+        }))
+        result = _rpc("tools/call", {
+            "name": "openclaw_resource_links_audit",
+            "arguments": {"config_path": str(cfg)},
+        })
+        data = json.loads(result["result"]["content"][0]["text"])
+        assert data["ok"] is True
+        assert data["resource_count"] == 1
+        assert data["template_count"] == 1
+
+    def test_resource_links_traversal(self, mcp_server):
+        result = _rpc("tools/call", {
+            "name": "openclaw_resource_links_audit",
+            "arguments": {"config_path": "../etc/resources.json"},
+        })
+        text = result["result"]["content"][0]["text"]
+        assert "Validation failed" in text

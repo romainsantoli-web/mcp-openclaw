@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP **tasks / durable requests** support (M-H3)
 - SSE **polling / resumption** (M-H6)
 - `MCP-Protocol-Version` header enforcement (M-M1)
+- **Resource links** in tool responses mapping tools to related resources (M-H5)
+- New skills: `firm-spec-compliance-pack`, `firm-prompt-security-pack` (E-M2)
 
 ### Changed
 - **BREAKING**: Version bumped to 3.0.0 — major protocol upgrades

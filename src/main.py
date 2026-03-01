@@ -244,10 +244,31 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
         "content": [{"type": "text", "text": json.dumps(result, indent=2, default=str)}],
         # M-C2: structuredContent alongside content (MCP 2025-06-18)
         "structuredContent": result if isinstance(result, dict) else {"result": result},
+        # M-H5: resource links in tool responses (MCP 2025-11-25)
+        **(_resource_links_for_tool(name) or {}),
     }
 
 
 # ── MCP Resources handlers (M-C3) ───────────────────────────────────────────
+
+# M-H5: Map tool name patterns → related resource URIs
+_TOOL_RESOURCE_LINKS: dict[str, list[dict[str, str]]] = {}
+for _tool_name in TOOL_REGISTRY:
+    _links: list[dict[str, str]] = []
+    # Config-related tools link to the config resource
+    if any(kw in _tool_name for kw in ("config", "audit", "check", "scan", "security", "compliance", "hardening", "runtime", "migration")):
+        _links.append({"uri": "openclaw://config/main", "name": "OpenClaw Configuration"})
+    # All tools link to health
+    _links.append({"uri": "openclaw://health", "name": "Server Health"})
+    _TOOL_RESOURCE_LINKS[_tool_name] = _links
+
+
+def _resource_links_for_tool(name: str) -> dict[str, Any] | None:
+    """Return resource links dict for a tool response (M-H5)."""
+    links = _TOOL_RESOURCE_LINKS.get(name)
+    if links:
+        return {"_meta": {"resourceLinks": links}}
+    return None
 
 async def _read_resource(uri: str) -> dict[str, Any]:
     """Read a resource by URI."""
@@ -327,6 +348,25 @@ async def _get_prompt(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 # ── Request router ───────────────────────────────────────────────────────────
 
+# M-H2: Pending elicitation requests
+_PENDING_ELICITATIONS: dict[str, dict[str, Any]] = {}
+
+# M-H3: Durable task store
+_MCP_TASKS: dict[str, dict[str, Any]] = {}
+
+
+async def _run_durable_task(task_id: str, tool_name: str, arguments: dict[str, Any]) -> None:
+    """Execute a tool as a durable/long-running task (M-H3)."""
+    try:
+        result = await _mcp_call_tool(tool_name, arguments)
+        _MCP_TASKS[task_id]["result"] = result
+        _MCP_TASKS[task_id]["status"] = "completed"
+        _MCP_TASKS[task_id]["completed_at"] = time.time()
+    except Exception as exc:
+        _MCP_TASKS[task_id]["status"] = "failed"
+        _MCP_TASKS[task_id]["error"] = str(exc)
+        _MCP_TASKS[task_id]["completed_at"] = time.time()
+
 
 def _check_auth(request: web.Request) -> web.Response | None:
     """Verify Bearer token if MCP_AUTH_TOKEN is set. Returns error response or None."""
@@ -366,12 +406,16 @@ async def _handle_mcp(request: web.Request) -> web.Response:
     msg_id = body.get("id")
     params: dict[str, Any] = body.get("params", {})
 
+    # M-M1: Protocol-Version header (MCP 2025-11-25)
+    _MCP_HEADERS = {"MCP-Protocol-Version": "2025-11-25"}
+
     async def respond(result: Any) -> web.Response:
-        return web.json_response({"jsonrpc": "2.0", "id": msg_id, "result": result})
+        return web.json_response({"jsonrpc": "2.0", "id": msg_id, "result": result}, headers=_MCP_HEADERS)
 
     async def error(code: int, message: str) -> web.Response:
         return web.json_response(
-            {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
+            {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}},
+            headers=_MCP_HEADERS,
         )
 
     # ── MCP methods ──────────────────────────────────────────────────────────
@@ -385,6 +429,7 @@ async def _handle_mcp(request: web.Request) -> web.Response:
                 "tools": {"listChanged": True},
                 "resources": {"subscribe": False, "listChanged": False},
                 "prompts": {"listChanged": False},
+                "elicitation": {},  # M-H2
             },
             "serverInfo": {
                 "name": "mcp-openclaw-extensions",
@@ -425,6 +470,53 @@ async def _handle_mcp(request: web.Request) -> web.Response:
         result = await _get_prompt(prompt_name, prompt_args)
         return await respond(result)
 
+    # ── M-H2: Elicitation — request user input during tool execution ────────
+    elif method == "elicitation/create":
+        # Server-side: accept elicitation requests from tools, store pending
+        elicit_id = f"elicit-{int(time.time()*1000)}"
+        _PENDING_ELICITATIONS[elicit_id] = {
+            "id": elicit_id,
+            "message": params.get("message", ""),
+            "requestedSchema": params.get("requestedSchema", {}),
+            "status": "pending",
+            "created_at": time.time(),
+        }
+        return await respond({"id": elicit_id, "action": "accept", "content": {}})
+
+    # ── M-H3: Tasks / durable requests — long-running operations ────────────
+    elif method == "tasks/create":
+        task_id = f"task-{int(time.time()*1000)}"
+        tool_name = params.get("toolName", "")
+        arguments = params.get("arguments", {})
+        _MCP_TASKS[task_id] = {
+            "id": task_id,
+            "toolName": tool_name,
+            "status": "running",
+            "created_at": time.time(),
+            "result": None,
+        }
+        # Run tool in background
+        asyncio.create_task(_run_durable_task(task_id, tool_name, arguments))
+        return await respond({"taskId": task_id, "status": "running"})
+
+    elif method == "tasks/get":
+        task_id = params.get("taskId", "")
+        task = _MCP_TASKS.get(task_id)
+        if not task:
+            return await error(-32602, f"Task not found: {task_id}")
+        return await respond(task)
+
+    elif method == "tasks/list":
+        return await respond({"tasks": list(_MCP_TASKS.values())})
+
+    elif method == "tasks/cancel":
+        task_id = params.get("taskId", "")
+        task = _MCP_TASKS.get(task_id)
+        if not task:
+            return await error(-32602, f"Task not found: {task_id}")
+        task["status"] = "cancelled"
+        return await respond({"taskId": task_id, "status": "cancelled"})
+
     elif method == "ping":
         return await respond({"pong": True, "ts": time.time()})
 
@@ -448,9 +540,53 @@ async def _handle_health(request: web.Request) -> web.Response:
 
 # ── Server lifecycle ──────────────────────────────────────────────────────────
 
+# M-H6: SSE event queue for streaming
+_SSE_EVENTS: list[dict[str, Any]] = []
+
+
+async def _handle_sse(request: web.Request) -> web.StreamResponse:
+    """SSE endpoint for MCP event streaming (M-H6)."""
+    auth_error = _check_auth(request)
+    if auth_error is not None:
+        return auth_error
+
+    response = web.StreamResponse(
+        status=200,
+        reason="OK",
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "MCP-Protocol-Version": "2025-11-25",
+        },
+    )
+    await response.prepare(request)
+
+    # Send current task statuses as initial events
+    for task in _MCP_TASKS.values():
+        event_data = json.dumps({"type": "task/status", "task": task})
+        await response.write(f"data: {event_data}\n\n".encode())
+
+    # Keep-alive ping every 15s until client disconnects
+    last_event_idx = len(_SSE_EVENTS)
+    try:
+        while True:
+            # Send any new events
+            while last_event_idx < len(_SSE_EVENTS):
+                event = _SSE_EVENTS[last_event_idx]
+                await response.write(f"data: {json.dumps(event)}\n\n".encode())
+                last_event_idx += 1
+            # Ping
+            await response.write(f": ping {time.time()}\n\n".encode())
+            await asyncio.sleep(15)
+    except (ConnectionResetError, asyncio.CancelledError):
+        pass
+    return response
+
 async def _build_app() -> web.Application:
     app = web.Application(client_max_size=2 * 1024 * 1024)  # 2 MB request limit
     app.router.add_post("/mcp", _handle_mcp)
+    app.router.add_get("/mcp/sse", _handle_sse)  # M-H6: SSE streaming
     app.router.add_get("/health", _handle_health)
     app.router.add_get("/healthz", _handle_health)
     return app

@@ -401,6 +401,25 @@ async def openclaw_nodes_commands_check(config_path: str | None = None) -> dict[
             ),
         })
 
+        # Check 2026.3.1 BREAKING: system.run now pins to canonical path (realpath)
+        # Entries using token-form (e.g. 'tr') must now use canonical paths (e.g. '/usr/bin/tr')
+        if isinstance(allow_commands, list):
+            non_canonical = [cmd for cmd in allow_commands
+                            if isinstance(cmd, str) and not cmd.startswith("/")]
+            if non_canonical:
+                findings.append({
+                    "id": "allow_commands_non_canonical_path",
+                    "severity": "CRITICAL",
+                    "message": (
+                        f"BREAKING 2026.3.1: gateway.nodes.allowCommands contains "
+                        f"non-canonical (token-form) entries: {non_canonical!r}. "
+                        "Node system.run now pins commands to canonical executable "
+                        "paths (realpath). Replace token-form commands with their "
+                        "canonical paths (e.g. 'tr' → '/usr/bin/tr'). "
+                        "Both allowlist and approval flows use canonical paths now."
+                    ),
+                })
+
     # Check for ineffective denyCommands (audit finding added 2026.2.13)
     if deny_commands:
         findings.append({
@@ -681,6 +700,35 @@ async def openclaw_dm_allowlist_check(config_path: str | None = None) -> dict[st
                     "with explicit allowFrom. (Security 2026.1.8 DM lockdown)"
                 ),
             })
+
+    # Check 2026.3.1: requireTopic for Telegram DMs
+    tg_cfg = channels_config.get("telegram", {})
+    if isinstance(tg_cfg, dict):
+        tg_direct = tg_cfg.get("direct", {})
+        if isinstance(tg_direct, dict):
+            require_topic = tg_direct.get("requireTopic", None)
+            if require_topic is None:
+                findings.append({
+                    "id": "telegram_require_topic_missing",
+                    "severity": "HIGH",
+                    "message": (
+                        "channels.telegram.direct.requireTopic not set. "
+                        "2026.3.1 added requireTopic to enforce topic threads in Telegram DMs. "
+                        "Without it, messages may be sent outside topic threads, bypassing "
+                        "audit trails. Set requireTopic: true for production."
+                    ),
+                })
+            topic_allowlist = tg_direct.get("topicAllowlist", [])
+            if require_topic and not topic_allowlist:
+                findings.append({
+                    "id": "telegram_topic_allowlist_empty",
+                    "severity": "MEDIUM",
+                    "message": (
+                        "channels.telegram.direct.requireTopic=true but topicAllowlist is empty. "
+                        "All topics are accepted — consider restricting to known topic IDs "
+                        "for tighter DM scoping. (New in 2026.3.1)"
+                    ),
+                })
 
     # Also check top-level defaults
     defaults_dm = _get_nested(config, "channels", "defaults", "dmPolicy")

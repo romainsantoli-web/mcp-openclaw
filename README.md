@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (136)
+## Tools (138)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -34,6 +34,7 @@
 | acp_bridge | `fleet_session_inject_env` | Inject env vars to spawned sessions (allowlist) | H3 |
 | acp_bridge | `fleet_cron_schedule` | Schedule cron with sandbox enforcement | H4 |
 | acp_bridge | `openclaw_workspace_lock` | Advisory file lock with owner tracking (`fcntl`) | H5 |
+| acp_bridge | `openclaw_acpx_version_check` | ACPX plugin version pin (≥0.1.15) + streaming mode check | 3.1 |
 | reliability_probe | `openclaw_gateway_probe` | WS probe with backoff — detects close 1006, returns `launchctl` | H6/H7 |
 | reliability_probe | `openclaw_doc_sync_check` | Detect version drift in docs vs package.json | M5 |
 | reliability_probe | `openclaw_channel_audit` | Detect zombie channel SDK deps (LINE, Baileys…) | M1 |
@@ -99,6 +100,7 @@
 | platform_audit | `openclaw_plugin_sdk_check` | Plugin SDK integrity validation | G14 |
 | platform_audit | `openclaw_content_boundary_check` | Content boundary & anti-prompt-injection audit | G15 |
 | platform_audit | `openclaw_sqlite_vec_check` | SQLite-vec memory backend validation | G16 |
+| platform_audit | `openclaw_adaptive_thinking_check` | Claude 4.6 adaptive thinking configuration check | 3.1 |
 | ecosystem_audit | `openclaw_mcp_firewall_check` | MCP Gateway firewall policy audit | G17 |
 | ecosystem_audit | `openclaw_rag_pipeline_check` | RAG pipeline health & config audit | G18 |
 | ecosystem_audit | `openclaw_sandbox_exec_check` | Sandbox execution isolation audit | G19 |

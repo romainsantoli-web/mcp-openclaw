@@ -429,6 +429,26 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
             ),
         })
 
+    # Check 5 (2026.3.1 BREAKING): Node exec approval payloads require systemRunPlan
+    # host=node approval requests without that plan are now rejected.
+    node_exec = _get_nested(config, "tools", "exec", default={})
+    node_host = node_exec.get("host", "sandbox") if isinstance(node_exec, dict) else "sandbox"
+    if node_host == "node":
+        # When host=node, systemRunPlan must be present in approval flow
+        approvals_cfg = _get_nested(config, "tools", "exec", "approvalsMode", default="auto")
+        if approvals_cfg not in ("never", False):
+            findings.append({
+                "id": "system_run_plan_required",
+                "severity": "CRITICAL",
+                "message": (
+                    "tools.exec.host='node' with approval mode active. "
+                    "BREAKING in 2026.3.1: Node exec approval payloads now require "
+                    "'systemRunPlan'. Payloads without it are REJECTED. "
+                    "Ensure your approval hooks/integrations include systemRunPlan "
+                    "in approval request payloads. Update to OpenClaw ≥2026.3.1."
+                ),
+            })
+
     return {
         "status": "critical" if any(f["severity"] == "CRITICAL" for f in findings)
                   else "high" if any(f["severity"] == "HIGH" for f in findings)

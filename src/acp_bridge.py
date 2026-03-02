@@ -514,6 +514,133 @@ async def openclaw_workspace_lock(
     }
 
 
+# ── ACPX version pin check (2026.3.1) ─────────────────────────────────────────
+
+_ACPX_MIN_VERSION = "0.1.15"
+_ACPX_RECOMMENDED_STREAMING = "final_only"
+
+
+async def openclaw_acpx_version_check(
+    config_path: str | None = None,
+) -> dict[str, Any]:
+    """
+    Checks that the ACPX plugin is pinned to >= 0.1.15 and uses final_only streaming.
+
+    2026.3.1 broke ACPX < 0.1.15 due to the new task streaming protocol.
+    The `final_only` streaming mode is required to avoid partial task results.
+
+    Args:
+        config_path: Path to openclaw.json (default: ~/.openclaw/openclaw.json).
+
+    Returns:
+        {ok, severity, findings, config_path}
+    """
+    from src.config_helpers import load_config as _load_config_fn, no_path_traversal
+
+    if config_path:
+        no_path_traversal(config_path)
+
+    resolved = config_path or os.path.expanduser("~/.openclaw/openclaw.json")
+    p = Path(resolved)
+    if not p.exists():
+        return {
+            "ok": True, "severity": "INFO",
+            "findings": [{"id": "config_not_found", "severity": "INFO",
+                          "message": f"Config not found at {resolved}"}],
+            "finding_count": 0, "config_path": resolved,
+        }
+
+    try:
+        config = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"ok": False, "severity": "CRITICAL",
+                "findings": [{"id": "config_parse_error", "severity": "CRITICAL",
+                              "message": str(exc)}],
+                "finding_count": 1, "config_path": resolved}
+
+    findings: list[dict[str, Any]] = []
+
+    # Check plugins section for ACPX
+    plugins = config.get("plugins", {})
+    acpx_cfg = plugins.get("acpx", plugins.get("@openclaw/acpx", {}))
+
+    if not acpx_cfg:
+        findings.append({
+            "id": "acpx_not_configured",
+            "severity": "INFO",
+            "message": "ACPX plugin not found in config — skipping version check.",
+        })
+    else:
+        # Check version pin
+        version = acpx_cfg.get("version", "")
+        if version:
+            # Parse version: strip leading v/^/~
+            clean = re.sub(r"^[v^~>=<]+", "", version).strip()
+            parts = clean.split(".")
+            try:
+                major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0
+                version_tuple = (major, minor, patch)
+                min_parts = _ACPX_MIN_VERSION.split(".")
+                min_tuple = (int(min_parts[0]), int(min_parts[1]), int(min_parts[2]))
+                if version_tuple < min_tuple:
+                    findings.append({
+                        "id": "acpx_version_too_old",
+                        "severity": "CRITICAL",
+                        "message": (
+                            f"ACPX pinned to {version} but 2026.3.1 requires >= {_ACPX_MIN_VERSION}. "
+                            "Older versions break under the new task streaming protocol. "
+                            f"Update to: plugins.acpx.version: '{_ACPX_MIN_VERSION}'"
+                        ),
+                    })
+            except (ValueError, IndexError):
+                findings.append({
+                    "id": "acpx_version_unparseable",
+                    "severity": "MEDIUM",
+                    "message": f"Cannot parse ACPX version '{version}'. Pin to >= {_ACPX_MIN_VERSION}.",
+                })
+        else:
+            findings.append({
+                "id": "acpx_version_unpinned",
+                "severity": "HIGH",
+                "message": (
+                    "ACPX plugin has no version pin. 2026.3.1 requires >= 0.1.15 "
+                    f"for the new task streaming protocol. Pin to: '{_ACPX_MIN_VERSION}'"
+                ),
+            })
+
+        # Check streaming mode
+        streaming = acpx_cfg.get("streaming", {}).get("mode", "")
+        if streaming != _ACPX_RECOMMENDED_STREAMING:
+            findings.append({
+                "id": "acpx_streaming_not_final_only",
+                "severity": "HIGH" if streaming else "MEDIUM",
+                "message": (
+                    f"ACPX streaming mode is '{streaming or 'unset'}' — "
+                    f"recommended '{_ACPX_RECOMMENDED_STREAMING}' to avoid partial task results "
+                    "with the 2026.3.1 streaming protocol. "
+                    f"Set plugins.acpx.streaming.mode: '{_ACPX_RECOMMENDED_STREAMING}'"
+                ),
+            })
+
+    severity = "OK"
+    for f in findings:
+        if f["severity"] == "CRITICAL":
+            severity = "CRITICAL"
+            break
+        elif f["severity"] == "HIGH" and severity != "CRITICAL":
+            severity = "HIGH"
+        elif f["severity"] == "MEDIUM" and severity not in ("CRITICAL", "HIGH"):
+            severity = "MEDIUM"
+
+    return {
+        "ok": len(findings) == 0 or all(f["severity"] == "INFO" for f in findings),
+        "severity": severity,
+        "findings": findings,
+        "finding_count": len([f for f in findings if f["severity"] != "INFO"]),
+        "config_path": resolved,
+    }
+
+
 # ── Tool registry ─────────────────────────────────────────────────────────────
 
 TOOLS: list[dict[str, Any]] = [
@@ -706,6 +833,29 @@ TOOLS: list[dict[str, Any]] = [
                 },
             },
             "required": ["path", "action", "owner"],
+        },
+    },
+    {
+        "name": "openclaw_acpx_version_check",
+        "title": "ACPX Version Pin Check",
+        "description": (
+            "Checks ACPX plugin version pin (>= 0.1.15) and streaming mode (final_only). "
+            "2026.3.1 broke ACPX < 0.1.15 due to the new task streaming protocol. "
+            "Returns: version status, streaming mode recommendation."
+        ),
+        "category": "acp",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
+        "handler": openclaw_acpx_version_check,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "config_path": {
+                    "type": "string",
+                    "description": "Path to openclaw.json (default: ~/.openclaw/openclaw.json).",
+                },
+            },
+            "required": [],
         },
     },
 ]

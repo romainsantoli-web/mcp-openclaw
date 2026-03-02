@@ -74,6 +74,13 @@ _SQLITE_VEC_REQUIRED_KEYS = [
     "memory.embedding.dimensions",
 ]
 
+# 2026.3.1: Claude 4.6 adaptive thinking defaults
+_CLAUDE_46_MODELS = {
+    "claude-4.6-sonnet", "claude-4.6-opus", "claude-4.6-haiku",
+    "claude-sonnet-4.6", "claude-opus-4.6", "claude-haiku-4.6",
+}
+_ADAPTIVE_THINKING_VALUES = {"adaptive", "low", "medium", "high", "disabled"}
+
 
 # ── Tool handlers ────────────────────────────────────────────────────────────
 
@@ -794,6 +801,116 @@ def openclaw_sqlite_vec_check(
     }
 
 
+# ── Claude 4.6 adaptive thinking audit (2026.3.1) ───────────────────────────
+
+def openclaw_adaptive_thinking_check(
+    config_path: str | None = None,
+) -> dict[str, Any]:
+    """
+    Checks that Claude 4.6 model configurations use the correct adaptive
+    thinking defaults introduced in 2026.3.1.
+
+    Claude 4.6 models default to adaptive thinking mode. If the config
+    sets thinking=low or disabled on these models, agents may produce
+    degraded reasoning. If thinking mode is unset, verify the model is
+    recognized so the default (`adaptive`) applies correctly.
+
+    Args:
+        config_path: Path to openclaw.json.
+
+    Returns:
+        {ok, severity, findings, finding_count, config_path}
+    """
+    cfg_path = config_path or "~/.openclaw/openclaw.json"
+    try:
+        config, cfg_path = load_config(cfg_path)
+    except Exception as exc:
+        return {"ok": False, "severity": "CRITICAL",
+                "findings": [{"id": "config_load_error", "severity": "CRITICAL", "message": str(exc)}],
+                "finding_count": 1, "config_path": cfg_path}
+
+    if not config:
+        return {"ok": True, "severity": "OK", "findings": [], "finding_count": 0, "config_path": cfg_path}
+
+    findings: list[dict[str, Any]] = []
+
+    # Check agents.defaults.model
+    agents_defaults = get_nested(config, "agents", "defaults") or {}
+    model = agents_defaults.get("model", "")
+    thinking_cfg = agents_defaults.get("thinking", {})
+
+    if isinstance(model, str) and any(m in model.lower() for m in ("claude-4.6", "claude-sonnet-4.6", "claude-opus-4.6", "claude-haiku-4.6")):
+        thinking_mode = thinking_cfg.get("mode", "") if isinstance(thinking_cfg, dict) else ""
+
+        if thinking_mode == "disabled":
+            findings.append({
+                "id": "claude46_thinking_disabled",
+                "severity": "CRITICAL",
+                "message": (
+                    f"agents.defaults.model='{model}' with thinking.mode='disabled'. "
+                    "Claude 4.6 models are designed for adaptive thinking — disabling it "
+                    "severely degrades reasoning quality. Remove or set to 'adaptive'."
+                ),
+            })
+        elif thinking_mode == "low":
+            findings.append({
+                "id": "claude46_thinking_low",
+                "severity": "HIGH",
+                "message": (
+                    f"agents.defaults.model='{model}' with thinking.mode='low'. "
+                    "Claude 4.6 defaults to 'adaptive' thinking — 'low' limits complex "
+                    "reasoning. Consider removing or setting to 'adaptive'. (2026.3.1)"
+                ),
+            })
+        elif not thinking_mode:
+            # No explicit mode — good, adaptive will apply by default
+            findings.append({
+                "id": "claude46_thinking_default_ok",
+                "severity": "INFO",
+                "message": (
+                    f"agents.defaults.model='{model}' with no explicit thinking mode. "
+                    "Default 'adaptive' will apply — this is the recommended setting."
+                ),
+            })
+
+    # Check per-agent overrides
+    agents = config.get("agents", {})
+    for agent_name, agent_cfg in agents.items():
+        if agent_name == "defaults" or not isinstance(agent_cfg, dict):
+            continue
+        agent_model = agent_cfg.get("model", "")
+        agent_thinking = agent_cfg.get("thinking", {})
+        if isinstance(agent_model, str) and any(m in agent_model.lower() for m in ("claude-4.6", "claude-sonnet-4.6", "claude-opus-4.6", "claude-haiku-4.6")):
+            mode = agent_thinking.get("mode", "") if isinstance(agent_thinking, dict) else ""
+            if mode in ("disabled", "low"):
+                findings.append({
+                    "id": f"claude46_agent_{agent_name}_thinking_{mode}",
+                    "severity": "CRITICAL" if mode == "disabled" else "HIGH",
+                    "message": (
+                        f"agents.{agent_name}.model='{agent_model}' with thinking.mode='{mode}'. "
+                        "Claude 4.6 should use 'adaptive' thinking for optimal reasoning. (2026.3.1)"
+                    ),
+                })
+
+    max_sev = "OK"
+    for f in findings:
+        if f["severity"] == "CRITICAL":
+            max_sev = "CRITICAL"
+            break
+        if f["severity"] == "HIGH" and max_sev != "CRITICAL":
+            max_sev = "HIGH"
+        if f["severity"] == "MEDIUM" and max_sev == "OK":
+            max_sev = "MEDIUM"
+
+    return {
+        "ok": max_sev not in ("CRITICAL", "HIGH"),
+        "severity": max_sev,
+        "findings": findings,
+        "finding_count": len([f for f in findings if f["severity"] not in ("OK", "INFO")]),
+        "config_path": cfg_path,
+    }
+
+
 # ── TOOLS registry ───────────────────────────────────────────────────────────
 
 TOOLS: list[dict[str, Any]] = [
@@ -1123,6 +1240,36 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"]
         },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "config_path": {"type": "string", "description": "OpenClaw config path."},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "openclaw_adaptive_thinking_check",
+        "title": "Claude 4.6 Adaptive Thinking Check",
+        "description": (
+            "Checks Claude 4.6 model configs for correct adaptive thinking defaults (2026.3.1). "
+            "Detects disabled/low thinking modes that degrade reasoning quality. "
+            "Validates both agents.defaults and per-agent overrides."
+        ),
+        "category": "platform",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean", "description": "Whether the check passed"},
+                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
+                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
+                "finding_count": {"type": "integer", "description": "Number of findings"},
+                "config_path": {"type": "string", "description": "Path to config file analyzed"}
+            },
+            "required": ["ok", "severity", "findings", "finding_count"]
+        },
+        "handler": openclaw_adaptive_thinking_check,
         "inputSchema": {
             "type": "object",
             "properties": {

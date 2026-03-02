@@ -123,6 +123,30 @@ async def openclaw_shell_env_check(config_path: str | None = None) -> dict[str, 
                     })
                     break
 
+    # Check 1b (2026.3.1): OPENCLAW_SHELL env marker
+    has_openclaw_shell = False
+    has_any_env = False
+    for location, env_dict in env_locations:
+        if not isinstance(env_dict, dict) or not env_dict:
+            continue
+        has_any_env = True
+        if "OPENCLAW_SHELL" in env_dict:
+            has_openclaw_shell = True
+            break
+
+    if has_any_env and not has_openclaw_shell:
+        findings.append({
+            "id": "openclaw_shell_marker_missing",
+            "severity": "MEDIUM",
+            "message": (
+                "No env location sets OPENCLAW_SHELL. "
+                "2026.3.1 introduced OPENCLAW_SHELL as a marker env var that "
+                "child processes can use to detect they are running inside an "
+                "OpenClaw-managed shell. Set OPENCLAW_SHELL=1 in agents.defaults.env "
+                "for proper detection."
+            ),
+        })
+
     # Check 2: shell env override in fork config
     fork_cfg = _get_nested(config, "agents", "defaults", "fork", default={})
     if isinstance(fork_cfg, dict):

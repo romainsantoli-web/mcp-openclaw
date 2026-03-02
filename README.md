@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (115)
+## Tools (121)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -123,6 +123,12 @@
 | compliance_medium | `openclaw_agent_identity_audit` | Audit agent DID (decentralized identity) | M4 |
 | compliance_medium | `openclaw_model_routing_audit` | Audit multi-model routing and fallback chain | M5 |
 | compliance_medium | `openclaw_resource_links_audit` | Audit MCP resource links in tool results | M6 |
+| market_research | `openclaw_market_competitive_analysis` | Full competitive landscape analysis (feature matrix, SWOT, positioning) | — |
+| market_research | `openclaw_market_sizing` | TAM/SAM/SOM market sizing (top-down + bottom-up) | — |
+| market_research | `openclaw_market_financial_benchmark` | Financial benchmarking — unit economics, pricing, revenue | — |
+| market_research | `openclaw_market_web_research` | Structured web research & OSINT intelligence gathering | — |
+| market_research | `openclaw_market_report_generate` | Professional Markdown market research report generator | — |
+| market_research | `openclaw_market_research_monitor` | Continuous competitive monitoring (add/remove/update/status) | — |
 
 ## Quick start
 

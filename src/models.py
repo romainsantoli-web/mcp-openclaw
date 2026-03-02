@@ -1214,6 +1214,97 @@ class ResourceLinksAuditInput(ConfigPathInput):
 
 
 # ════════════════════════════════════════════════════════════
+# market_research — 6 tools
+# ════════════════════════════════════════════════════════════
+
+_VALID_SIZING_APPROACHES = {"top_down", "bottom_up", "both"}
+_VALID_MONITOR_ACTIONS = {"add", "remove", "update", "status", "export"}
+_VALID_REPORT_LANGUAGES = {"fr", "en"}
+
+
+class MarketCompetitiveAnalysisInput(BaseModel):
+    """Competitive landscape analysis with feature matrix, SWOT, positioning."""
+    sector: Annotated[str, Field(min_length=1, max_length=512)]
+    competitors: list[str] | None = Field(default=None, max_length=50)
+    geography: str | None = Field(default=None, max_length=256)
+    criteria: list[str] | None = Field(default=None, max_length=30)
+    include_swot: bool = True
+    include_positioning: bool = True
+    our_product: str | None = Field(default=None, max_length=256)
+
+
+class MarketSizingInput(BaseModel):
+    """TAM/SAM/SOM market sizing."""
+    sector: Annotated[str, Field(min_length=1, max_length=512)]
+    geography: str | None = Field(default=None, max_length=256)
+    target_segment: str | None = Field(default=None, max_length=256)
+    horizon_years: int = Field(default=5, ge=1, le=20)
+    known_data: dict[str, Any] | None = None
+    approach: str = Field(default="both")
+
+    @field_validator("approach")
+    @classmethod
+    def valid_approach(cls, v: str) -> str:
+        if v not in _VALID_SIZING_APPROACHES:
+            raise ValueError(f"approach must be one of {_VALID_SIZING_APPROACHES}")
+        return v
+
+
+class MarketFinancialBenchmarkInput(BaseModel):
+    """Financial benchmarking — unit economics, pricing, revenue."""
+    sector: Annotated[str, Field(min_length=1, max_length=512)]
+    metrics: list[str] | None = Field(default=None, max_length=20)
+    competitors: list[str] | None = Field(default=None, max_length=50)
+    our_data: dict[str, Any] | None = None
+    include_pricing: bool = True
+
+
+class MarketWebResearchInput(BaseModel):
+    """Structured web research & OSINT."""
+    query: Annotated[str, Field(min_length=1, max_length=2048)]
+    sources: list[str] | None = Field(default=None, max_length=20)
+    competitor: str | None = Field(default=None, max_length=256)
+    max_results: int = Field(default=10, ge=1, le=100)
+
+
+class MarketReportGenerateInput(BaseModel):
+    """Professional market research report generator."""
+    title: Annotated[str, Field(min_length=1, max_length=512)]
+    sections: list[str] | None = Field(default=None, max_length=20)
+    data: dict[str, Any] | None = None
+    output_path: str | None = Field(default=None, max_length=4096)
+    language: str = Field(default="fr")
+    include_toc: bool = True
+
+    @field_validator("output_path")
+    @classmethod
+    def no_traversal(cls, v):
+        return _check_no_traversal(v, "output_path")
+
+    @field_validator("language")
+    @classmethod
+    def valid_language(cls, v: str) -> str:
+        if v not in _VALID_REPORT_LANGUAGES:
+            raise ValueError(f"language must be one of {_VALID_REPORT_LANGUAGES}")
+        return v
+
+
+class MarketResearchMonitorInput(BaseModel):
+    """Competitive monitoring — add/remove/update/status/export."""
+    action: str = Field(default="status")
+    competitor: str | None = Field(default=None, max_length=256)
+    watch: list[str] | None = Field(default=None, max_length=20)
+    notes: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("action")
+    @classmethod
+    def valid_action(cls, v: str) -> str:
+        if v not in _VALID_MONITOR_ACTIONS:
+            raise ValueError(f"action must be one of {_VALID_MONITOR_ACTIONS}")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -1358,4 +1449,11 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_agent_identity_audit":             AgentIdentityAuditInput,
     "openclaw_model_routing_audit":              ModelRoutingAuditInput,
     "openclaw_resource_links_audit":             ResourceLinksAuditInput,
+    # market_research (6 tools)
+    "openclaw_market_competitive_analysis":       MarketCompetitiveAnalysisInput,
+    "openclaw_market_sizing":                     MarketSizingInput,
+    "openclaw_market_financial_benchmark":         MarketFinancialBenchmarkInput,
+    "openclaw_market_web_research":                MarketWebResearchInput,
+    "openclaw_market_report_generate":             MarketReportGenerateInput,
+    "openclaw_market_research_monitor":            MarketResearchMonitorInput,
 }

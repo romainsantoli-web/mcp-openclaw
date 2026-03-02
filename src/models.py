@@ -311,6 +311,11 @@ class WorkspaceLockInput(BaseModel):
         return self
 
 
+class AcpxVersionCheckInput(ConfigPathInput):
+    """ACPX plugin version pin and streaming mode check (2026.3.1)."""
+    pass
+
+
 # ════════════════════════════════════════════════════════════
 # reliability_probe — 4 tools (H6, H7, M1, M5, M6)
 # ════════════════════════════════════════════════════════════
@@ -323,6 +328,7 @@ class GatewayProbeInput(BaseModel):
     )
     max_retries: int = Field(default=3, ge=1, le=5)
     backoff_factor: float = Field(default=1.0, ge=0.1, le=10.0)
+    check_health_endpoints: bool = Field(default=True, description="Also probe HTTP health endpoints (2026.3.1)")
 
     @field_validator("gateway_url")
     @classmethod
@@ -1001,6 +1007,11 @@ class SqliteVecCheckInput(ConfigPathInput):
     pass
 
 
+class AdaptiveThinkingCheckInput(ConfigPathInput):
+    """Claude 4.6 adaptive thinking configuration check (2026.3.1)."""
+    pass
+
+
 # ════════════════════════════════════════════════════════════
 # ecosystem_audit — 7 tools (G21-G27)
 # ════════════════════════════════════════════════════════════
@@ -1538,6 +1549,7 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "fleet_session_inject_env":     FleetSessionInjectEnvInput,
     "fleet_cron_schedule":          FleetCronScheduleInput,
     "openclaw_workspace_lock":      WorkspaceLockInput,
+    "openclaw_acpx_version_check":   AcpxVersionCheckInput,
     # reliability_probe (H6, H7, M1, M5, M6)
     "openclaw_gateway_probe":       GatewayProbeInput,
     "openclaw_doc_sync_check":      DocSyncCheckInput,
@@ -1618,6 +1630,7 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_plugin_sdk_check":                 PluginSdkCheckInput,
     "openclaw_content_boundary_check":           ContentBoundaryCheckInput,
     "openclaw_sqlite_vec_check":                 SqliteVecCheckInput,
+    "openclaw_adaptive_thinking_check":            AdaptiveThinkingCheckInput,
     # ecosystem_audit (G21-G27)
     "openclaw_mcp_firewall_check":               McpFirewallCheckInput,
     "openclaw_rag_pipeline_check":               RagPipelineCheckInput,

@@ -11,7 +11,7 @@ from src.platform_audit import TOOLS
 
 class TestToolsRegistry:
     def test_tools_count(self):
-        assert len(TOOLS) == 8
+        assert len(TOOLS) == 9
 
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
@@ -24,6 +24,7 @@ class TestToolsRegistry:
             "openclaw_plugin_sdk_check",
             "openclaw_content_boundary_check",
             "openclaw_sqlite_vec_check",
+            "openclaw_adaptive_thinking_check",
         }
         assert names == expected
 

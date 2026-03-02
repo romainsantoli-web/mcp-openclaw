@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "3.2.0"
+__version__ = "3.3.0"
 
 from aiohttp import web
 from pydantic import ValidationError

@@ -51,11 +51,53 @@ _SLEEP_WAKE_FIX = (
     "3. If still failing, check: tail -f ~/Library/Logs/openclaw/gateway.log"
 )
 
+# ── Health endpoints (2026.3.1) ──────────────────────────────────────────────
+
+_HEALTH_ENDPOINTS = ["/health", "/healthz", "/ready", "/readyz"]
+
+
+async def _check_health_endpoints(gateway_url: str) -> dict[str, Any]:
+    """Check HTTP liveness/readiness endpoints added in 2026.3.1."""
+    import aiohttp
+
+    # Convert ws:// to http://
+    http_base = gateway_url.replace("ws://", "http://").replace("wss://", "https://")
+    # Strip path component
+    if "/" in http_base.split("//", 1)[-1]:
+        http_base = http_base.rsplit("/", 1)[0]
+
+    results: dict[str, Any] = {}
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+            for ep in _HEALTH_ENDPOINTS:
+                url = f"{http_base}{ep}"
+                try:
+                    async with session.get(url) as resp:
+                        results[ep] = {
+                            "status": resp.status,
+                            "ok": resp.status in (200, 204),
+                        }
+                except Exception as exc:
+                    results[ep] = {"status": None, "ok": False, "error": str(exc)}
+    except Exception as exc:
+        for ep in _HEALTH_ENDPOINTS:
+            results[ep] = {"status": None, "ok": False, "error": str(exc)}
+
+    results["all_ok"] = all(r.get("ok", False) for r in results.values() if isinstance(r, dict))
+    if not results["all_ok"]:
+        results["recommendation"] = (
+            "2026.3.1 added built-in HTTP health endpoints (/health, /healthz, /ready, /readyz) "
+            "for Docker/K8s. Missing endpoints indicate gateway version <2026.3.1 or "
+            "custom handler shadowing. Upgrade and verify container health probes."
+        )
+    return results
+
 
 async def openclaw_gateway_probe(
     gateway_url: str = "ws://127.0.0.1:18789",
     max_retries: int = 3,
     backoff_factor: float = 1.0,
+    check_health_endpoints: bool = True,
 ) -> dict[str, Any]:
     """
     Tests Gateway WebSocket connectivity with exponential backoff.
@@ -64,14 +106,18 @@ async def openclaw_gateway_probe(
     Attempts reconnection with configurable backoff before reporting failure.
     If WS 1006 detected, provides the exact launchctl restart command.
 
+    Since 2026.3.1: Also checks HTTP liveness/readiness endpoints
+    (/health, /healthz, /ready, /readyz) for Docker/K8s health checks.
+
     Args:
         gateway_url: Gateway WebSocket URL. Default: ws://127.0.0.1:18789.
         max_retries: Number of reconnection attempts (1-5). Default: 3.
         backoff_factor: Base seconds between retries (doubles each attempt). Default: 1.0.
+        check_health_endpoints: Also check HTTP health/ready endpoints. Default: True.
 
     Returns:
         dict with keys: ok, status, latency_ms, attempts, close_code,
-                        action_required, restart_command.
+                        action_required, restart_command, health_endpoints.
     """
     try:
         import websockets
@@ -98,6 +144,12 @@ async def openclaw_gateway_probe(
                 raw = await asyncio.wait_for(ws.recv(), timeout=5)
                 latency_ms = round((time.time() - start) * 1000, 1)
                 attempts.append({"attempt": attempt_num, "status": "ok", "latency_ms": latency_ms})
+
+                # 2026.3.1: Check HTTP health endpoints if enabled
+                health_endpoints: dict[str, Any] = {}
+                if check_health_endpoints:
+                    health_endpoints = await _check_health_endpoints(gateway_url)
+
                 return {
                     "ok": True,
                     "status": "connected",
@@ -105,6 +157,7 @@ async def openclaw_gateway_probe(
                     "attempts": attempts,
                     "close_code": None,
                     "action_required": None,
+                    "health_endpoints": health_endpoints,
                 }
         except OSError as exc:
             latency_ms = round((time.time() - start) * 1000, 1)
@@ -335,11 +388,37 @@ async def openclaw_channel_audit(
                 ),
             })
 
+    # ── 2026.3.1: Discord thread lifecycle check ──────────────────────────────
+    discord_lifecycle: list[dict[str, str]] = []
+    discord_cfg = pkg.get("openclaw", {}).get("channels", {}).get("discord", {})
+    if "discord.js" in all_deps or "@buape/carbon" in all_deps:
+        idle_hours = discord_cfg.get("threads", {}).get("idleHours")
+        max_age_hours = discord_cfg.get("threads", {}).get("maxAgeHours")
+        if idle_hours is None:
+            discord_lifecycle.append({
+                "finding": "discord.threads.idleHours not set",
+                "severity": "MEDIUM",
+                "detail": (
+                    "2026.3.1 added automatic Discord thread archival. "
+                    "Set threads.idleHours (e.g. 24) to auto-archive idle threads."
+                ),
+            })
+        if max_age_hours is None:
+            discord_lifecycle.append({
+                "finding": "discord.threads.maxAgeHours not set",
+                "severity": "MEDIUM",
+                "detail": (
+                    "2026.3.1 added Discord thread max age management. "
+                    "Set threads.maxAgeHours (e.g. 168 = 7 days) to limit thread lifespan."
+                ),
+            })
+
     return {
         "ok": True,
         "zombie_deps": len(zombie_deps),
         "code_channels": list(code_channels.values()),
         "zombie_details": zombie_deps,
+        "discord_thread_lifecycle": discord_lifecycle,
         "total_channel_packages_detected": len(code_channels),
         "issue_ref": "M1 — @line/bot-sdk in deps, zero documentation",
         "⚠️": "Contenu généré par IA — vérification manuelle recommandée.",
@@ -482,6 +561,11 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "number",
                     "description": "Base seconds between retries (doubles each attempt). Default: 1.0.",
                     "default": 1.0,
+                },
+                "check_health_endpoints": {
+                    "type": "boolean",
+                    "description": "Also probe /health, /healthz, /ready, /readyz HTTP endpoints (2026.3.1). Default: true.",
+                    "default": True,
                 },
             },
             "required": [],

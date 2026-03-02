@@ -275,6 +275,8 @@ async def openclaw_channel_auth_canon_check(config_path: str | None = None) -> d
 
     # Check 2: plugin entries with custom HTTP paths
     plugins = config.get("plugins", {})
+    if not isinstance(plugins, dict):
+        plugins = {}
     plugin_entries = plugins.get("entries", {})
     if isinstance(plugin_entries, dict):
         for pid, pcfg in plugin_entries.items():

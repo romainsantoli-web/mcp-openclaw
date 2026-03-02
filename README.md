@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (75)
+## Tools (115)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -83,6 +83,46 @@
 | hebbian_memory | `openclaw_hebbian_pii_check` | Audit PII stripping config — CDC §5.2 | — |
 | hebbian_memory | `openclaw_hebbian_decay_config_check` | Validate learning rate, decay, thresholds — CDC §4.3 | — |
 | hebbian_memory | `openclaw_hebbian_drift_check` | Cosine similarity drift detection vs baseline — CDC §5.1 | — |
+| a2a_bridge | `openclaw_a2a_card_generate` | Generate agent-card.json from SOUL.md (RC v1.0) | G1 |
+| a2a_bridge | `openclaw_a2a_card_validate` | Validate A2A Agent Card against RC v1.0 spec | G2 |
+| a2a_bridge | `openclaw_a2a_task_send` | Send message/task to an A2A agent (SendMessage) | G3 |
+| a2a_bridge | `openclaw_a2a_task_status` | Get task status or list tasks (RC v1.0) | G4 |
+| a2a_bridge | `openclaw_a2a_cancel_task` | Cancel a running A2A task (CancelTask) | G5 |
+| a2a_bridge | `openclaw_a2a_subscribe_task` | Subscribe to task updates via SSE | G6 |
+| a2a_bridge | `openclaw_a2a_push_config` | CRUD for push notification webhooks (RC v1.0) | G7 |
+| a2a_bridge | `openclaw_a2a_discovery` | Discover agents via Agent Cards or SOUL.md scan | G8 |
+| platform_audit | `openclaw_secrets_v2_audit` | Audit OpenClaw secrets v2 lifecycle (2026.2+) | G9 |
+| platform_audit | `openclaw_agent_routing_check` | Validate agent routing bindings | G10 |
+| platform_audit | `openclaw_voice_security_check` | TTS/voice channel security audit | G11 |
+| platform_audit | `openclaw_trust_model_check` | Validate trust model and multi-user heuristics | G12 |
+| platform_audit | `openclaw_autoupdate_check` | Self-update supply chain integrity check | G13 |
+| platform_audit | `openclaw_plugin_sdk_check` | Plugin SDK integrity validation | G14 |
+| platform_audit | `openclaw_content_boundary_check` | Content boundary & anti-prompt-injection audit | G15 |
+| platform_audit | `openclaw_sqlite_vec_check` | SQLite-vec memory backend validation | G16 |
+| ecosystem_audit | `openclaw_mcp_firewall_check` | MCP Gateway firewall policy audit | G17 |
+| ecosystem_audit | `openclaw_rag_pipeline_check` | RAG pipeline health & config audit | G18 |
+| ecosystem_audit | `openclaw_sandbox_exec_check` | Sandbox execution isolation audit | G19 |
+| ecosystem_audit | `openclaw_context_health_check` | Context rot / cognitive health detection | G20 |
+| ecosystem_audit | `openclaw_provenance_tracker` | Cryptographic audit trail / provenance tracking | G21 |
+| ecosystem_audit | `openclaw_cost_analytics` | Usage/cost tracking and analysis | G22 |
+| ecosystem_audit | `openclaw_token_budget_optimizer` | Token optimization analysis | G23 |
+| spec_compliance | `openclaw_elicitation_audit` | Audit MCP elicitation capability compliance | S4 |
+| spec_compliance | `openclaw_tasks_audit` | Audit MCP Tasks capability compliance | S5 |
+| spec_compliance | `openclaw_resources_prompts_audit` | Audit MCP Resources & Prompts compliance | S6 |
+| spec_compliance | `openclaw_audio_content_audit` | Audit MCP audio content support | H3 |
+| spec_compliance | `openclaw_json_schema_dialect_check` | Audit JSON Schema dialect compliance | H5 |
+| spec_compliance | `openclaw_sse_transport_audit` | Audit Streamable HTTP / SSE transport | H6 |
+| spec_compliance | `openclaw_icon_metadata_audit` | Audit icon metadata support | H7 |
+| prompt_security | `openclaw_prompt_injection_check` | Scan text for 16 injection/jailbreak patterns | H2 |
+| prompt_security | `openclaw_prompt_injection_batch` | Batch scan multiple texts for injection patterns | H2 |
+| auth_compliance | `openclaw_oauth_oidc_audit` | Audit OAuth 2.1 / OIDC Discovery compliance | H4 |
+| auth_compliance | `openclaw_token_scope_check` | Check OAuth scopes restrict tool access properly | H4 |
+| compliance_medium | `openclaw_tool_deprecation_audit` | Audit tool deprecation lifecycle | M1 |
+| compliance_medium | `openclaw_circuit_breaker_audit` | Audit circuit breaker / resilience config | M2 |
+| compliance_medium | `openclaw_gdpr_residency_audit` | Audit GDPR compliance and data residency | M3 |
+| compliance_medium | `openclaw_agent_identity_audit` | Audit agent DID (decentralized identity) | M4 |
+| compliance_medium | `openclaw_model_routing_audit` | Audit multi-model routing and fallback chain | M5 |
+| compliance_medium | `openclaw_resource_links_audit` | Audit MCP resource links in tool results | M6 |
 
 ## Quick start
 
@@ -115,10 +155,10 @@ pip install -r requirements-dev.txt
 python -m pytest tests/test_smoke.py -v
 ```
 
-**207 tests**, 100% pass — covering:
+**486 tests** (168 unit + 318 integration), covering:
 - Server starts and answers `ping`
 - `initialize` returns correct capabilities + `__version__`
-- All 75 tools registered with valid `inputSchema`
+- All 115 tools registered with valid `inputSchema`
 - `vs_context_push` degrades gracefully without Gateway
 - `firm_export_document` writes local file
 - Unknown method returns JSON-RPC error -32601

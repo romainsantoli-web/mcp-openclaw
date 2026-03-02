@@ -22,8 +22,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
-import websockets
-from websockets.exceptions import WebSocketException
+
+try:
+    import websockets
+    from websockets.exceptions import WebSocketException
+except ImportError:  # graceful degradation — tools still register
+    websockets = None  # type: ignore[assignment]
+    WebSocketException = OSError  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 

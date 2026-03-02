@@ -23,6 +23,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
+# All tests in this file are integration tests (require a running server)
+pytestmark = pytest.mark.integration
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
@@ -36,8 +39,11 @@ EXPECTED_TOOLS = 115  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 
 def mcp_server():
     """Start the MCP server as a subprocess for the test session."""
     src_dir = pathlib.Path(__file__).parent.parent
+    # Use the venv Python if available, otherwise fallback to sys.executable
+    venv_python = src_dir / ".venv" / "bin" / "python"
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
     proc = subprocess.Popen(
-        [sys.executable, "-m", "src.main"],
+        [python_exe, "-m", "src.main"],
         cwd=str(src_dir),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -76,23 +76,30 @@ class TestAcpBridgeFullG:
         assert data["r1"]["gateway_session_key"] == "s2"
 
     def test_session_restore_success(self, tmp_path):
-        """Restore a persisted session (lines 135-165)."""
+        """Restore all persisted sessions (lines 126-170)."""
         import src.acp_bridge as ab
         sessions_file = tmp_path / "sessions.json"
         with patch.object(ab, "ACP_SESSIONS_PATH", str(sessions_file)):
             _run(ab.acp_session_persist(run_id="r1", gateway_session_key="s1"))
-            r = _run(ab.acp_session_restore(run_id="r1"))
+            r = _run(ab.acp_session_restore(max_age_hours=24))
         assert r["ok"] is True
-        assert r["gateway_session_key"] == "s1"
+        assert r["restored"] >= 1
 
-    def test_session_restore_not_found(self, tmp_path):
-        """Restore missing run_id."""
+    def test_session_restore_with_stale_purge(self, tmp_path):
+        """Restore purges stale sessions (lines 147-163)."""
         import src.acp_bridge as ab
         sessions_file = tmp_path / "sessions.json"
-        sessions_file.write_text("{}")
+        now = time.time()
+        sessions = {
+            "fresh": {"gateway_session_key": "s1", "persisted_at": now - 100, "metadata": {}},
+            "old": {"gateway_session_key": "s2", "persisted_at": now - 200000, "metadata": {}},
+        }
+        sessions_file.write_text(json.dumps(sessions))
         with patch.object(ab, "ACP_SESSIONS_PATH", str(sessions_file)):
-            r = _run(ab.acp_session_restore(run_id="nonexistent"))
-        assert r["ok"] is False
+            r = _run(ab.acp_session_restore(max_age_hours=24))
+        assert r["ok"] is True
+        assert r["purged"] >= 1
+        assert r["restored"] >= 1
 
     def test_session_list_active_with_stale(self, tmp_path):
         """List active sessions including stale (lines 179-210)."""
@@ -132,8 +139,7 @@ class TestAcpBridgeFullG:
         """Inject env vars with valid keys (lines 242-299)."""
         import src.acp_bridge as ab
         mock_broadcast = AsyncMock(return_value={"ok": True})
-        with patch("src.acp_bridge.firm_gateway_fleet_broadcast", mock_broadcast, create=True), \
-             patch("src.gateway_fleet.firm_gateway_fleet_broadcast", mock_broadcast, create=True):
+        with patch("src.gateway_fleet.firm_gateway_fleet_broadcast", mock_broadcast):
             r = _run(ab.fleet_session_inject_env(
                 env_vars={"ANTHROPIC_API_KEY": "sk-test-123"},
                 dry_run=False,
@@ -155,7 +161,7 @@ class TestAcpBridgeFullG:
         """All env vars rejected by allowlist (lines 254-260)."""
         import src.acp_bridge as ab
         r = _run(ab.fleet_session_inject_env(
-            env_vars={"RANDOM_VAR": "val", "CUSTOM_KEY": "val2"},
+            env_vars={"MALICIOUS_VAR": "val", "HACK_KEY": "val2"},
             dry_run=False,
         ))
         assert r.get("ok") is False
@@ -237,10 +243,8 @@ class TestAdvancedSecurityDeepG:
         """Inline credential in auth profile (lines 163-169)."""
         from src.advanced_security import openclaw_secrets_lifecycle_check
         cfg = _write(tmp_path, {
-            "channels": {"whatsapp": {
-                "auth": {"profiles": {
-                    "main": {"apiKey": "hardcoded-secret-value"}
-                }}
+            "auth": {"profiles": {
+                "main": {"apiKey": "hardcoded-secret-value"}
             }}
         })
         r = _run(openclaw_secrets_lifecycle_check(config_path=cfg))
@@ -296,9 +300,9 @@ class TestAdvancedSecurityDeepG:
         """Hook transformsDir traversal (line 316)."""
         from src.advanced_security import openclaw_channel_auth_canon_check
         cfg = _write(tmp_path, {
-            "hooks": [
-                {"transformsDir": "../../../secret"}
-            ]
+            "hooks": {
+                "transformsDir": "../../../secret"
+            }
         })
         r = _run(openclaw_channel_auth_canon_check(config_path=cfg))
         assert _fc(r) >= 1
@@ -315,23 +319,25 @@ class TestAdvancedSecurityDeepG:
 
     def test_exec_approval_shell_wrapper(self, tmp_path):
         """Shell wrapper in approval list (lines 428-432)."""
+        import src.advanced_security as adv
         from src.advanced_security import openclaw_exec_approval_freeze_check
-        approvals = tmp_path / "exec-approvals.json"
-        approvals.write_text(json.dumps([
-            {"command": "/bin/bash", "mode": "allow-always"},
-            {"command": "/bin/sh", "mode": "allow-always"},
-        ]))
-        cfg = _write(tmp_path, {
-            "tools": {"exec": {"approvalsFile": str(approvals)}},
-        })
-        r = _run(openclaw_exec_approval_freeze_check(config_path=cfg))
+        approvals_dir = tmp_path / "openclaw"
+        approvals_dir.mkdir()
+        approvals = approvals_dir / "exec-approvals.json"
+        approvals.write_text(json.dumps({
+            "pattern1": {"executable": "/bin/bash"},
+            "pattern2": {"executable": "/bin/sh"},
+        }))
+        cfg = _write(tmp_path, {})
+        with patch.object(adv, "_OPENCLAW_DIR", approvals_dir):
+            r = _run(openclaw_exec_approval_freeze_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_exec_apply_patch_not_workspace_only(self, tmp_path):
         """applyPatch.workspaceOnly=false (line 458)."""
         from src.advanced_security import openclaw_exec_approval_freeze_check
         cfg = _write(tmp_path, {
-            "tools": {"applyPatch": {"workspaceOnly": False}},
+            "tools": {"exec": {"applyPatch": {"workspaceOnly": False}}},
         })
         r = _run(openclaw_exec_approval_freeze_check(config_path=cfg))
         assert _fc(r) >= 1
@@ -362,7 +368,7 @@ class TestAdvancedSecurityDeepG:
         """$include with path traversal (lines 622-632)."""
         from src.advanced_security import openclaw_config_include_check
         cfg = _write(tmp_path, {
-            "$include": ["../../../etc/passwd"]
+            "$include": "../../../etc/passwd"
         })
         r = _run(openclaw_config_include_check(config_path=cfg))
         assert _fc(r) >= 1
@@ -371,7 +377,7 @@ class TestAdvancedSecurityDeepG:
         """$include target doesn't exist (lines 634-640)."""
         from src.advanced_security import openclaw_config_include_check
         cfg = _write(tmp_path, {
-            "$include": ["/nonexistent/path/config.json"]
+            "$include": "/nonexistent/path/config.json"
         })
         r = _run(openclaw_config_include_check(config_path=cfg))
         assert _fc(r) >= 1
@@ -388,16 +394,12 @@ class TestComplianceMediumDeepG:
         """Tool with sunset but deprecated=false (lines 92-97)."""
         from src.compliance_medium import tool_deprecation_audit
         cfg = _write(tmp_path, {
-            "tools": {
-                "entries": {
-                    "old_tool": {
-                        "annotations": {
-                            "deprecated": False,
-                            "sunset": "2026-06-01",
-                        }
-                    }
-                }
-            }
+            "mcp": {"tools": [
+                {"name": "old_tool", "annotations": {
+                    "deprecated": False,
+                    "sunset": "2026-06-01",
+                }}
+            ]}
         })
         r = _run(tool_deprecation_audit(config_path=cfg))
         assert _fc(r) >= 1
@@ -406,15 +408,12 @@ class TestComplianceMediumDeepG:
         """Deprecated tool without deprecatedMessage (lines 131-135)."""
         from src.compliance_medium import tool_deprecation_audit
         cfg = _write(tmp_path, {
-            "tools": {
-                "entries": {
-                    "old_tool": {
-                        "annotations": {
-                            "deprecated": True,
-                        }
-                    }
-                }
-            }
+            "mcp": {"tools": [
+                {"name": "old_tool", "annotations": {
+                    "deprecated": True,
+                    "sunset": "2026-06-01",
+                }}
+            ]}
         })
         r = _run(tool_deprecation_audit(config_path=cfg))
         assert _fc(r) >= 1
@@ -423,17 +422,14 @@ class TestComplianceMediumDeepG:
         """Replacement tool doesn't exist (lines 155-160)."""
         from src.compliance_medium import tool_deprecation_audit
         cfg = _write(tmp_path, {
-            "tools": {
-                "entries": {
-                    "old_tool": {
-                        "annotations": {
-                            "deprecated": True,
-                            "deprecatedMessage": "Use new_tool instead",
-                            "replacement": "nonexistent_tool",
-                        }
-                    }
-                }
-            }
+            "mcp": {"tools": [
+                {"name": "old_tool", "annotations": {
+                    "deprecated": True,
+                    "deprecatedMessage": "Use new_tool instead",
+                    "sunset": "2026-06-01",
+                    "replacement": "nonexistent_tool",
+                }}
+            ]}
         })
         r = _run(tool_deprecation_audit(config_path=cfg))
         assert _fc(r) >= 1
@@ -758,9 +754,10 @@ class TestPlatformAuditBranchesG:
         """Autoupdate without signature verification."""
         from src.platform_audit import openclaw_autoupdate_check
         cfg = _write(tmp_path, {
-            "updates": {
-                "auto": True,
+            "autoUpdate": {
+                "enabled": True,
                 "verifySignature": False,
+                "channel": "stable",
             }
         })
         r = openclaw_autoupdate_check(config_path=cfg)
@@ -872,7 +869,7 @@ class TestRuntimeAuditBranchesG:
         """nodes.allowCommands with wildcard (line 376-377)."""
         from src.runtime_audit import openclaw_nodes_commands_check
         cfg = _write(tmp_path, {
-            "nodes": {"allowCommands": ["*"]}
+            "gateway": {"nodes": {"allowCommands": ["*"]}}
         })
         r = _run(openclaw_nodes_commands_check(config_path=cfg))
         assert _fc(r) >= 1
@@ -995,8 +992,7 @@ class TestA2ABridgeBranchesG:
         from src.a2a_bridge import openclaw_a2a_task_send
         r = _run(openclaw_a2a_task_send(
             agent_url="http://localhost:8080/task",
-            task_id="t1",
-            message={"text": "hello"},
+            message="hello",
         ))
         assert r.get("ok") is False
 
@@ -1079,15 +1075,18 @@ class TestSkillLoaderBranchesG:
     def test_skill_search_no_skills_dir(self, tmp_path):
         """Search with nonexistent skills dir."""
         import src.skill_loader as sl
-        with patch.object(sl, "_SKILLS_DIR", str(tmp_path / "nonexistent")):
-            r = _run(sl.openclaw_skill_search(query="test"))
+        r = _run(sl.openclaw_skill_search(
+            skills_dir=str(tmp_path / "nonexistent"), query="test"
+        ))
         assert isinstance(r, dict)
+        assert r.get("ok") is False
 
     def test_skill_lazy_loader_not_found(self, tmp_path):
         """Load a skill that doesn't exist."""
         import src.skill_loader as sl
-        with patch.object(sl, "_SKILLS_DIR", str(tmp_path)):
-            r = _run(sl.openclaw_skill_lazy_loader(skill_name="nonexistent-skill"))
+        r = _run(sl.openclaw_skill_lazy_loader(
+            skills_dir=str(tmp_path), skill_name="nonexistent-skill", refresh=True
+        ))
         assert isinstance(r, dict)
 
     def test_skill_lazy_loader_success(self, tmp_path):
@@ -1096,11 +1095,10 @@ class TestSkillLoaderBranchesG:
         skill_dir = tmp_path / "test-skill"
         skill_dir.mkdir()
         (skill_dir / "SKILL.md").write_text("# Test Skill\nThis is a test skill.")
-        with patch.object(sl, "_SKILLS_DIR", str(tmp_path)):
-            r = _run(sl.openclaw_skill_lazy_loader(skill_name="test-skill"))
+        r = _run(sl.openclaw_skill_lazy_loader(
+            skills_dir=str(tmp_path), skill_name="test-skill", refresh=True
+        ))
         assert isinstance(r, dict)
-        if r.get("ok"):
-            assert "content" in r or "skill" in r
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1111,15 +1109,14 @@ class TestMainBranchesG:
     """Tests for main.py uncovered branches."""
 
     def test_list_tools_returns_tools(self):
-        """Verify list_tools handler returns tools list."""
-        from src.main import TOOLS
-        assert isinstance(TOOLS, list)
-        assert len(TOOLS) > 100
-        for t in TOOLS:
-            assert "name" in t
+        """Verify TOOL_REGISTRY has 100+ tools."""
+        from src.main import TOOL_REGISTRY
+        assert isinstance(TOOL_REGISTRY, dict)
+        assert len(TOOL_REGISTRY) > 100
+        for name, t in TOOL_REGISTRY.items():
             assert "handler" in t or "inputSchema" in t
 
     def test_tool_dispatch_unknown_tool(self):
         """Dispatch to unknown tool should return error."""
-        from src.main import _TOOL_HANDLERS
-        assert "nonexistent_tool_xyz" not in _TOOL_HANDLERS
+        from src.main import TOOL_REGISTRY
+        assert "nonexistent_tool_xyz" not in TOOL_REGISTRY

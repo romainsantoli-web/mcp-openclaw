@@ -178,7 +178,7 @@ pip install -r requirements-dev.txt
 python -m pytest tests/test_smoke.py -v
 ```
 
-**1312 tests** (1001 unit + 311 integration), **88% coverage**, covering:
+**2272 tests** (1961 unit + 311 integration), **94.6% coverage**, covering:
 - Server starts and answers `ping`
 - `initialize` returns correct capabilities + `__version__`
 - All 115 tools registered with valid `inputSchema`

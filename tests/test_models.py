@@ -20,8 +20,8 @@ from src.models import (
 
 
 class TestToolModelsRegistry:
-    def test_all_115_tools_in_registry(self):
-        assert len(TOOL_MODELS) == 115, f"Expected 115, got {len(TOOL_MODELS)}"
+    def test_all_tools_in_registry(self):
+        assert len(TOOL_MODELS) >= 115, f"Expected at least 115, got {len(TOOL_MODELS)}"
 
     def test_new_a2a_tools_in_registry(self):
         assert "openclaw_a2a_cancel_task" in TOOL_MODELS

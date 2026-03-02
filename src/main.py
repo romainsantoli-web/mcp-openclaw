@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -61,6 +61,8 @@ from src import (  # noqa: E402
     gateway_hardening,
     hebbian_memory,
     i18n_audit,
+    legal_status,
+    location_strategy,
     market_research,
     memory_audit,
     n8n_bridge,
@@ -72,11 +74,12 @@ from src import (  # noqa: E402
     security_audit,
     skill_loader,
     spec_compliance,
+    supplier_management,
     vs_bridge,
 )
 from src.models import TOOL_MODELS  # noqa: E402
 
-_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit, a2a_bridge, platform_audit, ecosystem_audit, spec_compliance, prompt_security, auth_compliance, compliance_medium, market_research]
+_ALL_MODULES = [vs_bridge, gateway_fleet, delivery_export, security_audit, acp_bridge, reliability_probe, gateway_hardening, runtime_audit, advanced_security, config_migration, observability, memory_audit, hebbian_memory, agent_orchestration, i18n_audit, skill_loader, n8n_bridge, browser_audit, a2a_bridge, platform_audit, ecosystem_audit, spec_compliance, prompt_security, auth_compliance, compliance_medium, market_research, legal_status, location_strategy, supplier_management]
 
 # ── M-C1: Category → icon mapping (MCP 2025-11-25 SEP-973) ──────────────────
 CATEGORY_ICONS: dict[str, str] = {
@@ -103,6 +106,9 @@ CATEGORY_ICONS: dict[str, str] = {
     "vs_bridge":           "🔌",
     "workflow_automation":  "⚙️",
     "market_research":      "📊",
+    "legal_status":         "⚖️",
+    "location_strategy":    "📍",
+    "procurement":          "🏭",
 }
 
 # Build registry: tool_name → {handler, inputSchema, description, category}

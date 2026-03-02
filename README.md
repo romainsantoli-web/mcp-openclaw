@@ -4,7 +4,7 @@
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).
 
-## Tools (121)
+## Tools (136)
 
 | Module | Tool | Description | Gaps |
 |--------|------|-------------|------|
@@ -129,6 +129,21 @@
 | market_research | `openclaw_market_web_research` | Structured web research & OSINT intelligence gathering | — |
 | market_research | `openclaw_market_report_generate` | Professional Markdown market research report generator | — |
 | market_research | `openclaw_market_research_monitor` | Continuous competitive monitoring (add/remove/update/status) | — |
+| legal_status | `openclaw_legal_status_compare` | Compare legal forms (SAS, SARL, EURL…) on multi-criteria grid | — |
+| legal_status | `openclaw_legal_tax_simulate` | Simulate IS/IR tax burden per legal form | — |
+| legal_status | `openclaw_legal_social_protection` | Analyze social protection by dirigeant status | — |
+| legal_status | `openclaw_legal_governance_audit` | Audit governance clauses & shareholder pacts | — |
+| legal_status | `openclaw_legal_creation_checklist` | Step-by-step company creation checklist | — |
+| location_strategy | `openclaw_location_geo_analysis` | Geo-economic attractiveness analysis by zone | — |
+| location_strategy | `openclaw_location_real_estate` | Real estate market scan (buy/rent/coworking) | — |
+| location_strategy | `openclaw_location_site_score` | Multi-criteria site scoring (20 criteria) | — |
+| location_strategy | `openclaw_location_incentives` | Map tax incentives & public aids by zone | — |
+| location_strategy | `openclaw_location_tco_simulate` | Total cost of occupancy simulation over N years | — |
+| supplier_management | `openclaw_supplier_search` | Search & filter suppliers by category/region/certification | — |
+| supplier_management | `openclaw_supplier_evaluate` | Multi-criteria supplier evaluation (15 criteria) | — |
+| supplier_management | `openclaw_supplier_tco_analyze` | Supplier TCO analysis (direct + indirect + hidden costs) | — |
+| supplier_management | `openclaw_supplier_contract_check` | Contract clause compliance audit (14 mandatory clauses) | — |
+| supplier_management | `openclaw_supplier_risk_monitor` | Supplier risk monitoring (add/remove/update/status) | — |
 
 ## Quick start
 
@@ -161,7 +176,7 @@ pip install -r requirements-dev.txt
 python -m pytest tests/test_smoke.py -v
 ```
 
-**486 tests** (168 unit + 318 integration), covering:
+**501 tests** (183 unit + 318 integration), covering:
 - Server starts and answers `ping`
 - `initialize` returns correct capabilities + `__version__`
 - All 115 tools registered with valid `inputSchema`

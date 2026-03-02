@@ -1305,6 +1305,204 @@ class MarketResearchMonitorInput(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
+# legal_status — 5 tools
+# ════════════════════════════════════════════════════════════
+
+_VALID_LEGAL_FORMS = {"SAS", "SASU", "SARL", "EURL", "SA", "MICRO", "SCI"}
+_VALID_SOCIAL_STATUSES = {"TNS", "assimile_salarie", "TNS_micro"}
+
+
+class LegalStatusCompareInput(BaseModel):
+    """Compare legal forms with multi-criteria scoring."""
+    project_type: str = Field(default="startup", max_length=128)
+    founders: int = Field(default=1, ge=1, le=100)
+    revenue_y1: float = Field(default=0, ge=0)
+    fundraising: bool = False
+    sector: str = Field(default="tech", max_length=256)
+    criteria_weights: dict[str, Any] | None = None
+
+
+class LegalTaxSimulateInput(BaseModel):
+    """Tax simulation IS vs IR over multiple years."""
+    legal_form: str = Field(default="SAS", max_length=10)
+    revenue: float = Field(default=100000, ge=0)
+    salary: float = Field(default=0, ge=0)
+    dividends: float = Field(default=0, ge=0)
+    horizon_years: int = Field(default=3, ge=1, le=10)
+    growth_rate: float = Field(default=0.1, ge=0, le=2.0)
+    holding: bool = False
+
+    @field_validator("legal_form")
+    @classmethod
+    def valid_legal_form(cls, v: str) -> str:
+        if v not in _VALID_LEGAL_FORMS:
+            raise ValueError(f"legal_form must be one of {_VALID_LEGAL_FORMS}")
+        return v
+
+
+class LegalSocialProtectionInput(BaseModel):
+    """Social protection analysis by status."""
+    status: str = Field(default="assimile_salarie", max_length=64)
+    salary: float = Field(default=50000, ge=0)
+    include_options: bool = True
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, v: str) -> str:
+        if v not in _VALID_SOCIAL_STATUSES:
+            raise ValueError(f"status must be one of {_VALID_SOCIAL_STATUSES}")
+        return v
+
+
+class LegalGovernanceAuditInput(BaseModel):
+    """Governance structure audit."""
+    legal_form: str = Field(default="SAS", max_length=10)
+    founders: int = Field(default=2, ge=1, le=100)
+    has_investors: bool = False
+    specific_clauses: list[str] | None = Field(default=None, max_length=20)
+
+    @field_validator("legal_form")
+    @classmethod
+    def valid_legal_form(cls, v: str) -> str:
+        if v not in _VALID_LEGAL_FORMS:
+            raise ValueError(f"legal_form must be one of {_VALID_LEGAL_FORMS}")
+        return v
+
+
+class LegalCreationChecklistInput(BaseModel):
+    """Post-creation compliance checklist."""
+    legal_form: str = Field(default="SAS", max_length=10)
+    sector: str = Field(default="tech", max_length=256)
+    geography: str = Field(default="France", max_length=256)
+
+    @field_validator("legal_form")
+    @classmethod
+    def valid_legal_form(cls, v: str) -> str:
+        if v not in _VALID_LEGAL_FORMS:
+            raise ValueError(f"legal_form must be one of {_VALID_LEGAL_FORMS}")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
+# location_strategy — 5 tools
+# ════════════════════════════════════════════════════════════
+
+_VALID_PROPERTY_TYPES = {"bureau", "coworking", "entrepot", "commerce", "mixte", "atelier", "terrain"}
+
+
+class LocationGeoAnalysisInput(BaseModel):
+    """Geo-economic analysis of candidate cities."""
+    cities: list[str] = Field(min_length=1, max_length=20)
+    sector: str = Field(default="tech", max_length=256)
+    headcount: int = Field(default=10, ge=1, le=100000)
+    priorities: list[str] | None = Field(default=None, max_length=10)
+
+
+class LocationRealEstateInput(BaseModel):
+    """Real estate market intelligence."""
+    zone: str = Field(default="Île-de-France", max_length=512)
+    property_type: str = Field(default="bureau", max_length=64)
+    surface_min: int = Field(default=100, ge=1, le=100000)
+    surface_max: int | None = Field(default=None, ge=1, le=100000)
+    budget_max: float | None = Field(default=None, ge=0)
+
+    @field_validator("property_type")
+    @classmethod
+    def valid_property_type(cls, v: str) -> str:
+        if v not in _VALID_PROPERTY_TYPES:
+            raise ValueError(f"property_type must be one of {_VALID_PROPERTY_TYPES}")
+        return v
+
+
+class LocationSiteScoreInput(BaseModel):
+    """Multi-criteria site scoring."""
+    sites: list[str] = Field(min_length=1, max_length=20)
+    scores: dict[str, Any] | None = None
+    weights: dict[str, Any] | None = None
+
+
+class LocationIncentivesInput(BaseModel):
+    """Tax incentives and aid programs by territory."""
+    zone: str = Field(default="", max_length=512)
+    company_type: str = Field(default="startup", max_length=64)
+    headcount: int = Field(default=10, ge=1, le=100000)
+    sector: str = Field(default="tech", max_length=256)
+
+
+class LocationTcoSimulateInput(BaseModel):
+    """Total Cost of Occupation simulation."""
+    sites: list[str] = Field(min_length=1, max_length=20)
+    surface: int = Field(default=200, ge=1, le=100000)
+    horizon_years: int = Field(default=3, ge=1, le=10)
+    headcount: int = Field(default=10, ge=1, le=100000)
+    annual_rent_increase: float = Field(default=0.03, ge=0, le=0.5)
+
+
+# ════════════════════════════════════════════════════════════
+# supplier_management — 5 tools
+# ════════════════════════════════════════════════════════════
+
+_VALID_SUPPLIER_CATEGORIES = {"saas", "cloud", "services", "hardware", "office", "logistics", "raw_materials", "marketing", "consulting", "telecom", "insurance", "accounting"}
+_VALID_SUPPLIER_MONITOR_ACTIONS = {"add", "remove", "update", "status", "export"}
+
+
+class SupplierSearchInput(BaseModel):
+    """Market-wide supplier sourcing."""
+    category: str = Field(default="saas", max_length=64)
+    query: str = Field(default="", max_length=2048)
+    budget_max: float | None = Field(default=None, ge=0)
+    users: int | None = Field(default=None, ge=1, le=1000000)
+    geography: str = Field(default="France", max_length=256)
+    requirements: list[str] = Field(default_factory=list, max_length=20)
+
+    @field_validator("category")
+    @classmethod
+    def valid_category(cls, v: str) -> str:
+        if v not in _VALID_SUPPLIER_CATEGORIES:
+            raise ValueError(f"category must be one of {_VALID_SUPPLIER_CATEGORIES}")
+        return v
+
+
+class SupplierEvaluateInput(BaseModel):
+    """Multi-criteria supplier evaluation."""
+    suppliers: list[str] = Field(min_length=1, max_length=20)
+    scores: dict[str, Any] | None = None
+    criteria: dict[str, Any] | None = None
+
+
+class SupplierTcoAnalyzeInput(BaseModel):
+    """Total Cost of Ownership analysis."""
+    suppliers: list[str] = Field(min_length=1, max_length=20)
+    volume: int = Field(default=1, ge=1, le=1000000)
+    horizon_years: int = Field(default=3, ge=1, le=10)
+    unit_prices: dict[str, Any] | None = None
+    include_hidden_costs: bool = True
+
+
+class SupplierContractCheckInput(BaseModel):
+    """Contract clause analysis."""
+    supplier: str = Field(default="", max_length=256)
+    contract_type: str = Field(default="SaaS", max_length=64)
+    requirements: list[str] = Field(default_factory=list, max_length=20)
+    existing_clauses: list[str] = Field(default_factory=list, max_length=30)
+
+
+class SupplierRiskMonitorInput(BaseModel):
+    """Supplier risk monitoring CRUD."""
+    action: str = Field(default="status")
+    supplier: str = Field(default="", max_length=256)
+    watch: list[str] | None = Field(default=None, max_length=10)
+    notes: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("action")
+    @classmethod
+    def valid_action(cls, v: str) -> str:
+        if v not in _VALID_SUPPLIER_MONITOR_ACTIONS:
+            raise ValueError(f"action must be one of {_VALID_SUPPLIER_MONITOR_ACTIONS}")
+        return v
+
+
+# ════════════════════════════════════════════════════════════
 # Registry: tool name → Pydantic model class
 # ════════════════════════════════════════════════════════════
 
@@ -1456,4 +1654,22 @@ TOOL_MODELS: dict[str, type[BaseModel]] = {
     "openclaw_market_web_research":                MarketWebResearchInput,
     "openclaw_market_report_generate":             MarketReportGenerateInput,
     "openclaw_market_research_monitor":            MarketResearchMonitorInput,
+    # legal_status (5 tools)
+    "openclaw_legal_status_compare":              LegalStatusCompareInput,
+    "openclaw_legal_tax_simulate":                LegalTaxSimulateInput,
+    "openclaw_legal_social_protection":           LegalSocialProtectionInput,
+    "openclaw_legal_governance_audit":            LegalGovernanceAuditInput,
+    "openclaw_legal_creation_checklist":          LegalCreationChecklistInput,
+    # location_strategy (5 tools)
+    "openclaw_location_geo_analysis":             LocationGeoAnalysisInput,
+    "openclaw_location_real_estate":              LocationRealEstateInput,
+    "openclaw_location_site_score":               LocationSiteScoreInput,
+    "openclaw_location_incentives":               LocationIncentivesInput,
+    "openclaw_location_tco_simulate":             LocationTcoSimulateInput,
+    # supplier_management (5 tools)
+    "openclaw_supplier_search":                   SupplierSearchInput,
+    "openclaw_supplier_evaluate":                 SupplierEvaluateInput,
+    "openclaw_supplier_tco_analyze":              SupplierTcoAnalyzeInput,
+    "openclaw_supplier_contract_check":           SupplierContractCheckInput,
+    "openclaw_supplier_risk_monitor":             SupplierRiskMonitorInput,
 }

@@ -682,18 +682,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: findings list with severity and remediation."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_gateway_auth_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -727,18 +715,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: per-credentials-dir findings with severity."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_credentials_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -780,18 +756,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: findings list with severity HIGH for any channel with webhook but no secret."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_webhook_sig_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -829,18 +793,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: findings with severity HIGH (verbose level) or MEDIUM (missing redact patterns)."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_log_config_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -874,18 +826,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: file inventory, fingerprint, and findings with severity."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_workspace_integrity_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {

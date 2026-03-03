@@ -466,18 +466,6 @@ TOOLS: list[dict[str, Any]] = [
             "credential exposure. Gap T3/issue #15093."
         ),
         "category": "memory",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_pgvector_memory_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -514,18 +502,6 @@ TOOLS: list[dict[str, Any]] = [
             "cycle detection, density metrics, and backup configuration. Gap T9/issue #7783."
         ),
         "category": "memory",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_knowledge_graph_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {

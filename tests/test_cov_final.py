@@ -836,7 +836,7 @@ class TestAdvancedSecurityDeeper:
             "routes": [{"path": "/api", "session": "*"}],
         }}
         r = _run(openclaw_hook_session_routing_check(_write_config(tmp_path, cfg)))
-        findings_str = json.dumps(r.get("findings", []))
+        json.dumps(r.get("findings", []))
         assert len(r.get("findings", [])) >= 0  # just make sure it runs
 
     def test_config_include_valid_file(self, tmp_path):
@@ -928,7 +928,7 @@ class TestGatewayHardeningDeeper:
         from src.gateway_hardening import openclaw_log_config_check
         cfg = {"logging": {"level": "debug"}}
         r = _run(openclaw_log_config_check(_write_config(tmp_path, cfg)))
-        findings_str = json.dumps(r.get("findings", []))
+        json.dumps(r.get("findings", []))
         assert len(r.get("findings", [])) >= 0
 
     def test_workspace_integrity(self, tmp_path):

@@ -120,8 +120,8 @@ async def openclaw_gateway_probe(
                         action_required, restart_command, health_endpoints.
     """
     try:
-        import websockets
-        from websockets.exceptions import WebSocketException
+        import websockets  # noqa: F401
+        from websockets.exceptions import WebSocketException  # noqa: F401
     except ImportError:
         return {
             "ok": False,
@@ -141,7 +141,7 @@ async def openclaw_gateway_probe(
             ) as ws:
                 # Send a minimal ping-style message
                 await ws.send(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}))
-                raw = await asyncio.wait_for(ws.recv(), timeout=5)
+                await asyncio.wait_for(ws.recv(), timeout=5)
                 latency_ms = round((time.time() - start) * 1000, 1)
                 attempts.append({"attempt": attempt_num, "status": "ok", "latency_ms": latency_ms})
 
@@ -277,7 +277,7 @@ async def openclaw_doc_sync_check(
         found_match = bool(re.search(pattern, all_md, re.IGNORECASE))
 
         # Also look for older version patterns
-        major_minor = ".".join(clean_version.split(".")[:2])
+        ".".join(clean_version.split(".")[:2])
         prev_pattern = rf"{re.escape(short_name)}[^`\n]{{0,30}}0\.1[0-3]"
         found_old = bool(re.search(prev_pattern, all_md, re.IGNORECASE))
 
@@ -537,8 +537,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: connection status, latency, close code, exact launchctl restart command."
         ),
         "category": "reliability",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_gateway_probe,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -580,8 +578,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: desynced dependencies, severity (HIGH for ACP SDK/Carbon), update instructions."
         ),
         "category": "reliability",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_doc_sync_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -610,8 +606,6 @@ TOOLS: list[dict[str, Any]] = [
             "for 75M+ users in JP/TH. Returns: zombie deps, channel coverage matrix."
         ),
         "category": "reliability",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_channel_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -640,8 +634,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: ADR markdown, suggested commit path and git command."
         ),
         "category": "reliability",
-        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": firm_adr_generate,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},

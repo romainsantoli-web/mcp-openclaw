@@ -907,7 +907,7 @@ class TestRemainingSmallGaps:
     # --- browser_audit ---
     def test_browser_audit_dangerous_args(self, tmp_path):
         from src.browser_audit import openclaw_browser_context_check
-        cfg = _write_config(tmp_path, {
+        _write_config(tmp_path, {
             "browser": {"args": ["--no-sandbox", "--disable-web-security"]}
         })
         r = _run(openclaw_browser_context_check(workspace_path=str(tmp_path)))

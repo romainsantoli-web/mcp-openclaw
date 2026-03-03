@@ -434,7 +434,7 @@ class TestEcosystemProvenanceDeep:
             action="append", entry={"intent": "test1", "agent": "a1"},
             chain_path=str(tmp_path / "chain.json")))
         assert "hash" in r1 or "index" in r1 or r1.get("ok")
-        r2 = _parse(openclaw_provenance_tracker(
+        _parse(openclaw_provenance_tracker(
             action="append", entry={"intent": "test2", "agent": "a2"},
             chain_path=str(tmp_path / "chain.json")))
         rv = _parse(openclaw_provenance_tracker(

@@ -136,7 +136,7 @@ async def handle_location_geo_analysis(arguments: dict[str, Any]) -> list[dict[s
     cities = arguments.get("cities", [])
     sector = arguments.get("sector", "tech")
     headcount = arguments.get("headcount", 10)
-    priorities = arguments.get("priorities")
+    arguments.get("priorities")
 
     if not cities:
         return [{"type": "text", "text": json.dumps({

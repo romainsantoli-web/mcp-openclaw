@@ -244,7 +244,7 @@ async def handle_legal_status_compare(arguments: dict[str, Any]) -> list[dict[st
     revenue_y1 = arguments.get("revenue_y1", 0)
     fundraising = arguments.get("fundraising", False)
     sector = arguments.get("sector", "tech")
-    criteria_weights = arguments.get("criteria_weights")
+    arguments.get("criteria_weights")
 
     # Filter relevant forms based on founder count
     relevant_forms: dict[str, dict[str, Any]] = {}

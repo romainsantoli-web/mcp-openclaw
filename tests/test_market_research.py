@@ -279,7 +279,7 @@ class TestReportGenerate:
 
     def test_report_with_toc(self, tmp_path):
         out = str(tmp_path / "toc.md")
-        result = openclaw_market_report_generate(
+        openclaw_market_report_generate(
             title="TOC Report",
             output_path=out,
             include_toc=True,
@@ -289,7 +289,7 @@ class TestReportGenerate:
 
     def test_report_without_toc(self, tmp_path):
         out = str(tmp_path / "notoc.md")
-        result = openclaw_market_report_generate(
+        openclaw_market_report_generate(
             title="No TOC Report",
             output_path=out,
             include_toc=False,

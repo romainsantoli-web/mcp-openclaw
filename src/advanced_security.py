@@ -369,7 +369,7 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
 
     # Check 1: exec approvals configuration
     exec_cfg = _get_nested(config, "tools", "exec", default={})
-    approvals_mode = exec_cfg.get("approvalsMode") if isinstance(exec_cfg, dict) else None
+    exec_cfg.get("approvalsMode") if isinstance(exec_cfg, dict) else None
     safe_bins = exec_cfg.get("safeBins", []) if isinstance(exec_cfg, dict) else []
     host_setting = exec_cfg.get("host", "sandbox") if isinstance(exec_cfg, dict) else "sandbox"
 

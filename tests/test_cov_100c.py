@@ -136,53 +136,53 @@ class TestA2ABridgeCardGenDeep:
         assert len(findings) >= 1
 
     def test_card_generate_file_not_found(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_generate
-        r = _parse(openclaw_a2a_card_generate(
+        from src.a2a_bridge import firm_a2a_card_generate
+        r = _parse(firm_a2a_card_generate(
             soul_path=str(tmp_path / "nonexistent.md"),
             base_url="https://x.com"))
         assert "error" in json.dumps(r).lower() or not r.get("ok")
 
     def test_card_validate_no_args(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = _parse(openclaw_a2a_card_validate())
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = _parse(firm_a2a_card_validate())
         assert "error" in json.dumps(r).lower() or _fc(r) >= 1
 
     def test_card_validate_bad_json_file(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_validate
+        from src.a2a_bridge import firm_a2a_card_validate
         bad = tmp_path / "bad.json"
         bad.write_text("not json!")
-        r = _parse(openclaw_a2a_card_validate(card_path=str(bad)))
+        r = _parse(firm_a2a_card_validate(card_path=str(bad)))
         assert "error" in json.dumps(r).lower() or _fc(r) >= 1
 
     def test_card_validate_nonexistent_path(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = _parse(openclaw_a2a_card_validate(
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = _parse(firm_a2a_card_validate(
             card_path=str(tmp_path / "nope.json")))
         assert "error" in json.dumps(r).lower() or not r.get("ok", True)
 
 
 class TestA2ASubscribeDeep:
     def test_subscribe_ssrf(self):
-        from src.a2a_bridge import openclaw_a2a_subscribe_task
-        r = _parse(_run(openclaw_a2a_subscribe_task(
+        from src.a2a_bridge import firm_a2a_subscribe_task
+        r = _parse(_run(firm_a2a_subscribe_task(
             task_id="t1", callback_url="http://127.0.0.1")))
         assert "error" in json.dumps(r).lower() or "ssrf" in json.dumps(r).lower() or True
 
     def test_push_config_no_url(self):
-        from src.a2a_bridge import openclaw_a2a_push_config
-        r = _parse(openclaw_a2a_push_config(
+        from src.a2a_bridge import firm_a2a_push_config
+        r = _parse(firm_a2a_push_config(
             task_id="t1", action="create"))
         assert "error" in json.dumps(r).lower() or r.get("ok") is not None
 
     def test_push_config_bad_scheme(self):
-        from src.a2a_bridge import openclaw_a2a_push_config
-        r = _parse(openclaw_a2a_push_config(
+        from src.a2a_bridge import firm_a2a_push_config
+        r = _parse(firm_a2a_push_config(
             task_id="t1", action="create", webhook_url="ftp://bad"))
         assert "error" in json.dumps(r).lower() or True
 
     def test_push_config_ssrf(self):
-        from src.a2a_bridge import openclaw_a2a_push_config
-        _parse(openclaw_a2a_push_config(
+        from src.a2a_bridge import firm_a2a_push_config
+        _parse(firm_a2a_push_config(
             task_id="t1", action="create",
             webhook_url="http://127.0.0.1/hook"))
         assert True  # Just exercise the code path
@@ -190,18 +190,18 @@ class TestA2ASubscribeDeep:
 
 class TestA2ADiscoveryDeep:
     def test_discovery_with_souls(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_discovery
+        from src.a2a_bridge import firm_a2a_discovery
         soul_dir = tmp_path / "agent1"
         soul_dir.mkdir()
         (soul_dir / "SOUL.md").write_text("---\nname: Agent1\n---\n## Skill A\nDoes A")
-        r = _parse(_run(openclaw_a2a_discovery(souls_dir=str(tmp_path))))
+        r = _parse(_run(firm_a2a_discovery(souls_dir=str(tmp_path))))
         assert r.get("ok") or "agents" in json.dumps(r).lower()
 
     def test_discovery_not_dir(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_discovery
+        from src.a2a_bridge import firm_a2a_discovery
         f = tmp_path / "not_a_dir.txt"
         f.write_text("x")
-        _parse(_run(openclaw_a2a_discovery(souls_dir=str(f))))
+        _parse(_run(firm_a2a_discovery(souls_dir=str(f))))
         assert True  # Exercise the code path
 
 
@@ -210,25 +210,25 @@ class TestA2ADiscoveryDeep:
 # ===================================================================
 class TestReliabilityProbeDeep:
     def test_gateway_probe_unreachable(self):
-        from src.reliability_probe import openclaw_gateway_probe
+        from src.reliability_probe import firm_gateway_probe
         with patch("websockets.connect", side_effect=OSError("unreachable")):
-            r = _parse(_run(openclaw_gateway_probe("ws://fake:1234")))
+            r = _parse(_run(firm_gateway_probe("ws://fake:1234")))
             assert not r.get("reachable", True) or "error" in json.dumps(r).lower()
 
     def test_doc_sync_no_pkg(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
-        r = _parse(_run(openclaw_doc_sync_check(str(tmp_path / "nope.json"))))
+        from src.reliability_probe import firm_doc_sync_check
+        r = _parse(_run(firm_doc_sync_check(str(tmp_path / "nope.json"))))
         assert "error" in json.dumps(r).lower() or not r.get("ok", True)
 
     def test_doc_sync_no_md(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"express": "^4.18.2"}}))
-        r = _parse(_run(openclaw_doc_sync_check(str(pkg), docs_glob="*.md")))
+        r = _parse(_run(firm_doc_sync_check(str(pkg), docs_glob="*.md")))
         assert isinstance(r, dict)
 
     def test_doc_sync_with_docs(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({
             "dependencies": {"express": "^4.18.2", "lodash": "*"},
@@ -236,18 +236,18 @@ class TestReliabilityProbeDeep:
         }))
         md = tmp_path / "README.md"
         md.write_text("# Docs\nWe use express 4.18.2 and lodash")
-        r = _parse(_run(openclaw_doc_sync_check(str(pkg), docs_glob="*.md")))
+        r = _parse(_run(firm_doc_sync_check(str(pkg), docs_glob="*.md")))
         assert _fc(r) >= 0
 
     def test_channel_audit_with_deps(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({
             "dependencies": {"baileys": "^6.0.0", "@line/bot-sdk": "^7.0.0"},
         }))
         readme = tmp_path / "README.md"
         readme.write_text("# Project\nUses baileys for WhatsApp.\n")
-        r = _parse(_run(openclaw_channel_audit(str(pkg), str(readme))))
+        r = _parse(_run(firm_channel_audit(str(pkg), str(readme))))
         assert "code_channels" in r or isinstance(r, dict)
 
 
@@ -256,131 +256,131 @@ class TestReliabilityProbeDeep:
 # ===================================================================
 class TestConfigMigrationShellEnvDeep:
     def test_ld_preload(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write(tmp_path, {"agents": {"defaults": {
             "env": {"LD_PRELOAD": "/evil.so"},
             "fork": {"env": {"PATH": "/bad"}},
         }}})
-        r = _parse(_run(openclaw_shell_env_check(cfg)))
+        r = _parse(_run(firm_shell_env_check(cfg)))
         assert _fc(r) >= 1
 
     def test_zdotdir_relative(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write(tmp_path, {"agents": {"defaults": {
             "env": {"ZDOTDIR": "relative/path"},
         }}})
-        r = _parse(_run(openclaw_shell_env_check(cfg)))
+        r = _parse(_run(firm_shell_env_check(cfg)))
         assert _fc(r) >= 1
 
     def test_not_found(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
-        r = _parse(_run(openclaw_shell_env_check(str(tmp_path / "nope.json"))))
+        from src.config_migration import firm_shell_env_check
+        r = _parse(_run(firm_shell_env_check(str(tmp_path / "nope.json"))))
         assert isinstance(r, dict)
 
 
 class TestConfigMigrationPluginIntegrityDeep:
     def test_not_found(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
-        r = _parse(_run(openclaw_plugin_integrity_check(str(tmp_path / "nope.json"))))
+        from src.config_migration import firm_plugin_integrity_check
+        r = _parse(_run(firm_plugin_integrity_check(str(tmp_path / "nope.json"))))
         assert isinstance(r, dict)
 
     def test_with_plugins(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write(tmp_path, {"plugins": {
             "registered": [{"name": "p1", "version": "1.0.0"}],
         }})
-        r = _parse(_run(openclaw_plugin_integrity_check(cfg)))
+        r = _parse(_run(firm_plugin_integrity_check(cfg)))
         assert isinstance(r, dict)
 
 
 class TestConfigMigrationTokenSepDeep:
     def test_same_token(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write(tmp_path, {
             "hooks": {"token": "sametoken_32chars_padded_to_fill!"},
             "gateway": {"auth": {"token": "sametoken_32chars_padded_to_fill!"}},
         })
-        r = _parse(_run(openclaw_token_separation_check(cfg)))
+        r = _parse(_run(firm_token_separation_check(cfg)))
         assert _fc(r) >= 1
 
     def test_short_token(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write(tmp_path, {
             "hooks": {"token": "short"},
             "gateway": {"auth": {"token": "different_long_enough_token_here!!!"}},
         })
-        r = _parse(_run(openclaw_token_separation_check(cfg)))
+        r = _parse(_run(firm_token_separation_check(cfg)))
         assert _fc(r) >= 1
 
     def test_placeholder_token(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write(tmp_path, {
             "hooks": {"token": "changeme"},
             "gateway": {"auth": {}},
         })
-        r = _parse(_run(openclaw_token_separation_check(cfg)))
+        r = _parse(_run(firm_token_separation_check(cfg)))
         assert _fc(r) >= 1
 
     def test_template_var_skipped(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write(tmp_path, {
             "hooks": {"token": "$MY_TOKEN"},
             "gateway": {"auth": {}},
         })
-        r = _parse(_run(openclaw_token_separation_check(cfg)))
+        r = _parse(_run(firm_token_separation_check(cfg)))
         # Template var should be skipped
         assert isinstance(r, dict)
 
 
 class TestConfigMigrationOtelDeep:
     def test_inline_auth(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "endpoint": "https://user:pass@host.com",
             "headers": {"authorization": "plaintext_token"},
             "redaction": {"enabled": False},
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(cfg)))
+        r = _parse(_run(firm_otel_redaction_check(cfg)))
         assert _fc(r) >= 2
 
     def test_no_redaction_config(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "endpoint": "https://clean-host.com",
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(cfg)))
+        r = _parse(_run(firm_otel_redaction_check(cfg)))
         assert isinstance(r, dict)
 
 
 class TestConfigMigrationRpcRateLimitDeep:
     def test_remote_no_limit(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {"bind": "0.0.0.0"}})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(cfg)))
         assert _fc(r) >= 1
 
     def test_high_requests(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {
             "bind": "0.0.0.0",
             "rateLimit": {"maxRequestsPerMinute": 1000},
         }})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(cfg)))
         assert _fc(r) >= 1
 
     def test_hooks_no_rate_limit(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {
             "bind": "127.0.0.1",
             "rateLimit": {"maxRequestsPerMinute": 100, "maxConcurrent": 10},
         }, "hooks": {"mappings": {"test": {}}}})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(cfg)))
         assert isinstance(r, dict)
 
     def test_loopback_info(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {"bind": "127.0.0.1"}})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(cfg)))
         assert isinstance(r, dict)
 
 
@@ -448,29 +448,29 @@ class TestHebbianRuntimeDeep:
         return str(db)
 
     def test_harvest_bad_extension(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         bad = tmp_path / "data.csv"
         bad.write_text("not,jsonl")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(bad), db_path=self._make_db(tmp_path))))
         assert "error" in json.dumps(r).lower() or not r.get("ok", True)
 
     def test_harvest_traversal(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
-        r = _parse(_run(openclaw_hebbian_harvest(
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path="../evil.jsonl",
             db_path=self._make_db(tmp_path))))
         assert "error" in json.dumps(r).lower() or "traversal" in json.dumps(r).lower()
 
     def test_harvest_nonexistent(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
-        r = _parse(_run(openclaw_hebbian_harvest(
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(tmp_path / "nope.jsonl"),
             db_path=self._make_db(tmp_path))))
         assert "error" in json.dumps(r).lower() or not r.get("ok", True)
 
     def test_harvest_with_data(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jsonl = tmp_path / "sessions.jsonl"
         lines = [
             json.dumps({"session_id": "s1", "summary": "test session",
@@ -484,13 +484,13 @@ class TestHebbianRuntimeDeep:
         md = tmp_path / "claude.md"
         md.write_text("# Layer 2\n[0.70] Rule r1: test rule\n[0.50] Rule r2: another")
         db = self._make_db(tmp_path)
-        r = _parse(_run(openclaw_hebbian_harvest(
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(jsonl), claude_md_path=str(md),
             db_path=db)))
         assert r.get("ok") or r.get("ingested", 0) >= 1
 
     def test_weight_update_with_data(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         db_path = self._make_db(tmp_path)
         conn = sqlite3.connect(db_path)
         conn.execute(
@@ -500,7 +500,7 @@ class TestHebbianRuntimeDeep:
         conn.close()
         md = tmp_path / "claude.md"
         md.write_text("# Layer 2\n[0.70] Rule r1: test rule\n[0.50] Rule r2: another rule")
-        r = _parse(_run(openclaw_hebbian_weight_update(
+        r = _parse(_run(firm_hebbian_weight_update(
             claude_md_path=str(md), db_path=db_path, dry_run=False)))
         assert isinstance(r, dict)
 
@@ -510,59 +510,59 @@ class TestHebbianRuntimeDeep:
 # ===================================================================
 class TestHebbianValidationDeep:
     def test_layer_validate_missing_layers(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "claude.md"
         md.write_text("# Layer 1\nSome text\n# Layer 2\n[1.50] Rule bad: too high weight\nuser@email.com\n")
-        r = _parse(_run(openclaw_hebbian_layer_validate(claude_md_path=str(md))))
+        r = _parse(_run(firm_hebbian_layer_validate(claude_md_path=str(md))))
         assert _fc(r) >= 1
 
     def test_pii_check_stripping_disabled(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = _write(tmp_path, {"hebbian": {
             "pii_stripping": {"enabled": False, "patterns": ["email"]},
         }})
-        r = _parse(_run(openclaw_hebbian_pii_check(config_path=cfg)))
+        r = _parse(_run(firm_hebbian_pii_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_pii_check_missing_patterns(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = _write(tmp_path, {"hebbian": {
             "pii_stripping": {"enabled": True, "patterns": ["email"]},
         }})
-        r = _parse(_run(openclaw_hebbian_pii_check(config_path=cfg)))
+        r = _parse(_run(firm_hebbian_pii_check(config_path=cfg)))
         assert isinstance(r, dict)
 
     def test_pii_check_no_hebbian(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_hebbian_pii_check(config_path=cfg)))
+        r = _parse(_run(firm_hebbian_pii_check(config_path=cfg)))
         assert isinstance(r, dict)
 
     def test_decay_config_out_of_range(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
         cfg = _write(tmp_path, {"hebbian": {"parameters": {
             "learning_rate": 0.9, "decay": 0.5,
             "poids_max": 0.99, "poids_min": -0.1,
         }, "anti_drift": {"max_consecutive_auto_changes": 10}}})
-        r = _parse(_run(openclaw_hebbian_decay_config_check(config_path=cfg)))
+        r = _parse(_run(firm_hebbian_decay_config_check(config_path=cfg)))
         assert _fc(r) >= 3
 
     def test_drift_check_no_baseline(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         md = tmp_path / "claude.md"
         md.write_text("# Layer 2\n[0.70] Rule r1: test rule")
-        r = _parse(_run(openclaw_hebbian_drift_check(
+        r = _parse(_run(firm_hebbian_drift_check(
             claude_md_path=str(md),
             baseline_path=str(tmp_path / "nonexistent.md"))))
         assert r.get("status") == "no_baseline" or "baseline" in json.dumps(r).lower()
 
     def test_drift_check_drift_detected(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         md = tmp_path / "claude.md"
         md.write_text("Completely different content here with lots of new text that diverges significantly from the baseline version")
         base = tmp_path / "baseline.md"
         base.write_text("Original baseline content that has nothing in common with the new version at all whatsoever")
-        r = _parse(_run(openclaw_hebbian_drift_check(
+        r = _parse(_run(firm_hebbian_drift_check(
             claude_md_path=str(md), baseline_path=str(base))))
         assert isinstance(r, dict)
 
@@ -572,7 +572,7 @@ class TestHebbianValidationDeep:
 # ===================================================================
 class TestHebbianAnalysisDeep:
     def test_analyze_no_data(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
         db = tmp_path / "hebb.db"
         conn = sqlite3.connect(str(db))
         conn.execute("""CREATE TABLE IF NOT EXISTS sessions (
@@ -581,11 +581,11 @@ class TestHebbianAnalysisDeep:
             quality_score REAL, created_at TEXT)""")
         conn.commit()
         conn.close()
-        r = _parse(_run(openclaw_hebbian_analyze(db_path=str(db))))
+        r = _parse(_run(firm_hebbian_analyze(db_path=str(db))))
         assert r.get("status") == "no_recent_data" or isinstance(r, dict)
 
     def test_analyze_with_sessions(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
         db = tmp_path / "hebb.db"
         conn = sqlite3.connect(str(db))
         conn.execute("""CREATE TABLE IF NOT EXISTS sessions (
@@ -601,11 +601,11 @@ class TestHebbianAnalysisDeep:
                  0.8, "2026-03-01"))
         conn.commit()
         conn.close()
-        r = _parse(_run(openclaw_hebbian_analyze(db_path=str(db))))
+        r = _parse(_run(firm_hebbian_analyze(db_path=str(db))))
         assert isinstance(r, dict)
 
     def test_status_with_md(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
+        from src.hebbian_memory._analysis import firm_hebbian_status
         db = tmp_path / "hebb.db"
         conn = sqlite3.connect(str(db))
         conn.execute("""CREATE TABLE IF NOT EXISTS sessions (
@@ -618,7 +618,7 @@ class TestHebbianAnalysisDeep:
         conn.close()
         md = tmp_path / "claude.md"
         md.write_text("# Layer 1\nPrincipes\n# Layer 2\n[0.70] Rule r1: test\n[0.30] Rule r2: weak\n# Layer 3\nContexte\n# Layer 4\nHistorique")
-        r = _parse(_run(openclaw_hebbian_status(
+        r = _parse(_run(firm_hebbian_status(
             db_path=str(db), claude_md_path=str(md))))
         assert isinstance(r, dict)
 
@@ -757,14 +757,14 @@ class TestDeliveryExportDeep:
 # ===================================================================
 class TestBrowserAuditDeep:
     def test_no_config_found(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"playwright": "^1.0"}}))
-        r = _parse(_run(openclaw_browser_context_check(workspace_path=str(tmp_path))))
+        r = _parse(_run(firm_browser_context_check(workspace_path=str(tmp_path))))
         assert isinstance(r, dict)
 
     def test_dangerous_args(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"playwright": "^1.0"}}))
         cfg = tmp_path / "playwright.config.json"
@@ -773,11 +773,11 @@ class TestBrowserAuditDeep:
             "headless": False,
             "timeout": 200000,
         }}))
-        r = _parse(_run(openclaw_browser_context_check(workspace_path=str(tmp_path))))
+        r = _parse(_run(firm_browser_context_check(workspace_path=str(tmp_path))))
         assert _fc(r) >= 1 or isinstance(r, dict)
 
     def test_js_config_scan(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"devDependencies": {"puppeteer": "^20.0"}}))
         cfg = tmp_path / "puppeteer.config.js"
@@ -785,7 +785,7 @@ class TestBrowserAuditDeep:
   args: ['--no-sandbox', '--disable-gpu'],
   headless: false,
 }""")
-        r = _parse(_run(openclaw_browser_context_check(workspace_path=str(tmp_path))))
+        r = _parse(_run(firm_browser_context_check(workspace_path=str(tmp_path))))
         assert isinstance(r, dict)
 
 
@@ -809,25 +809,25 @@ class TestAcpBridgeDeep:
         assert "error" in json.dumps(r).lower() or "blocked" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_workspace_lock_acquire_release(self, tmp_path):
-        from src.acp_bridge import openclaw_workspace_lock
+        from src.acp_bridge import firm_workspace_lock
         lock_dir = tmp_path / "workspace"
         lock_dir.mkdir()
         # Acquire
-        r1 = _parse(_run(openclaw_workspace_lock(
+        r1 = _parse(_run(firm_workspace_lock(
             path=str(lock_dir), action="acquire", owner="test")))
         assert isinstance(r1, dict)
         # Status
-        r2 = _parse(_run(openclaw_workspace_lock(
+        r2 = _parse(_run(firm_workspace_lock(
             path=str(lock_dir), action="status", owner="test")))
         assert isinstance(r2, dict)
         # Release
-        r3 = _parse(_run(openclaw_workspace_lock(
+        r3 = _parse(_run(firm_workspace_lock(
             path=str(lock_dir), action="release", owner="test")))
         assert isinstance(r3, dict)
 
     def test_workspace_lock_traversal(self):
-        from src.acp_bridge import openclaw_workspace_lock
-        r = _parse(_run(openclaw_workspace_lock(
+        from src.acp_bridge import firm_workspace_lock
+        r = _parse(_run(firm_workspace_lock(
             path="../../../etc", action="status", owner="x")))
         assert "error" in json.dumps(r).lower() or "traversal" in json.dumps(r).lower()
 
@@ -872,21 +872,21 @@ class TestVsBridgeDeep:
 # ===================================================================
 class TestAgentOrchestrationDeep:
     def test_cycle_detection(self):
-        from src.agent_orchestration import openclaw_agent_team_orchestrate
-        r = _parse(_run(openclaw_agent_team_orchestrate(tasks=[
+        from src.agent_orchestration import firm_agent_team_orchestrate
+        r = _parse(_run(firm_agent_team_orchestrate(tasks=[
             {"id": "a", "description": "A", "depends_on": ["b"]},
             {"id": "b", "description": "B", "depends_on": ["a"]},
         ])))
         assert "error" in json.dumps(r).lower() or "cycle" in json.dumps(r).lower()
 
     def test_empty_tasks(self):
-        from src.agent_orchestration import openclaw_agent_team_orchestrate
-        r = _parse(_run(openclaw_agent_team_orchestrate(tasks=[])))
+        from src.agent_orchestration import firm_agent_team_orchestrate
+        r = _parse(_run(firm_agent_team_orchestrate(tasks=[])))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_timeout(self):
-        from src.agent_orchestration import openclaw_agent_team_orchestrate
-        r = _parse(_run(openclaw_agent_team_orchestrate(
+        from src.agent_orchestration import firm_agent_team_orchestrate
+        r = _parse(_run(firm_agent_team_orchestrate(
             tasks=[
                 {"id": "a", "description": "A"},
                 {"id": "b", "description": "B", "depends_on": ["a"]},
@@ -896,13 +896,13 @@ class TestAgentOrchestrationDeep:
         assert isinstance(r, dict)
 
     def test_status_all(self):
-        from src.agent_orchestration import openclaw_agent_team_status
-        r = _parse(_run(openclaw_agent_team_status()))
+        from src.agent_orchestration import firm_agent_team_status
+        r = _parse(_run(firm_agent_team_status()))
         assert isinstance(r, dict)
 
     def test_status_not_found(self):
-        from src.agent_orchestration import openclaw_agent_team_status
-        r = _parse(_run(openclaw_agent_team_status(
+        from src.agent_orchestration import firm_agent_team_status
+        r = _parse(_run(firm_agent_team_status(
             orchestration_id="nonexistent-id")))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
@@ -962,21 +962,21 @@ class TestAuthComplianceDeep:
 # ===================================================================
 class TestI18nAuditDeep:
     def test_auto_detect_locale_dir(self, tmp_path):
-        from src.i18n_audit import openclaw_i18n_audit
+        from src.i18n_audit import firm_i18n_audit
         loc = tmp_path / "src" / "locales"
         loc.mkdir(parents=True)
         (loc / "en.json").write_text(json.dumps({"greeting": "Hello {{name}}", "bye": ""}))
         (loc / "fr.json").write_text(json.dumps({"greeting": "Bonjour {{nom}}"}))
-        r = _parse(_run(openclaw_i18n_audit(project_path=str(tmp_path))))
+        r = _parse(_run(firm_i18n_audit(project_path=str(tmp_path))))
         assert _fc(r) >= 1 or "missing" in json.dumps(r).lower()
 
     def test_no_locale_dir(self, tmp_path):
-        from src.i18n_audit import openclaw_i18n_audit
-        r = _parse(_run(openclaw_i18n_audit(project_path=str(tmp_path))))
+        from src.i18n_audit import firm_i18n_audit
+        r = _parse(_run(firm_i18n_audit(project_path=str(tmp_path))))
         assert isinstance(r, dict)
 
     def test_subdir_pattern(self, tmp_path):
-        from src.i18n_audit import openclaw_i18n_audit
+        from src.i18n_audit import firm_i18n_audit
         loc = tmp_path / "locales"
         loc.mkdir()
         en = loc / "en"
@@ -985,17 +985,17 @@ class TestI18nAuditDeep:
         fr = loc / "fr"
         fr.mkdir()
         (fr / "messages.json").write_text(json.dumps({"key1": "val1"}))
-        r = _parse(_run(openclaw_i18n_audit(project_path=str(tmp_path),
+        r = _parse(_run(firm_i18n_audit(project_path=str(tmp_path),
                                         locale_dir=str(loc))))
         assert isinstance(r, dict)
 
     def test_invalid_json_locale(self, tmp_path):
-        from src.i18n_audit import openclaw_i18n_audit
+        from src.i18n_audit import firm_i18n_audit
         loc = tmp_path / "locales"
         loc.mkdir()
         (loc / "en.json").write_text(json.dumps({"key": "val"}))
         (loc / "fr.json").write_text("not json!")
-        r = _parse(_run(openclaw_i18n_audit(project_path=str(tmp_path),
+        r = _parse(_run(firm_i18n_audit(project_path=str(tmp_path),
                                         locale_dir=str(loc))))
         assert _fc(r) >= 1
 
@@ -1005,30 +1005,30 @@ class TestI18nAuditDeep:
 # ===================================================================
 class TestSkillLoaderDeep:
     def test_loader_scan(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
+        from src.skill_loader import firm_skill_lazy_loader
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: Skill A\ntags: [audit, security]\n---\n# Skill A\nA security audit skill.")
         s2 = tmp_path / "skill-b"
         s2.mkdir()
         (s2 / "SKILL.md").write_text("---\nname: Skill B\ntags: [export]\n---\n# Skill B\nAn export skill.")
-        r = _parse(_run(openclaw_skill_lazy_loader(
+        r = _parse(_run(firm_skill_lazy_loader(
             skills_dir=str(tmp_path))))
         assert r.get("ok") or r.get("skill_count", 0) >= 2
 
     def test_loader_not_found(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
-        r = _parse(_run(openclaw_skill_lazy_loader(
+        from src.skill_loader import firm_skill_lazy_loader
+        r = _parse(_run(firm_skill_lazy_loader(
             skills_dir=str(tmp_path), skill_name="nonexistent")))
         assert isinstance(r, dict)
 
     def test_search_with_tags(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader, openclaw_skill_search
+        from src.skill_loader import firm_skill_lazy_loader, firm_skill_search
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: SecurityPack\ntags: [audit, security]\n---\n# SecurityPack\nA security audit skill with important features.")
-        _run(openclaw_skill_lazy_loader(skills_dir=str(tmp_path)))
-        r = _parse(_run(openclaw_skill_search(
+        _run(firm_skill_lazy_loader(skills_dir=str(tmp_path)))
+        r = _parse(_run(firm_skill_search(
             skills_dir=str(tmp_path), query="security", tags=["audit"])))
         assert r.get("ok") or r.get("total_matches", 0) >= 0
 
@@ -1038,39 +1038,39 @@ class TestSkillLoaderDeep:
 # ===================================================================
 class TestSecurityAuditDeep:
     def test_scan_file_with_patterns(self, tmp_path):
-        from src.security_audit import openclaw_security_scan
+        from src.security_audit import firm_security_scan
         ts = tmp_path / "api.ts"
         ts.write_text('const q = "SELECT * FROM users WHERE id = " + userId;')
-        r = _parse(_run(openclaw_security_scan(
+        r = _parse(_run(firm_security_scan(
             target_path=str(ts), endpoint="api")))
         assert isinstance(r, dict)
 
     def test_scan_dir(self, tmp_path):
-        from src.security_audit import openclaw_security_scan
+        from src.security_audit import firm_security_scan
         sub = tmp_path / "src"
         sub.mkdir()
         (sub / "handler.ts").write_text('const safe = "nothing here"')
-        r = _parse(_run(openclaw_security_scan(target_path=str(tmp_path))))
+        r = _parse(_run(firm_security_scan(target_path=str(tmp_path))))
         assert isinstance(r, dict)
 
     def test_sandbox_mode_detection(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
+        from src.security_audit import firm_sandbox_audit
         cfg = tmp_path / "config.json"
         cfg.write_text('{"sandbox": {"mode": "all"}}')
-        r = _parse(_run(openclaw_sandbox_audit(config_path=str(cfg))))
+        r = _parse(_run(firm_sandbox_audit(config_path=str(cfg))))
         assert isinstance(r, dict)
 
     def test_session_config_env_fallback(self):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         with patch.dict(os.environ, {"SESSION_SECRET": "mysecret"}):
-            r = _parse(_run(openclaw_session_config_check()))
+            r = _parse(_run(firm_session_config_check()))
             assert isinstance(r, dict)
 
     def test_rate_limit_funnel(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
+        from src.security_audit import firm_rate_limit_check
         cfg = tmp_path / "config.yaml"
         cfg.write_text("funnel: true\ngateway:\n  bind: 0.0.0.0")
-        r = _parse(_run(openclaw_rate_limit_check(gateway_config_path=str(cfg))))
+        r = _parse(_run(firm_rate_limit_check(gateway_config_path=str(cfg))))
         assert isinstance(r, dict)
 
 
@@ -1089,36 +1089,36 @@ class TestN8nBridgeDeep:
         assert len(issues) >= 1
 
     def test_export_with_depends(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
+        from src.n8n_bridge import firm_n8n_workflow_export
         steps = [
             {"id": "s1", "name": "Step 1", "type": "http_request"},
             {"id": "s2", "name": "Step 2", "type": "agent", "depends_on": "s1"},
         ]
-        r = _parse(_run(openclaw_n8n_workflow_export(
+        r = _parse(_run(firm_n8n_workflow_export(
             pipeline_name="test-pipe", steps=steps, output_path=str(tmp_path / "out.json"))))
         assert isinstance(r, dict)
 
     def test_import_not_found(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
-        r = _parse(_run(openclaw_n8n_workflow_import(
+        from src.n8n_bridge import firm_n8n_workflow_import
+        r = _parse(_run(firm_n8n_workflow_import(
             workflow_path=str(tmp_path / "nope.json"))))
         assert "error" in json.dumps(r).lower() or not r.get("ok", True)
 
     def test_import_bad_json(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         bad = tmp_path / "bad.json"
         bad.write_text("not json!")
-        r = _parse(_run(openclaw_n8n_workflow_import(
+        r = _parse(_run(firm_n8n_workflow_import(
             workflow_path=str(bad))))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_import_strict_with_issues(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf = tmp_path / "workflow.json"
         wf.write_text(json.dumps({"nodes": [
             {"id": "1", "name": "A", "position": [0, 0]},
         ], "connections": {}}))
-        r = _parse(_run(openclaw_n8n_workflow_import(
+        r = _parse(_run(firm_n8n_workflow_import(
             workflow_path=str(wf), strict=True)))
         assert isinstance(r, dict)
 
@@ -1128,7 +1128,7 @@ class TestN8nBridgeDeep:
 # ===================================================================
 class TestObservabilityDeep:
     def test_pipeline_field_conventions(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jsonl = tmp_path / "traces.jsonl"
         records = []
         for i in range(10):
@@ -1143,24 +1143,24 @@ class TestObservabilityDeep:
         records.append(records[0])
         jsonl.write_text("\n".join(records))
         db = tmp_path / "traces.db"
-        r = _parse(_run(openclaw_observability_pipeline(
+        r = _parse(_run(firm_observability_pipeline(
             jsonl_path=str(jsonl), db_path=str(db))))
         assert isinstance(r, dict)
 
     def test_ci_pipeline_no_yaml(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         ci = tmp_path / ".github" / "workflows"
         ci.mkdir(parents=True)
-        r = _parse(_run(openclaw_ci_pipeline_check(
+        r = _parse(_run(firm_ci_pipeline_check(
             repo_path=str(tmp_path), ci_dir=str(ci))))
         assert _fc(r) >= 1 or isinstance(r, dict)
 
     def test_ci_pipeline_partial(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         ci = tmp_path / ".github" / "workflows"
         ci.mkdir(parents=True)
         (ci / "ci.yml").write_text("name: CI\non: push\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm run lint")
-        r = _parse(_run(openclaw_ci_pipeline_check(
+        r = _parse(_run(firm_ci_pipeline_check(
             repo_path=str(tmp_path), ci_dir=str(ci))))
         assert isinstance(r, dict)
 
@@ -1190,20 +1190,20 @@ class TestPromptSecurityDeep:
 # ===================================================================
 class TestMarketResearchDeep:
     def test_monitor_add_update_remove(self):
-        from src.market_research import openclaw_market_research_monitor
-        r1 = _parse(openclaw_market_research_monitor(
+        from src.market_research import firm_market_research_monitor
+        r1 = _parse(firm_market_research_monitor(
             action="add", competitor="Stripe"))
         assert isinstance(r1, dict)
-        r2 = _parse(openclaw_market_research_monitor(
+        r2 = _parse(firm_market_research_monitor(
             action="update", competitor="Stripe", notes="Price up"))
         assert isinstance(r2, dict)
-        r3 = _parse(openclaw_market_research_monitor(
+        r3 = _parse(firm_market_research_monitor(
             action="remove", competitor="Stripe"))
         assert isinstance(r3, dict)
 
     def test_monitor_remove_not_found(self):
-        from src.market_research import openclaw_market_research_monitor
-        r = _parse(openclaw_market_research_monitor(
+        from src.market_research import firm_market_research_monitor
+        r = _parse(firm_market_research_monitor(
             action="remove", competitor="Nonexistent_" + str(time.time())))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 

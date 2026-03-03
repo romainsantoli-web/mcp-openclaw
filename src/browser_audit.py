@@ -1,8 +1,8 @@
 """
-browser_audit.py — OpenClaw browser automation context checker
+browser_audit.py — Firm browser automation context checker
 
 Tools:
-  openclaw_browser_context_check  — validates Playwright/Puppeteer headless config for agents
+  firm_browser_context_check  — validates Playwright/Puppeteer headless config for agents
 
 Gap T10: Browser Automation is the #4 trending MCP category (25k+ stars).
 Ensures agents running headless browsers have correct security/performance settings.
@@ -69,9 +69,9 @@ _FRAMEWORKS: dict[str, dict[str, Any]] = {
 }
 
 
-# ── Tool: openclaw_browser_context_check ─────────────────────────────────────
+# ── Tool: firm_browser_context_check ─────────────────────────────────────
 
-async def openclaw_browser_context_check(
+async def firm_browser_context_check(
     workspace_path: str,
     config_override: dict[str, Any] | None = None,
     check_deps: bool = True,
@@ -370,7 +370,7 @@ def _scan_js_config(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_browser_context_check",
+        "name": "firm_browser_context_check",
         "title": "Browser Headless Config Check",
         "description": (
             "Validates Playwright/Puppeteer headless browser configuration for agent use. "
@@ -378,7 +378,7 @@ TOOLS: list[dict[str, Any]] = [
             "mode, timeouts, viewport, and user data isolation. Gap T10: browser automation audit."
         ),
         "category": "browser_automation",
-        "handler": openclaw_browser_context_check,
+        "handler": firm_browser_context_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-openclaw-extensions"
-version = "3.3.0"
-description = "138-tool MCP server for AI agent firms — security audit, A2A protocol, Hebbian memory, fleet management, and 25 more modules"
+version = "4.0.0"
+description = "138-tool generic MCP server for AI agent firms. Works with Claude Code, Codex, VS Code, Cursor, Antigravity"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
@@ -13,9 +13,10 @@ authors = [
     {name = "Romain Santoli", email = "romainsantoli@gmail.com"},
 ]
 keywords = [
-    "mcp", "mcp-server", "ai-agents", "openclaw", "a2a-protocol",
+    "mcp", "mcp-server", "ai-agents", "firm", "a2a-protocol",
     "hebbian-memory", "inter-session-memory", "security-audit",
-    "copilot", "claude-code",
+    "copilot", "claude-code", "codex", "cursor", "windsurf",
+    "antigravity", "generic-mcp",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -55,7 +56,8 @@ metrics = [
 ]
 
 [project.scripts]
-mcp-openclaw = "src.main:main"
+mcp-firm = "src.main:main"
+mcp-openclaw = "src.main:main"  # backward compat alias
 
 [project.urls]
 Homepage = "https://github.com/romainsantoli-web/firm-ecosystem"

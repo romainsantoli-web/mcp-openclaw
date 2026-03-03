@@ -31,7 +31,7 @@ def _run(coro):
 
 
 def _write_config(tmp_path: Path, data: dict) -> str:
-    p = tmp_path / "openclaw.json"
+    p = tmp_path / "config.json"
     p.write_text(json.dumps(data))
     return str(p)
 
@@ -50,64 +50,64 @@ def _parse(result) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestObservabilityPipeline:
-    """Cover edge cases in openclaw_observability_pipeline."""
+    """Cover edge cases in firm_observability_pipeline."""
 
     def test_invalid_table_name(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         jf.write_text('{"traceId":"t1"}\n')
-        r = _run(openclaw_observability_pipeline(str(jf), table_name="123-bad!"))
+        r = _run(firm_observability_pipeline(str(jf), table_name="123-bad!"))
         assert r["ok"] is False
         assert "Invalid table_name" in r["error"]
 
     def test_file_not_found(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
-        r = _run(openclaw_observability_pipeline("/nonexistent/data.jsonl"))
+        from src.observability import firm_observability_pipeline
+        r = _run(firm_observability_pipeline("/nonexistent/data.jsonl"))
         assert r["ok"] is False
         assert "not found" in r["error"]
 
     def test_bad_extension(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         f = tmp_path / "data.csv"
         f.write_text("a,b,c\n")
-        r = _run(openclaw_observability_pipeline(str(f)))
+        r = _run(firm_observability_pipeline(str(f)))
         assert r["ok"] is False
         assert "extension" in r["error"].lower()
 
     def test_invalid_json_lines(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         jf.write_text("not json\n{bad\n")
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["ingested"] == 0
         assert len(r["errors"]) >= 2
 
     def test_max_lines_limit(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         lines = [json.dumps({"traceId": f"t{i}", "spanId": f"s{i}", "message": f"msg{i}"})
                  for i in range(10)]
         jf.write_text("\n".join(lines) + "\n")
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db, max_lines=3))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db, max_lines=3))
         assert r["ok"] is True
         assert r["ingested"] <= 4  # 3 lines + maybe 1 more before break
 
     def test_duplicate_trace_span(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         line = json.dumps({"traceId": "t1", "spanId": "s1", "message": "hello"})
         jf.write_text(f"{line}\n{line}\n")
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["skipped_duplicates"] >= 1
 
     def test_otel_field_extraction(self, tmp_path):
         """Cover resource.service.name, severityText, @timestamp, body fields."""
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         record = {
             "traceId": "abc", "spanId": "def",
@@ -118,66 +118,66 @@ class TestObservabilityPipeline:
         }
         jf.write_text(json.dumps(record) + "\n")
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["ingested"] == 1
 
     def test_empty_lines_skipped(self, tmp_path):
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         jf.write_text('\n\n{"traceId":"t1","spanId":"s1"}\n\n')
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["ingested"] == 1
 
     def test_batch_flush_500(self, tmp_path):
         """Cover the batch flush at 500 records."""
-        from src.observability import openclaw_observability_pipeline
+        from src.observability import firm_observability_pipeline
         jf = tmp_path / "data.jsonl"
         lines = [json.dumps({"traceId": f"t{i}", "spanId": f"s{i}"}) for i in range(510)]
         jf.write_text("\n".join(lines) + "\n")
         db = str(tmp_path / "test.db")
-        r = _run(openclaw_observability_pipeline(str(jf), db_path=db))
+        r = _run(firm_observability_pipeline(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["ingested"] == 510
 
 
 class TestCIPipelineCheck:
-    """Cover edge paths in openclaw_ci_pipeline_check."""
+    """Cover edge paths in firm_ci_pipeline_check."""
 
     def test_repo_not_found(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
-        r = _run(openclaw_ci_pipeline_check("/nonexistent/repo"))
+        from src.observability import firm_ci_pipeline_check
+        r = _run(firm_ci_pipeline_check("/nonexistent/repo"))
         assert r["ok"] is False
 
     def test_no_ci_dir(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        from src.observability import firm_ci_pipeline_check
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
         assert r["status"] == "critical"
 
     def test_empty_ci_dir(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         (tmp_path / ".github" / "workflows").mkdir(parents=True)
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
         assert r["status"] == "critical"
 
     def test_partial_ci(self, tmp_path):
         """ci with lint+test but no secrets → HIGH."""
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         wf = tmp_path / ".github" / "workflows"
         wf.mkdir(parents=True)
         (wf / "ci.yml").write_text("steps:\n  - run: pytest\n  - run: ruff check\n")
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
         assert r["status"] == "high"
         assert "secrets" in r["missing_required"]
 
     def test_complete_ci(self, tmp_path):
         """ci with all required + recommended → ok."""
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         wf = tmp_path / ".github" / "workflows"
         wf.mkdir(parents=True)
         content = (
@@ -188,17 +188,17 @@ class TestCIPipelineCheck:
             "  - run: mypy src/\n"
         )
         (wf / "ci.yml").write_text(content)
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
         assert r["status"] == "ok"
 
     def test_recommended_missing_only(self, tmp_path):
         """All required present, but no recommended → info."""
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         wf = tmp_path / ".github" / "workflows"
         wf.mkdir(parents=True)
         (wf / "ci.yml").write_text("steps:\n  - run: pytest\n  - run: ruff\n  - run: gitleaks\n")
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
         assert r["status"] == "info"
 
@@ -213,7 +213,7 @@ class TestHebbianRuntimeDeep:
 
     def test_weight_update_apply(self, tmp_path):
         """dry_run=False should write changes to the file."""
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         md = tmp_path / "claude.md"
         md.write_text("## Layer 2\n[0.50] Always use type hints\n[0.30] Prefer dict over class\n")
         db = tmp_path / "heb.db"
@@ -234,43 +234,43 @@ class TestHebbianRuntimeDeep:
         conn.commit()
         conn.close()
 
-        r = _run(openclaw_hebbian_weight_update(str(md), db_path=str(db), dry_run=False))
+        r = _run(firm_hebbian_weight_update(str(md), db_path=str(db), dry_run=False))
         assert r["ok"] is True
         # dry_run=False path was executed
         assert r.get("dry_run") is False or "changes" in r
 
     def test_weight_update_no_rules(self, tmp_path):
         """File with no weighted rules → no_rules status."""
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         md = tmp_path / "claude.md"
         md.write_text("# Just a title\nNo rules here.\n")
-        r = _run(openclaw_hebbian_weight_update(str(md)))
+        r = _run(firm_hebbian_weight_update(str(md)))
         assert r["ok"] is True
         assert r["status"] == "no_rules"
 
     def test_weight_update_missing_file(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
-        r = _run(openclaw_hebbian_weight_update("/nonexistent/claude.md"))
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
+        r = _run(firm_hebbian_weight_update("/nonexistent/claude.md"))
         assert r["ok"] is False
 
     def test_harvest_bad_suffix(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         f = tmp_path / "data.csv"
         f.write_text("nope")
-        r = _run(openclaw_hebbian_harvest(str(f)))
+        r = _run(firm_hebbian_harvest(str(f)))
         assert r["ok"] is False
 
     def test_harvest_missing_summary(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jf = tmp_path / "data.jsonl"
         jf.write_text('{"session_id":"s1","tags":["a"]}\n')
         db = str(tmp_path / "heb.db")
-        r = _run(openclaw_hebbian_harvest(str(jf), db_path=db))
+        r = _run(firm_hebbian_harvest(str(jf), db_path=db))
         assert r["ok"] is True
         assert len(r["errors"]) >= 1
 
     def test_harvest_full_record(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jf = tmp_path / "data.jsonl"
         record = {
             "session_id": "s1",
@@ -282,36 +282,36 @@ class TestHebbianRuntimeDeep:
         }
         jf.write_text(json.dumps(record) + "\n")
         db = str(tmp_path / "heb.db")
-        r = _run(openclaw_hebbian_harvest(str(jf), db_path=db))
+        r = _run(firm_hebbian_harvest(str(jf), db_path=db))
         assert r["ok"] is True
         assert r["ingested"] >= 1
 
     def test_harvest_with_claude_md(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         md = tmp_path / "claude.md"
         md.write_text("## Layer 2\n[0.50] My rule\n")
         jf = tmp_path / "data.jsonl"
         jf.write_text('{"summary":"test","session_id":"s2"}\n')
         db = str(tmp_path / "heb.db")
-        r = _run(openclaw_hebbian_harvest(str(jf), claude_md_path=str(md), db_path=db))
+        r = _run(firm_hebbian_harvest(str(jf), claude_md_path=str(md), db_path=db))
         assert r["ok"] is True
 
     def test_harvest_non_list_tags(self, tmp_path):
         """tags as non-list should be coerced to empty list."""
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jf = tmp_path / "data.jsonl"
         jf.write_text('{"summary":"x","session_id":"s3","tags":"notalist","rules_activated":"notalist"}\n')
         db = str(tmp_path / "heb.db")
-        r = _run(openclaw_hebbian_harvest(str(jf), db_path=db))
+        r = _run(firm_hebbian_harvest(str(jf), db_path=db))
         assert r["ok"] is True
 
     def test_harvest_duplicate_session(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jf = tmp_path / "data.jsonl"
         line = json.dumps({"summary": "x", "session_id": "dup1"})
         jf.write_text(f"{line}\n{line}\n")
         db = str(tmp_path / "heb.db")
-        r = _run(openclaw_hebbian_harvest(str(jf), db_path=db))
+        r = _run(firm_hebbian_harvest(str(jf), db_path=db))
         assert r["ok"] is True
 
 
@@ -323,56 +323,56 @@ class TestA2ABridgeDeep:
     """Cover validation branches in a2a_bridge."""
 
     def test_card_validate_from_file(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_validate
+        from src.a2a_bridge import firm_a2a_card_validate
         card = {"name": "TestAgent", "url": "https://a.com", "version": "1.0.0",
                 "skills": [{"id": "s1", "name": "Skill1"}]}
         f = tmp_path / "card.json"
         f.write_text(json.dumps(card))
-        r = openclaw_a2a_card_validate(card_path=str(f))
+        r = firm_a2a_card_validate(card_path=str(f))
         assert r["ok"] is True
 
     def test_card_validate_file_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_path="/nonexistent/card.json")
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_path="/nonexistent/card.json")
         assert r["ok"] is False
 
     def test_card_validate_bad_json(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_validate
+        from src.a2a_bridge import firm_a2a_card_validate
         f = tmp_path / "card.json"
         f.write_text("not json")
-        r = openclaw_a2a_card_validate(card_path=str(f))
+        r = firm_a2a_card_validate(card_path=str(f))
         assert r["ok"] is False
 
     def test_card_validate_no_input(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate()
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate()
         assert r["ok"] is False
 
     def test_card_validate_missing_fields(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={"dummy": True})
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={"dummy": True})
         assert r["ok"] is False
         assert r["severity_counts"]["CRITICAL"] > 0
 
     def test_card_validate_bad_url_scheme(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "ftp://bad.com", "version": "1.0.0", "skills": []
         })
         issues = [i for i in r["issues"] if i["field"] == "url"]
         assert any("scheme" in i["message"] for i in issues)
 
     def test_card_validate_bad_version(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "not-semver", "skills": []
         })
         issues = [i for i in r["issues"] if i["field"] == "version"]
         assert len(issues) >= 1
 
     def test_card_validate_duplicate_skill_ids(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}, {"id": "s1", "name": "S2"}]
         })
@@ -380,8 +380,8 @@ class TestA2ABridgeDeep:
         assert len(issues) >= 1
 
     def test_card_validate_skill_no_id(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"name": "NoId"}]
         })
@@ -399,8 +399,8 @@ class TestA2ABridgeDeep:
         assert any("object" in i.get("message", "") for i in issues)
 
     def test_card_validate_unknown_capability(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}],
             "capabilities": {"unknownCap": True}
@@ -409,8 +409,8 @@ class TestA2ABridgeDeep:
         assert len(issues) >= 1
 
     def test_card_validate_bad_extension(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}],
             "extensions": [{"noUri": True}]
@@ -419,8 +419,8 @@ class TestA2ABridgeDeep:
         assert len(issues) >= 1
 
     def test_card_validate_bad_security_type(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}],
             "securitySchemes": {"myAuth": {"type": "invalidType"}},
@@ -430,8 +430,8 @@ class TestA2ABridgeDeep:
         assert len(issues) >= 1
 
     def test_card_validate_security_ref_unknown(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}],
             "securitySchemes": {},
@@ -444,8 +444,8 @@ class TestA2ABridgeDeep:
         """card_validate post-loop detects deprecated v0.4.0 kind discriminator.
         Note: The _validate_agent_card loop has a bug with dict modes, so we test
         the card_validate outer loop directly by using valid modes + one dict mode."""
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S", "inputModes": ["text/plain"]}]
         })
@@ -463,8 +463,8 @@ class TestA2ABridgeDeep:
         assert any("Non-standard" in i.get("message", "") for i in issues)
 
     def test_card_validate_defaultInputModes_not_array(self):
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_json={
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_json={
             "name": "A", "url": "https://a.com", "version": "1.0.0",
             "skills": [{"id": "s1", "name": "S"}],
             "defaultInputModes": "not-array"
@@ -473,217 +473,217 @@ class TestA2ABridgeDeep:
         assert len(issues) >= 1
 
     def test_card_generate_with_signing(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_generate
+        from src.a2a_bridge import firm_a2a_card_generate
         soul = tmp_path / "CEO" / "SOUL.md"
         soul.parent.mkdir()
         soul.write_text("---\nname: CEO\nrole: Chief\nauthor: Acme\nlicense: MIT\ndocumentation: https://docs.com\n---\n## Leadership\n## Strategy\n")
-        r = openclaw_a2a_card_generate(str(soul), "https://agent.com", sign=True, signing_key="secret123")
+        r = firm_a2a_card_generate(str(soul), "https://agent.com", sign=True, signing_key="secret123")
         assert r["ok"] is True
         assert "signature" in r
         assert "provider" in r["card"]
         assert "documentationUrl" in r["card"]
 
     def test_card_generate_with_output(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_card_generate
+        from src.a2a_bridge import firm_a2a_card_generate
         soul = tmp_path / "Agent" / "SOUL.md"
         soul.parent.mkdir()
         soul.write_text("---\nname: Agent\n---\n## Skills\n")
         out = tmp_path / "out" / "card.json"
-        r = openclaw_a2a_card_generate(str(soul), "https://a.com", output_path=str(out))
+        r = firm_a2a_card_generate(str(soul), "https://a.com", output_path=str(out))
         assert r["ok"] is True
         assert out.exists()
 
     def test_card_generate_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_card_generate
-        r = openclaw_a2a_card_generate("/nonexistent/SOUL.md", "https://a.com")
+        from src.a2a_bridge import firm_a2a_card_generate
+        r = firm_a2a_card_generate("/nonexistent/SOUL.md", "https://a.com")
         assert r["ok"] is False
 
     def test_task_send_bad_scheme(self):
-        from src.a2a_bridge import openclaw_a2a_task_send
-        r = _run(openclaw_a2a_task_send("ftp://bad.com", "hello"))
+        from src.a2a_bridge import firm_a2a_task_send
+        r = _run(firm_a2a_task_send("ftp://bad.com", "hello"))
         assert r["ok"] is False
 
     def test_task_send_no_host(self):
-        from src.a2a_bridge import openclaw_a2a_task_send
-        r = _run(openclaw_a2a_task_send("http://", "hello"))
+        from src.a2a_bridge import firm_a2a_task_send
+        r = _run(firm_a2a_task_send("http://", "hello"))
         assert r["ok"] is False
 
     def test_task_send_ssrf(self):
-        from src.a2a_bridge import openclaw_a2a_task_send
-        r = _run(openclaw_a2a_task_send("http://127.0.0.1/api", "hello"))
+        from src.a2a_bridge import firm_a2a_task_send
+        r = _run(firm_a2a_task_send("http://127.0.0.1/api", "hello"))
         assert r["ok"] is False
 
     def test_task_send_blocking(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, _TASKS
         _TASKS.clear()
-        r = _run(openclaw_a2a_task_send("https://agent.example.com", "hello", blocking=True))
+        r = _run(firm_a2a_task_send("https://agent.example.com", "hello", blocking=True))
         assert r["ok"] is True
         assert r["blocking"] is True
         _TASKS.clear()
 
     def test_task_status_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_task_status
-        r = _run(openclaw_a2a_task_status(task_id="nonexistent"))
+        from src.a2a_bridge import firm_a2a_task_status
+        r = _run(firm_a2a_task_status(task_id="nonexistent"))
         assert r["ok"] is False
 
     def test_task_status_list_by_context(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_task_status, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_task_status, _TASKS
         _TASKS.clear()
-        _run(openclaw_a2a_task_send("https://agent.example.com", "hello", context_id="ctx1"))
-        r = _run(openclaw_a2a_task_status(context_id="ctx1"))
+        _run(firm_a2a_task_send("https://agent.example.com", "hello", context_id="ctx1"))
+        r = _run(firm_a2a_task_status(context_id="ctx1"))
         assert r["ok"] is True
         assert r["total"] >= 1
         _TASKS.clear()
 
     def test_task_status_with_history(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_task_status, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_task_status, _TASKS
         _TASKS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = _run(openclaw_a2a_task_status(task_id=send_r["task_id"], include_history=True))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = _run(firm_a2a_task_status(task_id=send_r["task_id"], include_history=True))
         assert "history" in r
         _TASKS.clear()
 
     def test_cancel_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_cancel_task
-        r = _run(openclaw_a2a_cancel_task("nonexistent"))
+        from src.a2a_bridge import firm_a2a_cancel_task
+        r = _run(firm_a2a_cancel_task("nonexistent"))
         assert r["ok"] is False
 
     def test_cancel_already_terminal(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_cancel_task, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_cancel_task, _TASKS
         _TASKS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi", blocking=True))
-        r = _run(openclaw_a2a_cancel_task(send_r["task_id"]))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi", blocking=True))
+        r = _run(firm_a2a_cancel_task(send_r["task_id"]))
         assert r["ok"] is False
         assert "terminal" in r["error"]
         _TASKS.clear()
 
     def test_cancel_success(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_cancel_task, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_cancel_task, _TASKS
         _TASKS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = _run(openclaw_a2a_cancel_task(send_r["task_id"]))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = _run(firm_a2a_cancel_task(send_r["task_id"]))
         assert r["ok"] is True
         _TASKS.clear()
 
     def test_subscribe_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_subscribe_task
-        r = _run(openclaw_a2a_subscribe_task("nonexistent"))
+        from src.a2a_bridge import firm_a2a_subscribe_task
+        r = _run(firm_a2a_subscribe_task("nonexistent"))
         assert r["ok"] is False
 
     def test_subscribe_callback_ssrf(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_subscribe_task, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_subscribe_task, _TASKS
         _TASKS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = _run(openclaw_a2a_subscribe_task(send_r["task_id"], callback_url="http://127.0.0.1/hook"))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = _run(firm_a2a_subscribe_task(send_r["task_id"], callback_url="http://127.0.0.1/hook"))
         assert r["ok"] is False
         _TASKS.clear()
 
     def test_subscribe_success(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_subscribe_task, _TASKS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_subscribe_task, _TASKS
         _TASKS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = _run(openclaw_a2a_subscribe_task(send_r["task_id"]))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = _run(firm_a2a_subscribe_task(send_r["task_id"]))
         assert r["ok"] is True
         assert r["streaming"] is True
         _TASKS.clear()
 
     def test_push_config_crud(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
         tid = send_r["task_id"]
         # create
-        cr = openclaw_a2a_push_config(tid, action="create", webhook_url="https://hooks.com/h1", auth_token="tok123")
+        cr = firm_a2a_push_config(tid, action="create", webhook_url="https://hooks.com/h1", auth_token="tok123")
         assert cr["ok"] is True
         cid = cr["config"]["id"]
         # get
-        gr = openclaw_a2a_push_config(tid, action="get", config_id=cid)
+        gr = firm_a2a_push_config(tid, action="get", config_id=cid)
         assert gr["ok"] is True
         # list
-        lr = openclaw_a2a_push_config(tid, action="list")
+        lr = firm_a2a_push_config(tid, action="list")
         assert lr["total"] >= 1
         # delete
-        dr = openclaw_a2a_push_config(tid, action="delete", config_id=cid)
+        dr = firm_a2a_push_config(tid, action="delete", config_id=cid)
         assert dr["ok"] is True
         # delete not found
-        dr2 = openclaw_a2a_push_config(tid, action="delete", config_id="nope")
+        dr2 = firm_a2a_push_config(tid, action="delete", config_id="nope")
         assert dr2["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_push_config_task_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_push_config
-        r = openclaw_a2a_push_config("nonexistent")
+        from src.a2a_bridge import firm_a2a_push_config
+        r = firm_a2a_push_config("nonexistent")
         assert r["ok"] is False
 
     def test_push_config_create_no_url(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = openclaw_a2a_push_config(send_r["task_id"], action="create")
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = firm_a2a_push_config(send_r["task_id"], action="create")
         assert r["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_push_config_bad_scheme(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = openclaw_a2a_push_config(send_r["task_id"], action="create", webhook_url="ftp://bad.com")
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = firm_a2a_push_config(send_r["task_id"], action="create", webhook_url="ftp://bad.com")
         assert r["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_push_config_ssrf(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = openclaw_a2a_push_config(send_r["task_id"], action="create", webhook_url="http://127.0.0.1/hook")
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = firm_a2a_push_config(send_r["task_id"], action="create", webhook_url="http://127.0.0.1/hook")
         assert r["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_push_config_unknown_action(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = openclaw_a2a_push_config(send_r["task_id"], action="badaction")
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = firm_a2a_push_config(send_r["task_id"], action="badaction")
         assert r["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_push_config_get_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_task_send, openclaw_a2a_push_config, _TASKS, _PUSH_CONFIGS
+        from src.a2a_bridge import firm_a2a_task_send, firm_a2a_push_config, _TASKS, _PUSH_CONFIGS
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
-        send_r = _run(openclaw_a2a_task_send("https://agent.example.com", "hi"))
-        r = openclaw_a2a_push_config(send_r["task_id"], action="get", config_id="nope")
+        send_r = _run(firm_a2a_task_send("https://agent.example.com", "hi"))
+        r = firm_a2a_push_config(send_r["task_id"], action="get", config_id="nope")
         assert r["ok"] is False
         _TASKS.clear()
         _PUSH_CONFIGS.clear()
 
     def test_discovery_souls_dir(self, tmp_path):
-        from src.a2a_bridge import openclaw_a2a_discovery
+        from src.a2a_bridge import firm_a2a_discovery
         agent_dir = tmp_path / "CEO"
         agent_dir.mkdir()
         (agent_dir / "SOUL.md").write_text("---\nname: CEO\n---\n## Leadership\n")
-        r = _run(openclaw_a2a_discovery(souls_dir=str(tmp_path)))
+        r = _run(firm_a2a_discovery(souls_dir=str(tmp_path)))
         assert r["ok"] is True
         assert r["total"] >= 1
 
     def test_discovery_souls_dir_not_found(self):
-        from src.a2a_bridge import openclaw_a2a_discovery
-        r = _run(openclaw_a2a_discovery(souls_dir="/nonexistent"))
+        from src.a2a_bridge import firm_a2a_discovery
+        r = _run(firm_a2a_discovery(souls_dir="/nonexistent"))
         assert r["ok"] is False
 
     def test_discovery_urls(self):
-        from src.a2a_bridge import openclaw_a2a_discovery
-        r = _run(openclaw_a2a_discovery(urls=["https://agent.example.com", "ftp://bad"]))
+        from src.a2a_bridge import firm_a2a_discovery
+        r = _run(firm_a2a_discovery(urls=["https://agent.example.com", "ftp://bad"]))
         assert r["ok"] is True
         assert r["error_count"] >= 1  # ftp is invalid
 
@@ -696,52 +696,52 @@ class TestPlatformAuditDeep:
     """Cover uncovered branches."""
 
     def test_secrets_v2_missing_driver(self, tmp_path):
-        from src.platform_audit import openclaw_secrets_v2_audit
+        from src.platform_audit import firm_secrets_v2_audit
         cfg = _write_config(tmp_path, {"secrets": {"store": "external"}})
-        r = openclaw_secrets_v2_audit(cfg)
+        r = firm_secrets_v2_audit(cfg)
         # Missing driver with external store → findings expected
         assert "findings" in r or "ok" in r
 
     def test_agent_routing_no_agents(self, tmp_path):
-        from src.platform_audit import openclaw_agent_routing_check
+        from src.platform_audit import firm_agent_routing_check
         cfg = _write_config(tmp_path, {})
-        r = openclaw_agent_routing_check(cfg)
+        r = firm_agent_routing_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_voice_security_no_voice(self, tmp_path):
-        from src.platform_audit import openclaw_voice_security_check
+        from src.platform_audit import firm_voice_security_check
         cfg = _write_config(tmp_path, {})
-        r = openclaw_voice_security_check(cfg)
+        r = firm_voice_security_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_trust_model_check(self, tmp_path):
-        from src.platform_audit import openclaw_trust_model_check
+        from src.platform_audit import firm_trust_model_check
         cfg = _write_config(tmp_path, {"security": {"trustModel": "zero-trust"}})
-        r = openclaw_trust_model_check(cfg)
+        r = firm_trust_model_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_autoupdate_check(self, tmp_path):
-        from src.platform_audit import openclaw_autoupdate_check
+        from src.platform_audit import firm_autoupdate_check
         cfg = _write_config(tmp_path, {"autoupdate": {"enabled": True, "channel": "stable"}})
-        r = openclaw_autoupdate_check(cfg)
+        r = firm_autoupdate_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_plugin_sdk_check(self, tmp_path):
-        from src.platform_audit import openclaw_plugin_sdk_check
+        from src.platform_audit import firm_plugin_sdk_check
         cfg = _write_config(tmp_path, {"plugins": {"sdk_version": "2.0.0"}})
-        r = openclaw_plugin_sdk_check(cfg)
+        r = firm_plugin_sdk_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_content_boundary_check(self, tmp_path):
-        from src.platform_audit import openclaw_content_boundary_check
+        from src.platform_audit import firm_content_boundary_check
         cfg = _write_config(tmp_path, {"content": {"maxTokens": 4096}})
-        r = openclaw_content_boundary_check(cfg)
+        r = firm_content_boundary_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_sqlite_vec_check(self, tmp_path):
-        from src.platform_audit import openclaw_sqlite_vec_check
+        from src.platform_audit import firm_sqlite_vec_check
         cfg = _write_config(tmp_path, {"storage": {"vectorDb": "sqlite-vec"}})
-        r = openclaw_sqlite_vec_check(cfg)
+        r = firm_sqlite_vec_check(cfg)
         assert "findings" in r or "ok" in r
 
 
@@ -753,52 +753,52 @@ class TestRuntimeAuditDeep:
     """Cover uncovered branches in runtime_audit."""
 
     def test_node_version_not_found(self):
-        from src.runtime_audit import openclaw_node_version_check
+        from src.runtime_audit import firm_node_version_check
         with patch("shutil.which", return_value=None):
-            r = _run(openclaw_node_version_check())
+            r = _run(firm_node_version_check())
         assert r["status"] == "error"
 
     def test_node_version_subprocess_error(self):
         import subprocess
-        from src.runtime_audit import openclaw_node_version_check
+        from src.runtime_audit import firm_node_version_check
         with patch("shutil.which", return_value="/usr/bin/node"), \
              patch("subprocess.run", side_effect=subprocess.SubprocessError("fail")):
-            r = _run(openclaw_node_version_check())
+            r = _run(firm_node_version_check())
         assert r["status"] == "error"
         assert "fail" in str(r["findings"])
 
     def test_node_version_parse_error(self):
-        from src.runtime_audit import openclaw_node_version_check
+        from src.runtime_audit import firm_node_version_check
         mock_result = MagicMock()
         mock_result.stdout = "vunparseable\n"
         with patch("shutil.which", return_value="/usr/bin/node"), \
              patch("subprocess.run", return_value=mock_result):
-            r = _run(openclaw_node_version_check())
+            r = _run(firm_node_version_check())
         assert r["status"] == "error"
 
     def test_node_version_too_old(self):
-        from src.runtime_audit import openclaw_node_version_check
+        from src.runtime_audit import firm_node_version_check
         mock_result = MagicMock()
         mock_result.stdout = "v18.0.0\n"
         with patch("shutil.which", return_value="/usr/bin/node"), \
              patch("subprocess.run", return_value=mock_result):
-            r = _run(openclaw_node_version_check())
+            r = _run(firm_node_version_check())
         assert r["status"] == "critical"
 
     def test_dm_allowlist_no_config(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_dm_allowlist_check(cfg))
+        r = _run(firm_dm_allowlist_check(cfg))
         assert "findings" in r
 
     def test_dm_allowlist_empty_allowfrom(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
         cfg = _write_config(tmp_path, {
             "channels": {
                 "telegram": {"dmPolicy": "allowlist", "allowFrom": []},
             }
         })
-        r = _run(openclaw_dm_allowlist_check(cfg))
+        r = _run(firm_dm_allowlist_check(cfg))
         findings = r.get("findings", [])
         assert any("empty" in str(f).lower() for f in findings)
 
@@ -907,17 +907,17 @@ class TestModelsValidators:
 class TestSkillLoaderDeep:
 
     def test_lazy_load_not_found(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
-        r = _run(openclaw_skill_lazy_loader(str(tmp_path / "nonexistent"), "test"))
+        from src.skill_loader import firm_skill_lazy_loader
+        r = _run(firm_skill_lazy_loader(str(tmp_path / "nonexistent"), "test"))
         assert r["ok"] is False
 
     def test_search_no_results(self, tmp_path):
-        from src.skill_loader import openclaw_skill_search, _SKILL_CACHE
+        from src.skill_loader import firm_skill_search, _SKILL_CACHE
         _SKILL_CACHE.clear()
         sd = tmp_path / "skills"
         sd.mkdir()
         (sd / "empty").mkdir()
-        r = _run(openclaw_skill_search(str(sd), "nonexistent_keyword_xyz"))
+        r = _run(firm_skill_search(str(sd), "nonexistent_keyword_xyz"))
         assert r["ok"] is True
         assert r["total_matches"] == 0
         _SKILL_CACHE.clear()
@@ -930,31 +930,31 @@ class TestSkillLoaderDeep:
 class TestReliabilityProbeDeep:
 
     def test_doc_sync_no_package_json(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
-        r = _run(openclaw_doc_sync_check(str(tmp_path / "package.json")))
+        from src.reliability_probe import firm_doc_sync_check
+        r = _run(firm_doc_sync_check(str(tmp_path / "package.json")))
         assert r["ok"] is False
 
     def test_doc_sync_no_deps(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"name": "test"}))
-        r = _run(openclaw_doc_sync_check(str(pj)))
+        r = _run(firm_doc_sync_check(str(pj)))
         assert r["ok"] is True
         assert r["desynced"] == 0
 
     def test_doc_sync_no_md_files(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"name": "test", "dependencies": {"express": "4.18.0"}}))
-        r = _run(openclaw_doc_sync_check(str(pj), docs_glob="docs/**/*.md"))
+        r = _run(firm_doc_sync_check(str(pj), docs_glob="docs/**/*.md"))
         assert r["ok"] is True
 
     def test_channel_audit(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         cfg = _write_config(tmp_path, {"channels": {"telegram": {"enabled": True}}})
         readme = tmp_path / "README.md"
         readme.write_text("# Project\nTelegram integration docs")
-        r = _run(openclaw_channel_audit(cfg, str(readme)))
+        r = _run(firm_channel_audit(cfg, str(readme)))
         assert r["ok"] is True
 
 
@@ -1069,23 +1069,23 @@ class TestComplianceMediumDeep:
 class TestConfigMigrationDeep:
 
     def test_rpc_rate_limit_missing_config(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_rpc_rate_limit_check(cfg))
+        r = _run(firm_rpc_rate_limit_check(cfg))
         assert "findings" in r
 
     def test_token_separation_check(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write_config(tmp_path, {
             "auth": {"tokens": {"api": "tok1", "session": "tok1"}}
         })
-        r = _run(openclaw_token_separation_check(cfg))
+        r = _run(firm_token_separation_check(cfg))
         assert "findings" in r
 
     def test_shell_env_check_no_config(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_shell_env_check(cfg))
+        r = _run(firm_shell_env_check(cfg))
         assert "findings" in r
 
 
@@ -1096,24 +1096,24 @@ class TestConfigMigrationDeep:
 class TestSecurityAuditDeep:
 
     def test_sandbox_audit(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
+        from src.security_audit import firm_sandbox_audit
         cfg = _write_config(tmp_path, {
             "sandbox": {"enabled": True, "mode": "strict"},
             "security": {"sandbox": True}
         })
-        r = _run(openclaw_sandbox_audit(cfg))
+        r = _run(firm_sandbox_audit(cfg))
         assert "findings" in r or "ok" in r
 
     def test_sandbox_audit_disabled(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
+        from src.security_audit import firm_sandbox_audit
         cfg = _write_config(tmp_path, {"sandbox": {"enabled": False}})
-        r = _run(openclaw_sandbox_audit(cfg))
+        r = _run(firm_sandbox_audit(cfg))
         assert "findings" in r or "ok" in r
 
     def test_rate_limit_no_config(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
+        from src.security_audit import firm_rate_limit_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_rate_limit_check(cfg))
+        r = _run(firm_rate_limit_check(cfg))
         assert "findings" in r or "ok" in r
 
 
@@ -1124,26 +1124,26 @@ class TestSecurityAuditDeep:
 class TestEcosystemAuditDeep:
 
     def test_mcp_firewall_no_policies(self, tmp_path):
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write_config(tmp_path, {})
-        r = openclaw_mcp_firewall_check(cfg)
+        r = firm_mcp_firewall_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_rag_pipeline_no_config(self, tmp_path):
-        from src.ecosystem_audit import openclaw_rag_pipeline_check
+        from src.ecosystem_audit import firm_rag_pipeline_check
         cfg = _write_config(tmp_path, {})
-        r = openclaw_rag_pipeline_check(cfg)
+        r = firm_rag_pipeline_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_sandbox_exec_check(self, tmp_path):
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write_config(tmp_path, {"sandbox": {"exec": {"enabled": True}}})
-        r = openclaw_sandbox_exec_check(cfg)
+        r = firm_sandbox_exec_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_token_budget_no_session(self, tmp_path):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(session_data={}, config_path=str(tmp_path / "cfg.json"))
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(session_data={}, config_path=str(tmp_path / "cfg.json"))
         assert "findings" in r or "ok" in r or "error" in r
 
 
@@ -1175,21 +1175,21 @@ class TestAuthComplianceDeep:
 class TestN8nBridgeDeep:
 
     def test_export_step_with_all_fields(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
+        from src.n8n_bridge import firm_n8n_workflow_export
         steps = [
             {"name": "step1", "type": "http_request", "params": {"url": "https://a.com"}},
             {"name": "step2", "type": "agent", "params": {"model": "claude"}},
         ]
         out = str(tmp_path / "wf.json")
-        r = _run(openclaw_n8n_workflow_export("test-pipeline", steps, output_path=out))
+        r = _run(firm_n8n_workflow_export("test-pipeline", steps, output_path=out))
         assert r["ok"] is True
         assert Path(out).exists()
 
     def test_import_strict_bad_structure(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf = tmp_path / "bad.json"
         wf.write_text(json.dumps({"nodes": "not-a-list"}))
-        r = _run(openclaw_n8n_workflow_import(str(wf), strict=True))
+        r = _run(firm_n8n_workflow_import(str(wf), strict=True))
         # In strict mode, bad structure should be flagged
         assert r["ok"] is False
         assert "issues" in r or "error" in r

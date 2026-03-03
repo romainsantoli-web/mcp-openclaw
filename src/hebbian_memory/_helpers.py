@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-_DEFAULT_DB_PATH = os.path.expanduser("~/.openclaw/hebbian.db")
+_DEFAULT_DB_PATH = os.path.expanduser("~/.firm/hebbian.db")
 
 _DEFAULT_ALLOWED_DIRS: list[str] = [
     os.path.expanduser("~"),

@@ -1,9 +1,9 @@
 """
-main.py — MCP OpenClaw Extensions server
-Exposes: VS Code bridge · Fleet manager · Delivery export
+main.py — Firm MCP Server
+Generic MCP server compatible with all AI platforms:
+Claude Code, Codex, VS Code Copilot, Cursor, Windsurf, Antigravity, etc.
 
-Starts a streamable HTTP MCP server on MCP_HOST:MCP_PORT (default 127.0.0.1:8012)
-so it can run alongside the existing mcp-openclaw server (port 8011).
+Starts a streamable HTTP MCP server on MCP_HOST:MCP_PORT (default 127.0.0.1:8012).
 
 Run:
   python -m src.main
@@ -25,7 +25,7 @@ import sys
 import time
 from typing import Any
 
-__version__ = "3.3.0"
+__version__ = "4.0.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -135,13 +135,13 @@ logger.info("Registered %d tools from %d modules", len(TOOL_REGISTRY), len(_ALL_
 # ── MCP Resources registry (M-C3) ───────────────────────────────────────────
 _MCP_RESOURCES: list[dict[str, Any]] = [
     {
-        "uri": "openclaw://config/main",
-        "name": "OpenClaw Configuration",
-        "description": "Main OpenClaw gateway configuration file",
+        "uri": "firm://config/main",
+        "name": "Server Configuration",
+        "description": "Main gateway configuration file",
         "mimeType": "application/json",
     },
     {
-        "uri": "openclaw://health",
+        "uri": "firm://health",
         "name": "Server Health",
         "description": "MCP extensions server health status and tool inventory",
         "mimeType": "application/json",
@@ -152,17 +152,17 @@ _MCP_RESOURCES: list[dict[str, Any]] = [
 _MCP_PROMPTS: list[dict[str, Any]] = [
     {
         "name": "security-audit",
-        "description": "Run a comprehensive security audit on an OpenClaw configuration",
+        "description": "Run a comprehensive security audit on an server configuration",
         "arguments": [
-            {"name": "config_path", "description": "Path to OpenClaw config file", "required": False},
+            {"name": "config_path", "description": "Path to config file", "required": False},
             {"name": "severity_filter", "description": "Minimum severity: CRITICAL, HIGH, MEDIUM, LOW", "required": False},
         ],
     },
     {
         "name": "compliance-check",
-        "description": "Check MCP spec compliance for a given OpenClaw installation",
+        "description": "Check MCP spec compliance for a given server installation",
         "arguments": [
-            {"name": "config_path", "description": "Path to OpenClaw config file", "required": False},
+            {"name": "config_path", "description": "Path to config file", "required": False},
             {"name": "spec_version", "description": "MCP spec version to check against (default: 2025-11-25)", "required": False},
         ],
     },
@@ -291,9 +291,9 @@ for _tool_name in TOOL_REGISTRY:
     _links: list[dict[str, str]] = []
     # Config-related tools link to the config resource
     if any(kw in _tool_name for kw in ("config", "audit", "check", "scan", "security", "compliance", "hardening", "runtime", "migration")):
-        _links.append({"uri": "openclaw://config/main", "name": "OpenClaw Configuration"})
+        _links.append({"uri": "firm://config/main", "name": "Server Configuration"})
     # All tools link to health
-    _links.append({"uri": "openclaw://health", "name": "Server Health"})
+    _links.append({"uri": "firm://health", "name": "Server Health"})
     _TOOL_RESOURCE_LINKS[_tool_name] = _links
 
 
@@ -306,7 +306,7 @@ def _resource_links_for_tool(name: str) -> dict[str, Any] | None:
 
 async def _read_resource(uri: str) -> dict[str, Any]:
     """Read a resource by URI."""
-    if uri == "openclaw://config/main":
+    if uri == "firm://config/main":
         from src.config_helpers import load_config
         config, path = load_config(None)
         return {
@@ -316,7 +316,7 @@ async def _read_resource(uri: str) -> dict[str, Any]:
                 "text": json.dumps(config, indent=2, default=str),
             }],
         }
-    elif uri == "openclaw://health":
+    elif uri == "firm://health":
         categories: dict[str, int] = {}
         for t in TOOL_REGISTRY.values():
             cat = t.get("category", "other")
@@ -340,19 +340,19 @@ async def _read_resource(uri: str) -> dict[str, Any]:
 
 _PROMPT_TOOL_MAP: dict[str, list[str]] = {
     "security-audit": [
-        "openclaw_security_scan", "openclaw_sandbox_audit",
-        "openclaw_session_config_check", "openclaw_rate_limit_check",
-        "openclaw_secrets_lifecycle_check", "openclaw_gateway_auth_check",
+        "firm_security_scan", "firm_sandbox_audit",
+        "firm_session_config_check", "firm_rate_limit_check",
+        "firm_secrets_lifecycle_check", "firm_gateway_auth_check",
     ],
     "compliance-check": [
-        "openclaw_elicitation_audit", "openclaw_tasks_audit",
-        "openclaw_resources_prompts_audit", "openclaw_json_schema_dialect_check",
-        "openclaw_sse_transport_audit", "openclaw_icon_metadata_audit",
+        "firm_elicitation_audit", "firm_tasks_audit",
+        "firm_resources_prompts_audit", "firm_json_schema_dialect_check",
+        "firm_sse_transport_audit", "firm_icon_metadata_audit",
     ],
     "fleet-status": ["firm_gateway_fleet_status", "firm_gateway_fleet_list"],
     "hebbian-analysis": [
-        "openclaw_hebbian_analyze", "openclaw_hebbian_status",
-        "openclaw_hebbian_weight_update",
+        "firm_hebbian_analyze", "firm_hebbian_status",
+        "firm_hebbian_weight_update",
     ],
 }
 
@@ -469,12 +469,12 @@ async def _handle_mcp(request: web.Request) -> web.Response:
                 "elicitation": {},  # M-H2
             },
             "serverInfo": {
-                "name": "mcp-openclaw-extensions",
+                "name": "firm-mcp-server",
                 "version": __version__,
                 "description": (
-                    "OpenClaw MCP extensions server — 115 tools across 22 categories: "
-                    "security audit, compliance, A2A bridge (RC v1.0), Hebbian memory, fleet management, "
-                    "delivery export, observability, and more."
+                    "Firm MCP server — 138 tools across 29 modules. "
+                    "Compatible with Claude Code, Codex, VS Code, Cursor, Windsurf, Antigravity. "
+                    "Security, A2A, Hebbian memory, fleet mgmt, and more."
                 ),
             },
         })
@@ -689,7 +689,7 @@ async def _main() -> None:
     site = web.TCPSite(runner, MCP_HOST, MCP_PORT)
     await site.start()
 
-    logger.info("MCP OpenClaw Extensions server started")
+    logger.info("Firm MCP Server started")
     logger.info("  MCP endpoint : http://%s:%d/mcp", MCP_HOST, MCP_PORT)
     logger.info("  Health check : http://%s:%d/health", MCP_HOST, MCP_PORT)
     logger.info("  Tools registered: %d", len(TOOL_REGISTRY))

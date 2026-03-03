@@ -8,8 +8,8 @@ Extends the fleet manager with structured task coordination:
   - Agent health monitoring during orchestration
 
 Tools exposed:
-  openclaw_agent_team_orchestrate   — execute a task DAG across agent fleet
-  openclaw_agent_team_status        — check running orchestration status
+  firm_agent_team_orchestrate   — execute a task DAG across agent fleet
+  firm_agent_team_status        — check running orchestration status
 """
 
 from __future__ import annotations
@@ -163,7 +163,7 @@ async def _aggregate_results(
         }
 
 
-async def openclaw_agent_team_orchestrate(
+async def firm_agent_team_orchestrate(
     tasks: list[dict[str, Any]],
     objective: str = "",
     aggregation_strategy: str = "collect",
@@ -274,7 +274,7 @@ async def openclaw_agent_team_orchestrate(
     }
 
 
-async def openclaw_agent_team_status(
+async def firm_agent_team_status(
     orchestration_id: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -312,7 +312,7 @@ async def openclaw_agent_team_status(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_agent_team_orchestrate",
+        "name": "firm_agent_team_orchestrate",
         "title": "Orchestrate Agent Team",
         "description": (
             "Execute a task DAG across the agent fleet with parallel layer execution, "
@@ -320,7 +320,7 @@ TOOLS: list[dict[str, Any]] = [
             "(collect/vote/first_success). Gap T4/issue #10010: multi-agent coordination."
         ),
         "category": "orchestration",
-        "handler": openclaw_agent_team_orchestrate,
+        "handler": firm_agent_team_orchestrate,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -360,14 +360,14 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_agent_team_status",
+        "name": "firm_agent_team_status",
         "title": "Agent Team Status",
         "description": (
             "Check status of running or completed fleet orchestrations. "
             "Returns task progress, layer execution state, elapsed time."
         ),
         "category": "orchestration",
-        "handler": openclaw_agent_team_status,
+        "handler": firm_agent_team_status,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {

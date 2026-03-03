@@ -866,7 +866,7 @@ _CONFIG_PATH_SCHEMA = {
     "properties": {
         "config_path": {
             "type": "string",
-            "description": "Path to openclaw.json config file (optional, defaults to ./openclaw.json).",
+            "description": "Path to config.json config file (optional, defaults to ./config.json).",
         }
     },
 }
@@ -888,7 +888,7 @@ _AUDIT_OUTPUT_SCHEMA = {
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_tool_deprecation_audit",
+        "name": "firm_tool_deprecation_audit",
         "title": "Tool Deprecation Lifecycle Audit",
         "description": "Audit tool deprecation lifecycle — sunset dates, replacements, circular chains.",
         "category": "compliance_medium",
@@ -903,7 +903,7 @@ TOOLS: list[dict[str, Any]] = [
         "handler": tool_deprecation_audit,
     },
     {
-        "name": "openclaw_circuit_breaker_audit",
+        "name": "firm_circuit_breaker_audit",
         "title": "Circuit Breaker Pattern Audit",
         "description": "Audit circuit breaker / resilience configuration for external calls — timeouts, retries, fallback.",
         "category": "compliance_medium",
@@ -918,7 +918,7 @@ TOOLS: list[dict[str, Any]] = [
         "handler": circuit_breaker_audit,
     },
     {
-        "name": "openclaw_gdpr_residency_audit",
+        "name": "firm_gdpr_residency_audit",
         "title": "GDPR & Data Residency Audit",
         "description": "Audit GDPR compliance and data residency — legal basis, retention, PII fields, cross-border transfers.",
         "category": "compliance_medium",
@@ -933,7 +933,7 @@ TOOLS: list[dict[str, Any]] = [
         "handler": gdpr_residency_audit,
     },
     {
-        "name": "openclaw_agent_identity_audit",
+        "name": "firm_agent_identity_audit",
         "title": "Agent Identity / DID Audit",
         "description": "Audit agent decentralized identity (DID) — format, verification methods, signing, federation.",
         "category": "compliance_medium",
@@ -948,7 +948,7 @@ TOOLS: list[dict[str, Any]] = [
         "handler": agent_identity_audit,
     },
     {
-        "name": "openclaw_model_routing_audit",
+        "name": "firm_model_routing_audit",
         "title": "Multi-Model Routing Audit",
         "description": "Audit multi-model routing — strategy, fallback chain, cost caps, provider diversity.",
         "category": "compliance_medium",
@@ -963,7 +963,7 @@ TOOLS: list[dict[str, Any]] = [
         "handler": model_routing_audit,
     },
     {
-        "name": "openclaw_resource_links_audit",
+        "name": "firm_resource_links_audit",
         "title": "Resource Links Audit",
         "description": "Audit MCP resource links in tool results — URI validation, MIME types, subscriptions, templates.",
         "category": "compliance_medium",

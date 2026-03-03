@@ -481,39 +481,39 @@ class TestAdvancedSecurityDeepF:
 
     def test_exec_approval_shell_wrapper(self, tmp_path):
         """Exec approval with shell wrapper binary (line 408)."""
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         import src.advanced_security as adv
         cfg = _write(tmp_path, {"tools": {"exec": {"requireApproval": True}}})
-        approval_file = tmp_path / ".openclaw" / "exec-approvals.json"
+        approval_file = tmp_path / ".firm" / "exec-approvals.json"
         approval_file.parent.mkdir(parents=True, exist_ok=True)
         approval_file.write_text(json.dumps({
             "pat1": {"executable": "/bin/bash", "allowAlways": True}
         }))
-        with patch.object(adv, "_OPENCLAW_DIR", tmp_path / ".openclaw"):
-            r = _parse(_run(openclaw_exec_approval_freeze_check(config_path=cfg)))
+        with patch.object(adv, "_FIRM_DIR", tmp_path / ".firm"):
+            r = _parse(_run(firm_exec_approval_freeze_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_hook_session_routing_hooks_not_dict(self, tmp_path):
         """hooks config is not a dict (line 477)."""
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write(tmp_path, {"hooks": "invalid"})
-        r = _parse(_run(openclaw_hook_session_routing_check(config_path=cfg)))
+        r = _parse(_run(firm_hook_session_routing_check(config_path=cfg)))
         assert isinstance(r, dict)  # returned successfully despite non-dict hooks
 
     def test_config_include_oversized(self, tmp_path):
         """$include target is oversized (line 641) — create large file."""
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         inc_file = tmp_path / "big_include.json"
         # Create file > 1MB
         inc_file.write_text("{" + " " * (1024 * 1024 + 100) + "}")
         cfg_data = {"$include": str(inc_file)}
         cfg = _write(tmp_path, cfg_data)
-        r = _parse(_run(openclaw_config_include_check(config_path=cfg)))
+        r = _parse(_run(firm_config_include_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_config_include_escape_root(self, tmp_path):
         """$include resolved path escapes config dir (line 655)."""
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         # Create an include pointing outside config dir via symlink
         outside = tmp_path / "outside"
         outside.mkdir()
@@ -523,18 +523,18 @@ class TestAdvancedSecurityDeepF:
         cfg_dir.mkdir()
         cfg = cfg_dir / "cfg.json"
         cfg.write_text(json.dumps({"$include": str(secret)}))
-        r = _parse(_run(openclaw_config_include_check(config_path=str(cfg))))
+        r = _parse(_run(firm_config_include_check(config_path=str(cfg))))
         assert r.get("status") is not None
 
     def test_safe_bins_entry_dict(self, tmp_path):
         """safeBins entry as dict with name (line 776)."""
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write(tmp_path, {"tools": {"safeBins": [
             {"name": "python"},
             {"name": "node", "profile": "restricted"},
             "bash",
         ]}})
-        r = _parse(_run(openclaw_safe_bins_profile_check(config_path=cfg)))
+        r = _parse(_run(firm_safe_bins_profile_check(config_path=cfg)))
         assert _fc(r) >= 1  # python + bash are interpreters
 
 
@@ -618,60 +618,60 @@ class TestA2ABridgeDeepF:
 
     def test_card_generate_file_not_found(self):
         """SOUL.md file not found (line 377)."""
-        from src.a2a_bridge import openclaw_a2a_card_generate
-        r = openclaw_a2a_card_generate(soul_path="/nonexistent/SOUL.md", base_url="https://a.com")
+        from src.a2a_bridge import firm_a2a_card_generate
+        r = firm_a2a_card_generate(soul_path="/nonexistent/SOUL.md", base_url="https://a.com")
         assert r.get("ok") is False
 
     def test_card_generate_output_path(self, tmp_path):
         """Card generate with output_path write (line 403)."""
-        from src.a2a_bridge import openclaw_a2a_card_generate
+        from src.a2a_bridge import firm_a2a_card_generate
         soul = tmp_path / "SOUL.md"
         soul.write_text("---\nname: TestBot\nrole: tester\n---\n# TestBot\n## Skills\n### Testing\nDoes tests.")
         out = tmp_path / "card.json"
-        r = openclaw_a2a_card_generate(soul_path=str(soul), base_url="https://a.com", output_path=str(out))
+        r = firm_a2a_card_generate(soul_path=str(soul), base_url="https://a.com", output_path=str(out))
         assert r.get("ok") is True
         assert out.exists()
 
     def test_card_validate_from_file(self, tmp_path):
         """Validate card from file path (line 436)."""
-        from src.a2a_bridge import openclaw_a2a_card_validate
+        from src.a2a_bridge import firm_a2a_card_validate
         card = {"name": "bot", "url": "https://a.com", "skills": [{"id": "s1", "name": "S"}]}
         p = tmp_path / "card.json"
         p.write_text(json.dumps(card))
-        r = openclaw_a2a_card_validate(card_path=str(p))
+        r = firm_a2a_card_validate(card_path=str(p))
         assert r.get("ok") is not None
 
     def test_card_validate_file_not_found(self):
         """Card file not found (line 437)."""
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate(card_path="/nonexistent.json")
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate(card_path="/nonexistent.json")
         assert r.get("ok") is False
 
     def test_card_validate_no_input(self):
         """No card_path or card_json (line 442)."""
-        from src.a2a_bridge import openclaw_a2a_card_validate
-        r = openclaw_a2a_card_validate()
+        from src.a2a_bridge import firm_a2a_card_validate
+        r = firm_a2a_card_validate()
         assert r.get("ok") is False
 
     def test_subscribe_task_not_found(self):
         """Subscribe to non-existent task (line 533)."""
-        from src.a2a_bridge import openclaw_a2a_subscribe_task
-        r = _run(openclaw_a2a_subscribe_task(task_id="nonexistent"))
+        from src.a2a_bridge import firm_a2a_subscribe_task
+        r = _run(firm_a2a_subscribe_task(task_id="nonexistent"))
         assert r.get("ok") is False
 
     def test_subscribe_ssrf_callback(self):
         """Subscribe with SSRF callback URL (line 536)."""
-        from src.a2a_bridge import openclaw_a2a_subscribe_task, _TASKS
+        from src.a2a_bridge import firm_a2a_subscribe_task, _TASKS
         _TASKS["t1"] = {"id": "t1", "status": "running"}
-        r = _run(openclaw_a2a_subscribe_task(task_id="t1", callback_url="http://127.0.0.1:8080"))
+        r = _run(firm_a2a_subscribe_task(task_id="t1", callback_url="http://127.0.0.1:8080"))
         assert r.get("ok") is False
         del _TASKS["t1"]
 
     def test_push_config_create(self):
         """Push config create action (line 578)."""
-        from src.a2a_bridge import openclaw_a2a_push_config, _PUSH_CONFIGS, _TASKS
+        from src.a2a_bridge import firm_a2a_push_config, _PUSH_CONFIGS, _TASKS
         _TASKS["t1"] = {"id": "t1", "status": "running"}
-        r = openclaw_a2a_push_config(
+        r = firm_a2a_push_config(
             task_id="t1", action="create",
             webhook_url="https://example.com/hook",
             auth_token="secret123",
@@ -684,44 +684,44 @@ class TestA2ABridgeDeepF:
 
     def test_push_config_get(self):
         """Push config get action (line 590)."""
-        from src.a2a_bridge import openclaw_a2a_push_config, _PUSH_CONFIGS, _TASKS
+        from src.a2a_bridge import firm_a2a_push_config, _PUSH_CONFIGS, _TASKS
         _TASKS["t2"] = {"id": "t2", "status": "running"}
         _PUSH_CONFIGS["t2"] = [{"id": "c1", "url": "https://a.com"}]
-        r = openclaw_a2a_push_config(task_id="t2", action="get", config_id="c1")
+        r = firm_a2a_push_config(task_id="t2", action="get", config_id="c1")
         assert r.get("ok") is True
         del _PUSH_CONFIGS["t2"]
         del _TASKS["t2"]
 
     def test_push_config_delete(self):
         """Push config delete action (line 610)."""
-        from src.a2a_bridge import openclaw_a2a_push_config, _PUSH_CONFIGS, _TASKS
+        from src.a2a_bridge import firm_a2a_push_config, _PUSH_CONFIGS, _TASKS
         _TASKS["t3"] = {"id": "t3", "status": "running"}
         _PUSH_CONFIGS["t3"] = [{"id": "c1", "url": "https://a.com"}]
-        r = openclaw_a2a_push_config(task_id="t3", action="delete", config_id="c1")
+        r = firm_a2a_push_config(task_id="t3", action="delete", config_id="c1")
         assert r.get("ok") is True
         del _PUSH_CONFIGS["t3"]
         del _TASKS["t3"]
 
     def test_push_config_unknown_action(self):
         """Push config bad action (line 608)."""
-        from src.a2a_bridge import openclaw_a2a_push_config
-        r = openclaw_a2a_push_config(task_id="t1", action="explode")
+        from src.a2a_bridge import firm_a2a_push_config
+        r = firm_a2a_push_config(task_id="t1", action="explode")
         assert r.get("ok") is False
 
     def test_discovery_from_souls_dir(self, tmp_path):
         """Discovery via souls_dir scan (line 620)."""
-        from src.a2a_bridge import openclaw_a2a_discovery
+        from src.a2a_bridge import firm_a2a_discovery
         soul_dir = tmp_path / "souls" / "bot1"
         soul_dir.mkdir(parents=True)
         (soul_dir / "SOUL.md").write_text("---\nname: Bot1\n---\n# Bot1\nA bot.")
-        r = _run(openclaw_a2a_discovery(souls_dir=str(tmp_path / "souls")))
+        r = _run(firm_a2a_discovery(souls_dir=str(tmp_path / "souls")))
         assert r.get("ok") is True
         assert len(r.get("agents", [])) >= 1
 
     def test_discovery_bad_dir(self):
         """Discovery with nonexistent dir (line 621)."""
-        from src.a2a_bridge import openclaw_a2a_discovery
-        r = _run(openclaw_a2a_discovery(souls_dir="/nonexistent"))
+        from src.a2a_bridge import firm_a2a_discovery
+        r = _run(firm_a2a_discovery(souls_dir="/nonexistent"))
         assert r.get("ok") is False
 
 
@@ -732,28 +732,28 @@ class TestConfigMigrationDeepF:
 
     def test_shell_env_fork_override(self, tmp_path):
         """Fork config with shell var in env (line 130)."""
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write(tmp_path, {
             "agents": {"defaults": {
                 "fork": {"env": {"PATH": "/usr/bin:/opt", "HOME": "/home/agent"}}
             }}
         })
-        r = _parse(_run(openclaw_shell_env_check(config_path=cfg)))
+        r = _parse(_run(firm_shell_env_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_shell_env_not_dict_env(self, tmp_path):
         """env_dict is not a dict — type guard (line 108)."""
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write(tmp_path, {
             "agents": {"defaults": {"env": "not-a-dict"}},
             "tools": {"exec": {"env": ["also", "not", "dict"]}}
         })
-        r = _parse(_run(openclaw_shell_env_check(config_path=cfg)))
+        r = _parse(_run(firm_shell_env_check(config_path=cfg)))
         assert isinstance(r, dict)
 
     def test_plugin_integrity_manifest_drift(self, tmp_path):
         """Plugin manifest SHA mismatch (line 267)."""
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         import src.config_migration as cm
         # Create plugin dir + file
         plugins_dir = tmp_path / "plugins" / "myplugin"
@@ -769,79 +769,79 @@ class TestConfigMigrationDeepF:
         cfg = _write(tmp_path, {"plugins": {"entries": {"myplugin": {"enabled": True}}}})
         with patch.object(cm, "_PLUGIN_MANIFEST", manifest), \
              patch.object(cm, "_PLUGINS_DIR", tmp_path / "plugins"):
-            r = _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
+            r = _parse(_run(firm_plugin_integrity_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_plugin_integrity_manifest_read_error(self, tmp_path):
         """Corrupt manifest JSON (line 279)."""
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         import src.config_migration as cm
         manifest = tmp_path / "plugin-manifest.json"
         manifest.write_text("NOT VALID JSON{{{")
         cfg = _write(tmp_path, {"plugins": {"entries": {"myplugin": {"enabled": True}}}})
         with patch.object(cm, "_PLUGIN_MANIFEST", manifest), \
              patch.object(cm, "_PLUGINS_DIR", tmp_path / "plugins"):
-            r = _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
+            r = _parse(_run(firm_plugin_integrity_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_otel_header_inline_secret(self, tmp_path):
         """OTEL header with inline secret (line 456)."""
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "enabled": True, "endpoint": "https://otel.example.com",
             "headers": {"Authorization": "Bearer sk-plaintext-value"}
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        r = _parse(_run(firm_otel_redaction_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_otel_span_attr_sensitive(self, tmp_path):
         """OTEL span attribute with sensitive name (line 468)."""
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "enabled": True, "endpoint": "https://otel.example.com",
             "spanAttributes": {"api_key": "sk-xxx", "user_id": "123"}
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        r = _parse(_run(firm_otel_redaction_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_otel_redaction_disabled(self, tmp_path):
         """OTEL redaction explicitly disabled (line 496)."""
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "enabled": True, "endpoint": "https://otel.example.com",
             "redaction": {"enabled": False}
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        r = _parse(_run(firm_otel_redaction_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_otel_active_no_redaction(self, tmp_path):
         """OTEL active but no redaction config (line 500)."""
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write(tmp_path, {"otel": {
             "enabled": True, "endpoint": "https://otel.example.com",
             "redaction": "not-a-dict"
         }})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        r = _parse(_run(firm_otel_redaction_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_rpc_rate_limit_remote_high_rpm(self, tmp_path):
         """Remote gateway with high RPM (line 586)."""
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {
             "bind": "0.0.0.0:8080",
             "rateLimit": {"maxRequestsPerMinute": 1000}
         }})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(config_path=cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_rpc_rate_limit_no_concurrent(self, tmp_path):
         """Remote gateway without maxConcurrent (line 593)."""
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write(tmp_path, {"gateway": {
             "bind": "0.0.0.0:8080",
             "rateLimit": {"maxRequestsPerMinute": 100}
         }})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(config_path=cfg)))
+        r = _parse(_run(firm_rpc_rate_limit_check(config_path=cfg)))
         assert _fc(r) >= 1
 
 
@@ -874,39 +874,39 @@ class TestAcpBridgeDeepF:
 
     def test_workspace_lock_traversal(self):
         """Path traversal in workspace lock (line 459)."""
-        from src.acp_bridge import openclaw_workspace_lock
-        r = _run(openclaw_workspace_lock(path="../etc/passwd", action="acquire", owner="me"))
+        from src.acp_bridge import firm_workspace_lock
+        r = _run(firm_workspace_lock(path="../etc/passwd", action="acquire", owner="me"))
         assert r.get("ok") is False
 
     def test_workspace_lock_bad_action(self):
         """Invalid action (line 462)."""
-        from src.acp_bridge import openclaw_workspace_lock
-        r = _run(openclaw_workspace_lock(path="/test", action="destroy", owner="me"))
+        from src.acp_bridge import firm_workspace_lock
+        r = _run(firm_workspace_lock(path="/test", action="destroy", owner="me"))
         assert r.get("ok") is False
 
     def test_workspace_lock_release_wrong_owner(self, tmp_path):
         """Release lock held by someone else (line 500)."""
-        from src.acp_bridge import openclaw_workspace_lock
+        from src.acp_bridge import firm_workspace_lock
         import src.acp_bridge as ab
         locks_dir = tmp_path / "locks"
         locks_dir.mkdir()
         lock_file = locks_dir / "test_resource.lock"
         lock_file.write_text(json.dumps({"owner": "alice", "acquired_at": time.time()}))
         with patch.object(ab, "WORKSPACE_LOCKS_DIR", str(locks_dir)):
-            r = _run(openclaw_workspace_lock(path="test_resource", action="release", owner="bob"))
+            r = _run(firm_workspace_lock(path="test_resource", action="release", owner="bob"))
         assert r.get("ok") is False
         assert "alice" in r.get("error", "")
 
     def test_workspace_lock_release_success(self, tmp_path):
         """Release lock by correct owner (line 502)."""
-        from src.acp_bridge import openclaw_workspace_lock
+        from src.acp_bridge import firm_workspace_lock
         import src.acp_bridge as ab
         locks_dir = tmp_path / "locks"
         locks_dir.mkdir()
         lock_file = locks_dir / "myfile.lock"
         lock_file.write_text(json.dumps({"owner": "alice", "acquired_at": time.time()}))
         with patch.object(ab, "WORKSPACE_LOCKS_DIR", str(locks_dir)):
-            r = _run(openclaw_workspace_lock(path="myfile", action="release", owner="alice"))
+            r = _run(firm_workspace_lock(path="myfile", action="release", owner="alice"))
         assert r.get("ok") is True
 
 
@@ -917,83 +917,83 @@ class TestEcosystemAuditDeepF:
 
     def test_firewall_dangerous_in_allowlist(self, tmp_path):
         """Dangerous tool in allowlist (line 108)."""
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {"gateway": {"firewall": {
             "enabled": True,
             "allowlist": ["exec", "safe_tool"]
         }}})
-        r = _parse(openclaw_mcp_firewall_check(config_path=cfg))
+        r = _parse(firm_mcp_firewall_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_firewall_no_allowlist_missing_block(self, tmp_path):
         """No allowlist, blocklist missing dangerous tools (line 114)."""
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {"gateway": {"firewall": {
             "enabled": True,
             "blocklist": ["safe_tool"]
         }}})
-        r = _parse(openclaw_mcp_firewall_check(config_path=cfg))
+        r = _parse(firm_mcp_firewall_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_firewall_no_sanitization(self, tmp_path):
         """No argument sanitization rules (line 128)."""
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {"gateway": {"firewall": {
             "enabled": True,
             "allowlist": ["safe_tool"],
         }}})
-        r = _parse(openclaw_mcp_firewall_check(config_path=cfg))
+        r = _parse(firm_mcp_firewall_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_sandbox_network_no_policy(self, tmp_path):
         """Network enabled without policy (line 370)."""
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write(tmp_path, {"sandbox": {
             "enabled": True,
             "network": {"enabled": True},
             "filesystem": {"writable": False},
         }})
-        r = _parse(openclaw_sandbox_exec_check(config_path=cfg))
+        r = _parse(firm_sandbox_exec_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_sandbox_writable_no_paths(self, tmp_path):
         """Writable filesystem without path restrictions (line 382)."""
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write(tmp_path, {"sandbox": {
             "enabled": True,
             "network": {"enabled": False},
             "filesystem": {"writable": True},
         }})
-        r = _parse(openclaw_sandbox_exec_check(config_path=cfg))
+        r = _parse(firm_sandbox_exec_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_context_health_high_turns(self):
         """Session with >50 turns (line 487)."""
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = _parse(openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = _parse(firm_context_health_check(session_data={
             "turnCount": 60, "tokensUsed": 50000, "maxTokens": 100000
         }))
         assert _fc(r) >= 1
 
     def test_context_health_medium_turns(self):
         """Session with 20-50 turns (line 493)."""
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = _parse(openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = _parse(firm_context_health_check(session_data={
             "turnCount": 25, "tokensUsed": 30000, "maxTokens": 100000
         }))
         assert _fc(r) >= 1
 
     def test_provenance_verify_empty(self):
         """Verify empty provenance chain (line 599)."""
-        from src.ecosystem_audit import openclaw_provenance_tracker, _PROVENANCE_CHAIN
+        from src.ecosystem_audit import firm_provenance_tracker, _PROVENANCE_CHAIN
         _PROVENANCE_CHAIN.clear()
-        r = _parse(openclaw_provenance_tracker(action="verify"))
+        r = _parse(firm_provenance_tracker(action="verify"))
         assert r.get("ok") is True
         assert r.get("chain_length") == 0
 
     def test_provenance_verify_tampered(self):
         """Verify tampered provenance chain (line 605)."""
-        from src.ecosystem_audit import openclaw_provenance_tracker, _PROVENANCE_CHAIN
+        from src.ecosystem_audit import firm_provenance_tracker, _PROVENANCE_CHAIN
         _PROVENANCE_CHAIN.clear()
         _PROVENANCE_CHAIN.append({
             "hash": "abc123", "prev_hash": "0" * 64,
@@ -1003,15 +1003,15 @@ class TestEcosystemAuditDeepF:
             "hash": "def456", "prev_hash": "WRONG",
             "tool": "test2", "timestamp": time.time()
         })
-        r = _parse(openclaw_provenance_tracker(action="verify"))
+        r = _parse(firm_provenance_tracker(action="verify"))
         assert r.get("ok") is False
         _PROVENANCE_CHAIN.clear()
 
     def test_cost_analytics_over_budget(self, tmp_path):
         """Session cost over 80% of budget (line 686)."""
-        from src.ecosystem_audit import openclaw_cost_analytics
+        from src.ecosystem_audit import firm_cost_analytics
         cfg = _write(tmp_path, {"budget": {"maxPerSession": 0.10}})
-        r = _parse(openclaw_cost_analytics(session_data={
+        r = _parse(firm_cost_analytics(session_data={
             "inputTokens": 100000,
             "outputTokens": 50000,
             "toolCalls": [
@@ -1023,8 +1023,8 @@ class TestEcosystemAuditDeepF:
 
     def test_cost_analytics_tool_stats(self):
         """Tool stats aggregation (line 703)."""
-        from src.ecosystem_audit import openclaw_cost_analytics
-        r = _parse(openclaw_cost_analytics(session_data={
+        from src.ecosystem_audit import firm_cost_analytics
+        r = _parse(firm_cost_analytics(session_data={
             "toolCalls": [
                 {"name": "t1", "cost": 0.01},
                 {"name": "t1", "cost": 0.01},
@@ -1037,8 +1037,8 @@ class TestEcosystemAuditDeepF:
 
     def test_token_budget_system_prompt_ratio(self):
         """System prompt uses >30% of tokens (line 758)."""
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = _parse(openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = _parse(firm_token_budget_optimizer(session_data={
             "tokensUsed": 10000, "maxTokens": 100000,
             "systemPromptTokens": 5000,
             "toolResultTokens": 0,
@@ -1048,8 +1048,8 @@ class TestEcosystemAuditDeepF:
 
     def test_token_budget_tool_result_ratio(self):
         """Tool results use >40% of tokens (line 768)."""
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = _parse(openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = _parse(firm_token_budget_optimizer(session_data={
             "tokensUsed": 10000, "maxTokens": 100000,
             "systemPromptTokens": 500,
             "toolResultTokens": 5000,
@@ -1059,8 +1059,8 @@ class TestEcosystemAuditDeepF:
 
     def test_token_budget_low_cache_rate(self):
         """Low cache hit rate (line 786)."""
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = _parse(openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = _parse(firm_token_budget_optimizer(session_data={
             "tokensUsed": 10000, "maxTokens": 100000,
             "cacheHits": 2, "cacheMisses": 18,
         }))
@@ -1069,9 +1069,9 @@ class TestEcosystemAuditDeepF:
 
     def test_token_budget_duplicate_messages(self):
         """Duplicate messages in context (line 800)."""
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
+        from src.ecosystem_audit import firm_token_budget_optimizer
         msgs = [{"content": "same"} for _ in range(15)]
-        r = _parse(openclaw_token_budget_optimizer(session_data={
+        r = _parse(firm_token_budget_optimizer(session_data={
             "tokensUsed": 10000, "maxTokens": 100000,
             "messages": msgs,
         }))
@@ -1086,86 +1086,86 @@ class TestRuntimeAuditDeepF:
 
     def test_node_version_too_old(self, tmp_path):
         """Node version below minimum (line 152)."""
-        from src.runtime_audit import openclaw_node_version_check
+        from src.runtime_audit import firm_node_version_check
         # Create a fake node binary that returns old version
         fake_node = tmp_path / "node"
         fake_node.write_text("#!/bin/sh\necho 'v16.0.0'")
         fake_node.chmod(0o755)
-        r = _parse(_run(openclaw_node_version_check(node_binary=str(fake_node))))
+        r = _parse(_run(firm_node_version_check(node_binary=str(fake_node))))
         assert r.get("status") == "critical" or _fc(r) >= 1
 
     def test_secrets_workflow_empty_config(self, tmp_path):
         """Empty config for secrets workflow (line 229)."""
-        from src.runtime_audit import openclaw_secrets_workflow_check
+        from src.runtime_audit import firm_secrets_workflow_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_secrets_workflow_check(config_path=cfg)))
+        r = _parse(_run(firm_secrets_workflow_check(config_path=cfg)))
         assert r.get("hardcoded_count", 0) == 0
 
     def test_http_headers_empty_config(self, tmp_path):
         """Empty config for HTTP headers (line 281)."""
-        from src.runtime_audit import openclaw_http_headers_check
+        from src.runtime_audit import firm_http_headers_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_http_headers_check(config_path=cfg)))
+        r = _parse(_run(firm_http_headers_check(config_path=cfg)))
         assert r.get("ok") is not None or "config_not_found" in str(r)
 
     def test_nodes_commands_empty_config(self, tmp_path):
         """Empty config for nodes commands (line 378)."""
-        from src.runtime_audit import openclaw_nodes_commands_check
+        from src.runtime_audit import firm_nodes_commands_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_nodes_commands_check(config_path=cfg)))
+        r = _parse(_run(firm_nodes_commands_check(config_path=cfg)))
         assert r.get("ok") is not None or "config_not_found" in str(r)
 
     def test_trusted_proxy_empty_config(self, tmp_path):
         """Empty config for trusted proxy (line 453)."""
-        from src.runtime_audit import openclaw_trusted_proxy_check
+        from src.runtime_audit import firm_trusted_proxy_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_trusted_proxy_check(config_path=cfg)))
+        r = _parse(_run(firm_trusted_proxy_check(config_path=cfg)))
         assert r.get("ok") is not None or "config_not_found" in str(r)
 
     def test_trusted_proxy_non_loopback(self, tmp_path):
         """Non-loopback trusted proxies (line 483)."""
-        from src.runtime_audit import openclaw_trusted_proxy_check
+        from src.runtime_audit import firm_trusted_proxy_check
         cfg = _write(tmp_path, {"gateway": {
             "auth": {"mode": "trusted-proxy"},
             "trustedProxies": ["10.0.0.1", "127.0.0.1"],
             "bind": "0.0.0.0:8080",
         }})
-        r = _parse(_run(openclaw_trusted_proxy_check(config_path=cfg)))
+        r = _parse(_run(firm_trusted_proxy_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_trusted_proxy_incompatible_bind(self, tmp_path):
         """trusted-proxy auth with public bind (line 491)."""
-        from src.runtime_audit import openclaw_trusted_proxy_check
+        from src.runtime_audit import firm_trusted_proxy_check
         cfg = _write(tmp_path, {"gateway": {
             "auth": {"mode": "trusted-proxy"},
             "trustedProxies": ["127.0.0.1"],
             "bind": "public",
         }})
-        r = _parse(_run(openclaw_trusted_proxy_check(config_path=cfg)))
+        r = _parse(_run(firm_trusted_proxy_check(config_path=cfg)))
         assert _fc(r) >= 1
 
     def test_disk_budget_empty_config(self, tmp_path):
         """Empty config for disk budget (line 556)."""
-        from src.runtime_audit import openclaw_session_disk_budget_check
+        from src.runtime_audit import firm_session_disk_budget_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_session_disk_budget_check(config_path=cfg)))
+        r = _parse(_run(firm_session_disk_budget_check(config_path=cfg)))
         assert r.get("ok") is not None or "config_not_found" in str(r)
 
     def test_dm_allowlist_empty_config(self, tmp_path):
         """Empty config for DM allowlist (line 630)."""
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_dm_allowlist_check(config_path=cfg)))
+        r = _parse(_run(firm_dm_allowlist_check(config_path=cfg)))
         assert r.get("ok") is not None or "config_not_found" in str(r)
 
     def test_dm_allowlist_channels_loop(self, tmp_path):
         """DM channels config loop (line 646)."""
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
         cfg = _write(tmp_path, {"channels": {
             "whatsapp": {"dmPolicy": "open"},
             "telegram": {"dmPolicy": "allowlist", "allowlist": ["user1"]},
         }})
-        r = _parse(_run(openclaw_dm_allowlist_check(config_path=cfg)))
+        r = _parse(_run(firm_dm_allowlist_check(config_path=cfg)))
         assert _fc(r) >= 1
 
 
@@ -1334,118 +1334,118 @@ class TestPlatformAuditDeepF:
 
     def test_agent_routing_no_default(self, tmp_path):
         """No default route in bindings (line 220)."""
-        from src.platform_audit import openclaw_agent_routing_check
+        from src.platform_audit import firm_agent_routing_check
         cfg = _write(tmp_path, {"agents": {
             "bindings": {"bot1": {"target": "agent1"}, "bot2": {"target": "agent2"}}
         }})
-        r = _parse(openclaw_agent_routing_check(config_path=cfg))
+        r = _parse(firm_agent_routing_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_agent_routing_no_scope_isolation(self, tmp_path):
         """No scope isolation (line 242)."""
-        from src.platform_audit import openclaw_agent_routing_check
+        from src.platform_audit import firm_agent_routing_check
         cfg = _write(tmp_path, {"agents": {
             "bindings": {"default": {"target": "main", "default": True}},
             "defaults": {}
         }})
-        r = _parse(openclaw_agent_routing_check(config_path=cfg))
+        r = _parse(firm_agent_routing_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_voice_dangerous_provider(self, tmp_path):
         """Dangerous voice provider (line 293)."""
-        from src.platform_audit import openclaw_voice_security_check
+        from src.platform_audit import firm_voice_security_check
         cfg = _write(tmp_path, {"talk": {"provider": "elevenlabs"}})
-        r = _parse(openclaw_voice_security_check(config_path=cfg))
+        r = _parse(firm_voice_security_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_voice_no_config(self, tmp_path):
         """No voice/talk config (line 289)."""
-        from src.platform_audit import openclaw_voice_security_check
+        from src.platform_audit import firm_voice_security_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_voice_security_check(config_path=cfg))
+        r = _parse(firm_voice_security_check(config_path=cfg))
         assert r.get("severity") == "INFO"
 
     def test_trust_model_no_hardening(self, tmp_path):
         """Gateway without hardening enabled (line 399)."""
-        from src.platform_audit import openclaw_trust_model_check
+        from src.platform_audit import firm_trust_model_check
         cfg = _write(tmp_path, {"gateway": {
             "trustModel": "zero-trust",
             "hardening": {"enabled": False},
             "session": {"timeoutMinutes": 30}
         }})
-        r = _parse(openclaw_trust_model_check(config_path=cfg))
+        r = _parse(firm_trust_model_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_trust_model_bad_timeout(self, tmp_path):
         """Session timeout 0 or > 480 (line 410)."""
-        from src.platform_audit import openclaw_trust_model_check
+        from src.platform_audit import firm_trust_model_check
         cfg = _write(tmp_path, {"gateway": {
             "trustModel": "zero-trust",
             "hardening": {"enabled": True},
             "session": {"timeoutMinutes": 0}
         }})
-        r = _parse(openclaw_trust_model_check(config_path=cfg))
+        r = _parse(firm_trust_model_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_autoupdate_no_sig_verify(self, tmp_path):
         """No signature verification (line 501)."""
-        from src.platform_audit import openclaw_autoupdate_check
+        from src.platform_audit import firm_autoupdate_check
         cfg = _write(tmp_path, {"autoUpdate": {
             "enabled": True,
             "verifySignature": False,
         }})
-        r = _parse(openclaw_autoupdate_check(config_path=cfg))
+        r = _parse(firm_autoupdate_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_plugin_sdk_dangerous_hook(self, tmp_path):
         """Plugin with dangerous hook without guard (line 551)."""
-        from src.platform_audit import openclaw_plugin_sdk_check
+        from src.platform_audit import firm_plugin_sdk_check
         cfg = _write(tmp_path, {"plugins": {
             "registered": [
                 {"name": "evil_plugin", "hooks": [{"name": "onToolCall"}], "permissions": ["exec"]}
             ]
         }})
-        r = _parse(openclaw_plugin_sdk_check(config_path=cfg))
+        r = _parse(firm_plugin_sdk_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_plugin_sdk_no_pkg_allowlist(self, tmp_path):
         """No package install allowlist (line 580)."""
-        from src.platform_audit import openclaw_plugin_sdk_check
+        from src.platform_audit import firm_plugin_sdk_check
         cfg = _write(tmp_path, {"plugins": {
             "registered": [{"name": "safe", "hooks": [], "permissions": []}],
             "packageInstall": {"allow": "all"}
         }})
-        r = _parse(openclaw_plugin_sdk_check(config_path=cfg))
+        r = _parse(firm_plugin_sdk_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_content_boundary_no_wrap(self, tmp_path):
         """No wrapExternalContent (line 630)."""
-        from src.platform_audit import openclaw_content_boundary_check
+        from src.platform_audit import firm_content_boundary_check
         cfg = _write(tmp_path, {"security": {}})
-        r = _parse(openclaw_content_boundary_check(config_path=cfg))
+        r = _parse(firm_content_boundary_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_content_boundary_no_strip(self, tmp_path):
         """No stripDetails config (line 650)."""
-        from src.platform_audit import openclaw_content_boundary_check
+        from src.platform_audit import firm_content_boundary_check
         cfg = _write(tmp_path, {"security": {
             "wrapExternalContent": True,
             "wrapWebContent": True,
             "toolResult": {},
         }})
-        r = _parse(openclaw_content_boundary_check(config_path=cfg))
+        r = _parse(firm_content_boundary_check(config_path=cfg))
         assert _fc(r) >= 1
 
     def test_content_boundary_no_boundary_enabled(self, tmp_path):
         """Content boundary not enabled (line 658)."""
-        from src.platform_audit import openclaw_content_boundary_check
+        from src.platform_audit import firm_content_boundary_check
         cfg = _write(tmp_path, {"security": {
             "wrapExternalContent": True,
             "wrapWebContent": True,
             "toolResult": {"stripDetails": True},
             "contentBoundary": {"enabled": False}
         }})
-        r = _parse(openclaw_content_boundary_check(config_path=cfg))
+        r = _parse(firm_content_boundary_check(config_path=cfg))
         assert _fc(r) >= 1
 
 
@@ -1456,7 +1456,7 @@ class TestSkillLoaderDeepF:
 
     def test_search_description_match(self, tmp_path):
         """Search by description match (line 138)."""
-        from src.skill_loader import openclaw_skill_search
+        from src.skill_loader import firm_skill_search
         import src.skill_loader as sl_mod
         sl_mod._SKILL_CACHE.clear()
         sl_mod._CACHE_TS = 0.0
@@ -1464,14 +1464,14 @@ class TestSkillLoaderDeepF:
         sk1 = skills_dir / "my-skill"
         sk1.mkdir(parents=True)
         (sk1 / "SKILL.md").write_text("---\ntags: [audit]\n---\n# My Skill\nA security auditing tool.")
-        r = _parse(_run(openclaw_skill_search(
+        r = _parse(_run(firm_skill_search(
             query="security", skills_dir=str(skills_dir)
         )))
         assert r.get("ok") is True
 
     def test_search_tag_filter(self, tmp_path):
         """Search with tag filter (line 149)."""
-        from src.skill_loader import openclaw_skill_search
+        from src.skill_loader import firm_skill_search
         import src.skill_loader as sl_mod
         sl_mod._SKILL_CACHE.clear()
         sl_mod._CACHE_TS = 0.0
@@ -1479,7 +1479,7 @@ class TestSkillLoaderDeepF:
         sk1 = skills_dir / "tagged-skill"
         sk1.mkdir(parents=True)
         (sk1 / "SKILL.md").write_text("---\ntags: [security, audit]\n---\n# Tagged\nA tagged skill.")
-        r = _parse(_run(openclaw_skill_search(
+        r = _parse(_run(firm_skill_search(
             query="tagged", skills_dir=str(skills_dir), tags=["security"]
         )))
         assert r.get("ok") is True

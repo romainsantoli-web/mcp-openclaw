@@ -9,11 +9,11 @@ Implements 5 tools for the Location Strategy department:
   - Total Cost of Occupation simulation
 
 Tools exposed (5):
-  openclaw_location_geo_analysis      — geo-economic analysis of candidate zones
-  openclaw_location_real_estate       — real estate market intelligence
-  openclaw_location_site_score        — multi-criteria site scoring matrix
-  openclaw_location_incentives        — territorial tax incentives and aids
-  openclaw_location_tco_simulate      — Total Cost of Occupation simulation
+  firm_location_geo_analysis      — geo-economic analysis of candidate zones
+  firm_location_real_estate       — real estate market intelligence
+  firm_location_site_score        — multi-criteria site scoring matrix
+  firm_location_incentives        — territorial tax incentives and aids
+  firm_location_tco_simulate      — Total Cost of Occupation simulation
 """
 
 from __future__ import annotations
@@ -422,7 +422,7 @@ async def handle_location_tco_simulate(arguments: dict[str, Any]) -> list[dict[s
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_location_geo_analysis",
+        "name": "firm_location_geo_analysis",
         "title": "Location — Geo-Economic Analysis",
         "description": "Geo-economic analysis of candidate cities — talent pools, transport, ecosystem, infrastructure, quality of life. Compares multiple zones.",
         "category": "location_strategy",
@@ -441,7 +441,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_location_real_estate",
+        "name": "firm_location_real_estate",
         "title": "Location — Real Estate Intelligence",
         "description": "Real estate market intelligence — availability, pricing per sqm, coworking rates, trends by zone. Filters by budget and surface.",
         "category": "location_strategy",
@@ -460,7 +460,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_location_site_score",
+        "name": "firm_location_site_score",
         "title": "Location — Site Scoring",
         "description": "Multi-criteria site scoring with 20+ weighted criteria. Compares sites on transport, talent, cost, ecosystem, and more. Outputs ranked matrix.",
         "category": "location_strategy",
@@ -478,7 +478,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_location_incentives",
+        "name": "firm_location_incentives",
         "title": "Location — Tax Incentives",
         "description": "Tax incentives and aid programs by territory — ZFU, ZRR, BER, CIR, JEI, BPI, FEDER. Matches company profile to available programs.",
         "category": "location_strategy",
@@ -496,7 +496,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_location_tco_simulate",
+        "name": "firm_location_tco_simulate",
         "title": "Location — TCO Simulation",
         "description": "Total Cost of Occupation simulation over 3-5 years. Includes rent, charges, CFE, insurance, maintenance. Compares multiple sites.",
         "category": "location_strategy",

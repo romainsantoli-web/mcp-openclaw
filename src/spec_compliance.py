@@ -469,7 +469,7 @@ async def icon_metadata_audit(config_path: str | None = None) -> dict[str, Any]:
 _CONFIG_PATH_SCHEMA = {
     "type": "object",
     "properties": {
-        "config_path": {"type": "string", "description": "Path to openclaw.json config file"},
+        "config_path": {"type": "string", "description": "Path to config.json config file"},
     },
 }
 
@@ -487,7 +487,7 @@ _AUDIT_OUTPUT_SCHEMA = {
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_elicitation_audit",
+        "name": "firm_elicitation_audit",
         "title": "Elicitation Compliance Audit",
         "description": (
             "Audit MCP elicitation capability compliance (2025-06-18+). "
@@ -501,7 +501,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_tasks_audit",
+        "name": "firm_tasks_audit",
         "title": "Tasks (Durable Requests) Audit",
         "description": (
             "Audit MCP Tasks capability compliance (2025-11-25 experimental). "
@@ -515,7 +515,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_resources_prompts_audit",
+        "name": "firm_resources_prompts_audit",
         "title": "Resources & Prompts Audit",
         "description": (
             "Audit MCP Resources & Prompts capability compliance. "
@@ -529,7 +529,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_audio_content_audit",
+        "name": "firm_audio_content_audit",
         "title": "Audio Content Audit",
         "description": (
             "Audit MCP audio content support (2025-06-18+). "
@@ -543,7 +543,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_json_schema_dialect_check",
+        "name": "firm_json_schema_dialect_check",
         "title": "JSON Schema 2020-12 Dialect Check",
         "description": (
             "Audit JSON Schema dialect compliance (MCP 2025-11-25). "
@@ -557,7 +557,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_sse_transport_audit",
+        "name": "firm_sse_transport_audit",
         "title": "SSE Transport Compliance Audit",
         "description": (
             "Audit Streamable HTTP / SSE transport compliance (MCP 2025-11-25). "
@@ -571,7 +571,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_icon_metadata_audit",
+        "name": "firm_icon_metadata_audit",
         "title": "Icon Metadata Audit",
         "description": (
             "Audit icon metadata support (MCP 2025-11-25). "

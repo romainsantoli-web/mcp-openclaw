@@ -1,7 +1,7 @@
 """
-reliability_probe.py — OpenClaw reliability, documentation & architecture tools
+reliability_probe.py — Firm reliability, documentation & architecture tools
 
-Comble les gaps identifiés dans openclaw/openclaw :
+Comble les gaps identifiés dans the server :
   H6  — Gateway/browser indisponible après sleep/wake macOS
   H7  — macOS LaunchAgent WS close 1006 intermittent
   M1  — @line/bot-sdk en deps, zéro doc (canaux zombies)
@@ -9,9 +9,9 @@ Comble les gaps identifiés dans openclaw/openclaw :
   M6  — Aucun ADR (Architecture Decision Record) dans le repo
 
 Tools exposed:
-  openclaw_gateway_probe   — teste la connectivité Gateway avec backoff exponentiel
-  openclaw_doc_sync_check  — compare versions deps package.json vs docs
-  openclaw_channel_audit   — détecte les canaux channel non documentés (canaux zombies)
+  firm_gateway_probe   — teste la connectivité Gateway avec backoff exponentiel
+  firm_doc_sync_check  — compare versions deps package.json vs docs
+  firm_channel_audit   — détecte les canaux channel non documentés (canaux zombies)
   firm_adr_generate        — génère un ADR structuré (format MADR)
 """
 
@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 # ── Gateway probe with reconnect backoff (H6, H7) ────────────────────────────
 
 _LAUNCHCTL_RESTART_CMD = (
-    "launchctl kickstart -k gui/$(id -u)/com.openclaw.gateway\n"
+    "launchctl kickstart -k gui/$(id -u)/com.firm.gateway\n"
     "# If that fails:\n"
-    "launchctl stop com.openclaw.gateway && launchctl start com.openclaw.gateway"
+    "launchctl stop com.firm.gateway && launchctl start com.firm.gateway"
 )
 
 _WS_1006_EXPLAIN = (
@@ -46,9 +46,9 @@ _WS_1006_EXPLAIN = (
 _SLEEP_WAKE_FIX = (
     "After macOS sleep/wake, the Gateway WS port may become unreachable. "
     "The LaunchAgent should auto-restart, but if it doesn't:\n"
-    "1. Run: launchctl kickstart -k gui/$(id -u)/com.openclaw.gateway\n"
+    "1. Run: launchctl kickstart -k gui/$(id -u)/com.firm.gateway\n"
     "2. Wait 3s, retry connection\n"
-    "3. If still failing, check: tail -f ~/Library/Logs/openclaw/gateway.log"
+    "3. If still failing, check: tail -f ~/Library/Logs/firm/gateway.log"
 )
 
 # ── Health endpoints (2026.3.1) ──────────────────────────────────────────────
@@ -93,7 +93,7 @@ async def _check_health_endpoints(gateway_url: str) -> dict[str, Any]:
     return results
 
 
-async def openclaw_gateway_probe(
+async def firm_gateway_probe(
     gateway_url: str = "ws://127.0.0.1:18789",
     max_retries: int = 3,
     backoff_factor: float = 1.0,
@@ -185,7 +185,7 @@ async def openclaw_gateway_probe(
         restart_cmd = _LAUNCHCTL_RESTART_CMD
         explain = _WS_1006_EXPLAIN
     else:
-        action = "Gateway unreachable after all retries — check if OpenClaw is running"
+        action = "Gateway unreachable after all retries — check if Firm is running"
         restart_cmd = _LAUNCHCTL_RESTART_CMD
         explain = _SLEEP_WAKE_FIX
 
@@ -198,7 +198,7 @@ async def openclaw_gateway_probe(
         "action_required": action,
         "explanation": explain,
         "restart_command": restart_cmd,
-        "log_check": "tail -f ~/Library/Logs/openclaw/gateway.log",
+        "log_check": "tail -f ~/Library/Logs/firm/gateway.log",
         "issue_refs": ["#29883 (LaunchAgent WS 1006)", "#29884 (sleep/wake instability)"],
     }
 
@@ -208,7 +208,7 @@ async def openclaw_gateway_probe(
 _HIGH_RISK_DEPS = {"@agentclientprotocol/sdk", "@buape/carbon", "baileys", "@line/bot-sdk"}
 
 
-async def openclaw_doc_sync_check(
+async def firm_doc_sync_check(
     package_json_path: str,
     docs_glob: str = "**/*.md",
 ) -> dict[str, Any]:
@@ -325,7 +325,7 @@ _DOCUMENTED_CHANNELS = {
 }
 
 
-async def openclaw_channel_audit(
+async def firm_channel_audit(
     package_json_path: str,
     readme_path: str,
 ) -> dict[str, Any]:
@@ -390,7 +390,7 @@ async def openclaw_channel_audit(
 
     # ── 2026.3.1: Discord thread lifecycle check ──────────────────────────────
     discord_lifecycle: list[dict[str, str]] = []
-    discord_cfg = pkg.get("openclaw", {}).get("channels", {}).get("discord", {})
+    discord_cfg = pkg.get("firm", {}).get("channels", {}).get("discord", {})
     if "discord.js" in all_deps or "@buape/carbon" in all_deps:
         idle_hours = discord_cfg.get("threads", {}).get("idleHours")
         max_age_hours = discord_cfg.get("threads", {}).get("maxAgeHours")
@@ -466,7 +466,7 @@ async def firm_adr_generate(
     """
     Generates a structured Architecture Decision Record (ADR) in MADR format.
 
-    Addresses gap M6: no ADRs document major OpenClaw design choices (MCP-via-mcporter,
+    Addresses gap M6: no ADRs document major Firm design choices (MCP-via-mcporter,
     Carbon frozen, Baileys vs WhatsApp Cloud API, dual iMessage path).
 
     Args:
@@ -529,7 +529,7 @@ async def firm_adr_generate(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_gateway_probe",
+        "name": "firm_gateway_probe",
         "title": "Gateway Connectivity Probe",
         "description": (
             "Tests Gateway WebSocket connectivity with exponential backoff reconnection. "
@@ -537,7 +537,7 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: connection status, latency, close code, exact launchctl restart command."
         ),
         "category": "reliability",
-        "handler": openclaw_gateway_probe,
+        "handler": firm_gateway_probe,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -570,7 +570,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_doc_sync_check",
+        "name": "firm_doc_sync_check",
         "title": "Doc Version Sync Check",
         "description": (
             "Compares dependency versions in package.json against versions referenced in markdown docs. "
@@ -578,7 +578,7 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: desynced dependencies, severity (HIGH for ACP SDK/Carbon), update instructions."
         ),
         "category": "reliability",
-        "handler": openclaw_doc_sync_check,
+        "handler": firm_doc_sync_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -598,7 +598,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_channel_audit",
+        "name": "firm_channel_audit",
         "title": "Channel SDK Audit",
         "description": (
             "Detects channel SDK packages present in package.json but absent from README (zombie dependencies). "
@@ -606,7 +606,7 @@ TOOLS: list[dict[str, Any]] = [
             "for 75M+ users in JP/TH. Returns: zombie deps, channel coverage matrix."
         ),
         "category": "reliability",
-        "handler": openclaw_channel_audit,
+        "handler": firm_channel_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -629,7 +629,7 @@ TOOLS: list[dict[str, Any]] = [
         "title": "Generate ADR Document",
         "description": (
             "Generates a structured Architecture Decision Record (ADR) in MADR format. "
-            "Gap M6: no ADRs exist for major OpenClaw architectural choices "
+            "Gap M6: no ADRs exist for major Firm architectural choices "
             "(MCP-via-mcporter, Carbon frozen, Baileys, dual iMessage path). "
             "Returns: ADR markdown, suggested commit path and git command."
         ),

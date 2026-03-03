@@ -20,14 +20,14 @@ def _run(coro):
 
 
 def _write_config(tmp_path: Path, data: dict) -> str:
-    p = tmp_path / "openclaw.json"
+    p = tmp_path / "config.json"
     p.write_text(json.dumps(data), encoding="utf-8")
     return str(p)
 
 
 def _corrupt_config(tmp_path: Path) -> str:
     """Write corrupt JSON to trigger _load_config exception branch."""
-    p = tmp_path / "openclaw.json"
+    p = tmp_path / "config.json"
     p.write_text("NOT VALID JSON{{{", encoding="utf-8")
     return str(p)
 
@@ -44,43 +44,43 @@ class TestAdvSecCorruptConfig:
         self.cfg = _corrupt_config(tmp_path)
 
     def test_secrets_lifecycle_corrupt(self):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
-        r = _run(openclaw_secrets_lifecycle_check(self.cfg))
+        from src.advanced_security import firm_secrets_lifecycle_check
+        r = _run(firm_secrets_lifecycle_check(self.cfg))
         assert r["status"] == "error"
 
     def test_channel_auth_canon_corrupt(self):
-        from src.advanced_security import openclaw_channel_auth_canon_check
-        r = _run(openclaw_channel_auth_canon_check(self.cfg))
+        from src.advanced_security import firm_channel_auth_canon_check
+        r = _run(firm_channel_auth_canon_check(self.cfg))
         assert r["status"] == "error"
 
     def test_exec_approval_freeze_corrupt(self):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
-        r = _run(openclaw_exec_approval_freeze_check(self.cfg))
+        from src.advanced_security import firm_exec_approval_freeze_check
+        r = _run(firm_exec_approval_freeze_check(self.cfg))
         assert r["status"] == "error"
 
     def test_hook_session_routing_corrupt(self):
-        from src.advanced_security import openclaw_hook_session_routing_check
-        r = _run(openclaw_hook_session_routing_check(self.cfg))
+        from src.advanced_security import firm_hook_session_routing_check
+        r = _run(firm_hook_session_routing_check(self.cfg))
         assert isinstance(r, dict)
 
     def test_config_include_corrupt(self):
-        from src.advanced_security import openclaw_config_include_check
-        r = _run(openclaw_config_include_check(self.cfg))
+        from src.advanced_security import firm_config_include_check
+        r = _run(firm_config_include_check(self.cfg))
         assert r["status"] == "error"
 
     def test_config_prototype_corrupt(self):
-        from src.advanced_security import openclaw_config_prototype_check
-        r = _run(openclaw_config_prototype_check(self.cfg))
+        from src.advanced_security import firm_config_prototype_check
+        r = _run(firm_config_prototype_check(self.cfg))
         assert r["status"] == "error"
 
     def test_safe_bins_profile_corrupt(self):
-        from src.advanced_security import openclaw_safe_bins_profile_check
-        r = _run(openclaw_safe_bins_profile_check(self.cfg))
+        from src.advanced_security import firm_safe_bins_profile_check
+        r = _run(firm_safe_bins_profile_check(self.cfg))
         assert r["status"] == "error"
 
     def test_group_policy_default_corrupt(self):
-        from src.advanced_security import openclaw_group_policy_default_check
-        r = _run(openclaw_group_policy_default_check(self.cfg))
+        from src.advanced_security import firm_group_policy_default_check
+        r = _run(firm_group_policy_default_check(self.cfg))
         assert r["status"] == "error"
 
 
@@ -93,103 +93,103 @@ class TestAdvSecDeepBranches:
 
     def test_secrets_target_path_traversal(self, tmp_path):
         """secrets.apply.targetPath with '..'"""
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "secrets": {"apply": {"targetPath": "../etc"}},
             "auth": {"profiles": {"default": {"apiKey": "sk-real"}}}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert any("targetPath" in f.get("message", "") or "traversal" in f.get("message", "").lower()
                     for f in r["findings"])
 
     def test_secrets_managed_no_snapshot(self, tmp_path):
         """secrets.managed=True + snapshotActivated missing."""
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "secrets": {"managed": True}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert isinstance(r, dict)
 
     def test_channel_auth_none_remote(self, tmp_path):
         """auth.mode=none on remote bind → CRITICAL."""
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {
             "gateway": {"auth": {"mode": "none"}, "bind": "0.0.0.0"}
         })
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert any(f["severity"] == "CRITICAL" for f in r["findings"])
 
     def test_controlui_basepath_traversal(self, tmp_path):
         """controlUi.basePath with encoded traversal."""
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {
             "gateway": {"controlUi": {"basePath": "/%2e%2e/admin"}}
         })
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert any("basePath" in f.get("message", "") or "controlUi" in f.get("message", "")
                     for f in r["findings"])
 
     def test_hook_session_routing_allow_request_key(self, tmp_path):
         """hooks.allowRequestSessionKey=True without prefix restrictions."""
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {"allowRequestSessionKey": True, "mappings": {"x": {}}}
         })
-        r = _run(openclaw_hook_session_routing_check(cfg))
+        r = _run(firm_hook_session_routing_check(cfg))
         assert isinstance(r, dict)
         assert r.get("findings") or r.get("finding_count", 0) >= 0
 
     def test_hook_session_no_default_session(self, tmp_path):
         """hooks configured but no defaultSessionKey or token."""
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {"mappings": {"test": {"path": "/hook"}}}
         })
-        r = _run(openclaw_hook_session_routing_check(cfg))
+        r = _run(firm_hook_session_routing_check(cfg))
         assert isinstance(r, dict)
 
     def test_include_with_dotdot(self, tmp_path):
         """$include with '..' in path string."""
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = _write_config(tmp_path, {
             "nested": {"$include": "../outside.json"}
         })
-        r = _run(openclaw_config_include_check(cfg))
+        r = _run(firm_config_include_check(cfg))
         assert isinstance(r, dict)
 
     def test_include_resolves_outside(self, tmp_path):
         """Include target resolves outside config dir via symlink."""
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         outside_file = tmp_path / "outside" / "secret.json"
         outside_file.parent.mkdir()
         outside_file.write_text("{}")
         cfg = _write_config(tmp_path, {
             "$include": str(outside_file)
         })
-        r = _run(openclaw_config_include_check(cfg))
+        r = _run(firm_config_include_check(cfg))
         assert isinstance(r, dict)
 
     def test_safe_bins_under_exec(self, tmp_path):
         """FIX: safeBinProfiles under tools.exec, not at root."""
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {"exec": {
                 "safeBins": ["python"],
                 "safeBinProfiles": {"python": {}}
             }}
         })
-        r = _run(openclaw_safe_bins_profile_check(cfg))
+        r = _run(firm_safe_bins_profile_check(cfg))
         assert any("python" in f.get("message", "").lower() or "stdinSafe" in f.get("message", "")
                     for f in r["findings"])
 
     def test_group_policy_defaults_not_allowlist(self, tmp_path):
         """channels.defaults.groupPolicy set to non-'allowlist'."""
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write_config(tmp_path, {
             "channels": {"defaults": {"groupPolicy": "open"}}
         })
-        r = _run(openclaw_group_policy_default_check(cfg))
+        r = _run(firm_group_policy_default_check(cfg))
         assert any("groupPolicy" in f.get("message", "")
                     for f in r["findings"])
 
@@ -493,28 +493,28 @@ class TestConfigMigCorrupt:
         self.cfg = _corrupt_config(tmp_path)
 
     def test_shell_env_corrupt(self):
-        from src.config_migration import openclaw_shell_env_check
-        r = _run(openclaw_shell_env_check(self.cfg))
+        from src.config_migration import firm_shell_env_check
+        r = _run(firm_shell_env_check(self.cfg))
         assert isinstance(r, dict)
 
     def test_plugin_integrity_corrupt(self):
-        from src.config_migration import openclaw_plugin_integrity_check
-        r = _run(openclaw_plugin_integrity_check(self.cfg))
+        from src.config_migration import firm_plugin_integrity_check
+        r = _run(firm_plugin_integrity_check(self.cfg))
         assert isinstance(r, dict)
 
     def test_token_separation_corrupt(self):
-        from src.config_migration import openclaw_token_separation_check
-        r = _run(openclaw_token_separation_check(self.cfg))
+        from src.config_migration import firm_token_separation_check
+        r = _run(firm_token_separation_check(self.cfg))
         assert isinstance(r, dict)
 
     def test_otel_redaction_corrupt(self):
-        from src.config_migration import openclaw_otel_redaction_check
-        r = _run(openclaw_otel_redaction_check(self.cfg))
+        from src.config_migration import firm_otel_redaction_check
+        r = _run(firm_otel_redaction_check(self.cfg))
         assert isinstance(r, dict)
 
     def test_rpc_rate_limit_corrupt(self):
-        from src.config_migration import openclaw_rpc_rate_limit_check
-        r = _run(openclaw_rpc_rate_limit_check(self.cfg))
+        from src.config_migration import firm_rpc_rate_limit_check
+        r = _run(firm_rpc_rate_limit_check(self.cfg))
         assert isinstance(r, dict)
 
 
@@ -523,18 +523,18 @@ class TestConfigMigDeep:
 
     def test_shell_env_fork_dangerous(self, tmp_path):
         """agents.defaults.fork.env with dangerous shell vars."""
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write_config(tmp_path, {
             "agents": {"defaults": {"fork": {"env": {"LD_PRELOAD": "/evil.so"}}}}
         })
-        r = _run(openclaw_shell_env_check(cfg))
+        r = _run(firm_shell_env_check(cfg))
         assert isinstance(r, dict)
 
     def test_plugin_integrity_hash_mismatch_fixed(self, tmp_path):
         """FIX: manifest key is 'sha256' not 'hash'."""
         import src.config_migration as cm
-        from src.config_migration import openclaw_plugin_integrity_check
-        ocdir = tmp_path / ".openclaw"
+        from src.config_migration import firm_plugin_integrity_check
+        ocdir = tmp_path / ".firm"
         ocdir.mkdir()
         plugin_dir = ocdir / "plugins" / "myplugin"
         plugin_dir.mkdir(parents=True)
@@ -547,27 +547,27 @@ class TestConfigMigDeep:
         cfg = _write_config(tmp_path, {
             "plugins": {"entries": {"myplugin": {"main": str(main_file)}}}
         })
-        with patch.object(cm, "_OPENCLAW_DIR", ocdir):
-            r = _run(openclaw_plugin_integrity_check(cfg))
+        with patch.object(cm, "_FIRM_DIR", ocdir):
+            r = _run(firm_plugin_integrity_check(cfg))
         assert isinstance(r, dict)
 
     def test_rpc_rate_limit_weak(self, tmp_path):
         """Remote bind WITH rate limit but thresholds too high."""
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write_config(tmp_path, {
             "gateway": {"bind": "0.0.0.0", "rateLimit": {"maxRequestsPerMinute": 5000}}
         })
-        r = _run(openclaw_rpc_rate_limit_check(cfg))
+        r = _run(firm_rpc_rate_limit_check(cfg))
         assert isinstance(r, dict)
 
     def test_token_separation_placeholder(self, tmp_path):
         """hooks.token is a placeholder like 'changeme'."""
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write_config(tmp_path, {
             "hooks": {"token": "changeme"},
             "gateway": {"auth": {"token": "different_value"}},
         })
-        r = _run(openclaw_token_separation_check(cfg))
+        r = _run(firm_token_separation_check(cfg))
         assert isinstance(r, dict)
 
 
@@ -613,15 +613,15 @@ class TestAcpBridgeDeep:
 
     def test_acpx_corrupt_config(self, tmp_path):
         """Lines 555-559: corrupt config file → parse error."""
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
         cfg = _corrupt_config(tmp_path)
-        r = _run(openclaw_acpx_version_check(cfg))
+        r = _run(firm_acpx_version_check(cfg))
         assert isinstance(r, dict)
 
     def test_workspace_lock_acquire_file_exists_race(self, tmp_path):
         """Lines 504-505: FileExistsError during open('x')."""
         import src.acp_bridge as acpb
-        from src.acp_bridge import openclaw_workspace_lock
+        from src.acp_bridge import firm_workspace_lock
         lock_dir = tmp_path / "locks"
         lock_dir.mkdir()
         orig = acpb.WORKSPACE_LOCKS_DIR
@@ -637,7 +637,7 @@ class TestAcpBridgeDeep:
 
         try:
             with patch("builtins.open", side_effect=mock_open_x):
-                r = _run(openclaw_workspace_lock(
+                r = _run(firm_workspace_lock(
                     path="/race_test", action="acquire", owner="agent1", timeout_s=0.3
                 ))
             assert isinstance(r, dict)
@@ -710,68 +710,68 @@ class TestRemainingSmallGaps:
 
     # --- ecosystem_audit (all SYNC) ---
     def test_ecosystem_context_health_edge(self, tmp_path):
-        from src.ecosystem_audit import openclaw_context_health_check
+        from src.ecosystem_audit import firm_context_health_check
         cfg = _write_config(tmp_path, {"mcp": {"context": {"maxTokens": 100000}}})
-        r = openclaw_context_health_check(config_path=cfg)
+        r = firm_context_health_check(config_path=cfg)
         assert isinstance(r, dict)
 
     def test_ecosystem_provenance_tracker(self, tmp_path):
-        from src.ecosystem_audit import openclaw_provenance_tracker
-        r = openclaw_provenance_tracker(action="status")
+        from src.ecosystem_audit import firm_provenance_tracker
+        r = firm_provenance_tracker(action="status")
         assert isinstance(r, dict)
 
     def test_ecosystem_cost_analytics_with_budget(self, tmp_path):
-        from src.ecosystem_audit import openclaw_cost_analytics
+        from src.ecosystem_audit import firm_cost_analytics
         cfg = _write_config(tmp_path, {"budget": {"maxPerSession": 100}})
-        r = openclaw_cost_analytics(
+        r = firm_cost_analytics(
             session_data={"total_cost": 50, "budget": 100}, config_path=cfg
         )
         assert isinstance(r, dict)
 
     def test_ecosystem_token_budget_optimizer(self, tmp_path):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(
             session_data={"total_tokens": 5000, "max_tokens": 10000}
         )
         assert isinstance(r, dict)
 
     def test_ecosystem_mcp_firewall_check(self, tmp_path):
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write_config(tmp_path, {"mcp": {"firewall": {"enabled": True}}})
-        r = openclaw_mcp_firewall_check(config_path=cfg)
+        r = firm_mcp_firewall_check(config_path=cfg)
         assert isinstance(r, dict)
 
     def test_ecosystem_rag_pipeline(self, tmp_path):
-        from src.ecosystem_audit import openclaw_rag_pipeline_check
+        from src.ecosystem_audit import firm_rag_pipeline_check
         cfg = _write_config(tmp_path, {"mcp": {"rag": {"enabled": True}}})
-        r = openclaw_rag_pipeline_check(config_path=cfg)
+        r = firm_rag_pipeline_check(config_path=cfg)
         assert isinstance(r, dict)
 
     def test_ecosystem_sandbox_exec(self, tmp_path):
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write_config(tmp_path, {
             "agents": {"defaults": {"sandbox": {"mode": "off"}}}
         })
-        r = openclaw_sandbox_exec_check(config_path=cfg)
+        r = firm_sandbox_exec_check(config_path=cfg)
         assert isinstance(r, dict)
 
     # --- platform_audit ---
     def test_platform_voice_no_sanitize(self, tmp_path):
-        from src.platform_audit import openclaw_voice_security_check
+        from src.platform_audit import firm_voice_security_check
         cfg = _write_config(tmp_path, {
             "talk": {"provider": "whisper", "enabled": True, "sanitize": False}
         })
-        r = openclaw_voice_security_check(cfg)
+        r = firm_voice_security_check(cfg)
         assert isinstance(r, dict)
 
     def test_platform_plugin_sdk_no_guard(self, tmp_path):
-        from src.platform_audit import openclaw_plugin_sdk_check
+        from src.platform_audit import firm_plugin_sdk_check
         cfg = _write_config(tmp_path, {
             "plugins": {"registered": [
                 {"name": "risky", "hooks": ["onExec", "onOutput"], "version": "1.0"}
             ]}
         })
-        r = openclaw_plugin_sdk_check(cfg)
+        r = firm_plugin_sdk_check(cfg)
         assert isinstance(r, dict)
 
     # --- config_helpers ---
@@ -821,63 +821,63 @@ class TestRemainingSmallGaps:
 
     # --- gateway_hardening ---
     def test_hardening_gateway_auth(self, tmp_path):
-        from src.gateway_hardening import openclaw_gateway_auth_check
+        from src.gateway_hardening import firm_gateway_auth_check
         cfg = _write_config(tmp_path, {
             "gateway": {"auth": {"mode": "none"}, "bind": "0.0.0.0"}
         })
-        r = _run(openclaw_gateway_auth_check(cfg))
+        r = _run(firm_gateway_auth_check(cfg))
         assert isinstance(r, dict)
 
     # --- hebbian_memory ---
     def test_hebbian_analysis_edge(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
         data = tmp_path / "data.jsonl"
         data.write_text('{"tool":"a","args":{}}\n{"tool":"b","args":{}}\n')
-        r = _run(openclaw_hebbian_analyze(str(data)))
+        r = _run(firm_hebbian_analyze(str(data)))
         assert isinstance(r, dict)
 
     def test_hebbian_runtime_weight_update(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Test")
         db_path = tmp_path / "weights.db"
-        r = _run(openclaw_hebbian_weight_update(
+        r = _run(firm_hebbian_weight_update(
             claude_md_path=str(claude_md), db_path=str(db_path), dry_run=True
         ))
         assert isinstance(r, dict)
 
     def test_hebbian_validation_decay(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
         cfg = _write_config(tmp_path, {"hebbian": {"decay_rate": 0.5}})
-        r = _run(openclaw_hebbian_decay_config_check(cfg))
+        r = _run(firm_hebbian_decay_config_check(cfg))
         assert isinstance(r, dict)
 
     def test_hebbian_drift_check(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Test")
-        r = _run(openclaw_hebbian_drift_check(str(claude_md)))
+        r = _run(firm_hebbian_drift_check(str(claude_md)))
         assert isinstance(r, dict)
 
     # --- skill_loader ---
     def test_skill_loader_refresh(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
+        from src.skill_loader import firm_skill_lazy_loader
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
         sk = skills_dir / "test-skill"
         sk.mkdir()
         (sk / "SKILL.md").write_text("# Test Skill\nDescription here")
-        r = _run(openclaw_skill_lazy_loader(skills_dir=str(skills_dir), refresh=True))
+        r = _run(firm_skill_lazy_loader(skills_dir=str(skills_dir), refresh=True))
         assert isinstance(r, dict)
 
     def test_skill_search_no_match(self, tmp_path):
-        from src.skill_loader import openclaw_skill_search
+        from src.skill_loader import firm_skill_search
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
-        r = _run(openclaw_skill_search(skills_dir=str(skills_dir), query="nonexistent_xyz"))
+        r = _run(firm_skill_search(skills_dir=str(skills_dir), query="nonexistent_xyz"))
         assert isinstance(r, dict)
 
-    # --- auth_compliance (no openclaw_ prefix) ---
+    # --- auth_compliance (no firm_ prefix) ---
     def test_oauth_oidc_audit(self, tmp_path):
         from src.auth_compliance import oauth_oidc_audit
         cfg = _write_config(tmp_path, {
@@ -896,36 +896,36 @@ class TestRemainingSmallGaps:
 
     # --- observability ---
     def test_observability_ci_pipeline(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         wf_dir = tmp_path / ".github" / "workflows"
         wf_dir.mkdir(parents=True)
         wf = wf_dir / "ci.yml"
         wf.write_text("name: CI\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n")
-        r = _run(openclaw_ci_pipeline_check(repo_path=str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(repo_path=str(tmp_path)))
         assert isinstance(r, dict)
 
     # --- browser_audit ---
     def test_browser_audit_dangerous_args(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         _write_config(tmp_path, {
             "browser": {"args": ["--no-sandbox", "--disable-web-security"]}
         })
-        r = _run(openclaw_browser_context_check(workspace_path=str(tmp_path)))
+        r = _run(firm_browser_context_check(workspace_path=str(tmp_path)))
         assert isinstance(r, dict)
 
     # --- n8n_bridge deeper ---
     def test_n8n_import(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         n8n_json = tmp_path / "workflow.json"
         n8n_json.write_text(json.dumps({
             "name": "Test", "nodes": [], "connections": {}
         }))
-        r = _run(openclaw_n8n_workflow_import(
+        r = _run(firm_n8n_workflow_import(
             workflow_path=str(n8n_json), target_dir=str(tmp_path / "out")
         ))
         assert isinstance(r, dict)
 
-    # --- prompt_security (no openclaw_ prefix) ---
+    # --- prompt_security (no firm_ prefix) ---
     def test_prompt_injection_crit(self):
         from src.prompt_security import prompt_injection_check
         r = _run(prompt_injection_check(
@@ -942,56 +942,56 @@ class TestRemainingSmallGaps:
 
     # --- reliability_probe deeper ---
     def test_doc_sync_check(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"name": "test", "version": "1.0.0"}))
-        r = _run(openclaw_doc_sync_check(package_json_path=str(pkg)))
+        r = _run(firm_doc_sync_check(package_json_path=str(pkg)))
         assert isinstance(r, dict)
 
     def test_channel_audit(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"name": "test", "version": "1.0.0"}))
         readme = tmp_path / "README.md"
         readme.write_text("# Test")
-        r = _run(openclaw_channel_audit(
+        r = _run(firm_channel_audit(
             package_json_path=str(pkg), readme_path=str(readme)
         ))
         assert isinstance(r, dict)
 
     # --- security_audit deeper ---
     def test_sandbox_audit(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
+        from src.security_audit import firm_sandbox_audit
         cfg = _write_config(tmp_path, {
             "agents": {"defaults": {"sandbox": {"mode": "off"}}}
         })
-        r = _run(openclaw_sandbox_audit(cfg))
+        r = _run(firm_sandbox_audit(cfg))
         assert isinstance(r, dict)
 
     # --- memory_audit ---
     def test_knowledge_graph_check(self, tmp_path):
-        from src.memory_audit import openclaw_knowledge_graph_check
+        from src.memory_audit import firm_knowledge_graph_check
         gdata = tmp_path / "graph.json"
         gdata.write_text(json.dumps({"nodes": [{"id": "a"}], "edges": []}))
-        r = _run(openclaw_knowledge_graph_check(graph_data_path=str(gdata)))
+        r = _run(firm_knowledge_graph_check(graph_data_path=str(gdata)))
         assert isinstance(r, dict)
 
     # --- agent_orchestration deeper ---
     def test_agent_team_status(self):
-        from src.agent_orchestration import openclaw_agent_team_status
-        r = _run(openclaw_agent_team_status())
+        from src.agent_orchestration import firm_agent_team_status
+        r = _run(firm_agent_team_status())
         assert isinstance(r, dict)
 
     # --- i18n deeper ---
     def test_i18n_with_locales(self, tmp_path):
-        from src.i18n_audit import openclaw_i18n_audit
+        from src.i18n_audit import firm_i18n_audit
         proj = tmp_path / "proj"
         proj.mkdir()
         loc_dir = proj / "locales"
         loc_dir.mkdir()
         (loc_dir / "en.json").write_text(json.dumps({"hello": "Hello", "bye": "Bye"}))
         (loc_dir / "fr.json").write_text(json.dumps({"hello": "Bonjour"}))
-        r = _run(openclaw_i18n_audit(project_path=str(proj)))
+        r = _run(firm_i18n_audit(project_path=str(proj)))
         assert isinstance(r, dict)
 
     # --- vs_bridge ---

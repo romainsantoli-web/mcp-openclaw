@@ -24,7 +24,7 @@ from ._helpers import (
 logger = logging.getLogger(__name__)
 
 
-async def openclaw_hebbian_analyze(
+async def firm_hebbian_analyze(
     db_path: str | None = None,
     since_days: int = 90,
     min_cluster_size: int = 5,
@@ -35,7 +35,7 @@ async def openclaw_hebbian_analyze(
     if not Path(actual_db).exists():
         return {
             "ok": True, "status": "no_data",
-            "message": "No Hebbian database found. Run openclaw_hebbian_harvest first.",
+            "message": "No Hebbian database found. Run firm_hebbian_harvest first.",
             "patterns": [], "session_count": 0,
         }
 
@@ -118,7 +118,7 @@ async def openclaw_hebbian_analyze(
     }
 
 
-async def openclaw_hebbian_status(
+async def firm_hebbian_status(
     db_path: str | None = None,
     claude_md_path: str | None = None,
 ) -> dict[str, Any]:

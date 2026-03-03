@@ -1,19 +1,19 @@
 """
-gateway_hardening.py — OpenClaw gateway auth, credentials, webhooks, logging & workspace
+gateway_hardening.py — Firm gateway auth, credentials, webhooks, logging & workspace
 
-Comble les gaps identifiés dans openclaw/openclaw :
+Comble les gaps identifiés dans the server :
   H2 — Pas de validation de la config auth Gateway (mode password absent si Funnel actif)
   M3 — Baileys WhatsApp : session credentials sans check d'intégrité/âge
   M4 — Webhooks entrants sans vérification de signature HMAC
   M7 — Logging non configuré ou sans redaction patterns
-  M8 — Workspace ~/.openclaw non contrôlé (MEMORY.md, SOUL.md absents)
+  M8 — Workspace ~/.firm non contrôlé (MEMORY.md, SOUL.md absents)
 
 Tools exposed:
-  openclaw_gateway_auth_check        — vérifie la config auth du Gateway (H2)
-  openclaw_credentials_check         — vérifie l'état des credentials Baileys/channels (M3)
-  openclaw_webhook_sig_check         — vérifie la présence de secrets HMAC pour les webhooks (M4)
-  openclaw_log_config_check          — vérifie la config logging (niveau, redact, rotation) (M7)
-  openclaw_workspace_integrity_check — vérifie l'intégrité du workspace OpenClaw (M8)
+  firm_gateway_auth_check        — vérifie la config auth du Gateway (H2)
+  firm_credentials_check         — vérifie l'état des credentials Baileys/channels (M3)
+  firm_webhook_sig_check         — vérifie la présence de secrets HMAC pour les webhooks (M4)
+  firm_log_config_check          — vérifie la config logging (niveau, redact, rotation) (M7)
+  firm_workspace_integrity_check — vérifie l'intégrité du workspace Firm (M8)
 """
 
 from __future__ import annotations
@@ -30,17 +30,17 @@ logger = logging.getLogger(__name__)
 
 # ── Default paths (overridable via env) ──────────────────────────────────────
 
-_OPENCLAW_DIR = Path(
-    os.getenv("OPENCLAW_DIR", Path.home() / ".openclaw")
+_FIRM_DIR = Path(
+    os.getenv("FIRM_DIR", Path.home() / ".firm")
 )
 _CONFIG_PATH = Path(
-    os.getenv("OPENCLAW_CONFIG", _OPENCLAW_DIR / "openclaw.json")
+    os.getenv("FIRM_CONFIG", _FIRM_DIR / "config.json")
 )
 _CREDENTIALS_DIR = Path(
-    os.getenv("OPENCLAW_CREDS", _OPENCLAW_DIR / "credentials")
+    os.getenv("FIRM_CREDS", _FIRM_DIR / "credentials")
 )
 _WORKSPACE_DIR = Path(
-    os.getenv("OPENCLAW_WORKSPACE", _OPENCLAW_DIR / "workspace")
+    os.getenv("FIRM_WORKSPACE", _FIRM_DIR / "workspace")
 )
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -96,11 +96,11 @@ _VALID_LOG_LEVELS = {"error", "warn", "info", "debug", "trace"}
 
 # ── H2 — Gateway auth check ───────────────────────────────────────────────────
 
-async def openclaw_gateway_auth_check(
+async def firm_gateway_auth_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    H2 — Validate the OpenClaw Gateway authentication configuration.
+    H2 — Validate the Gateway authentication configuration.
 
     Checks:
     - Funnel mode active → password auth required (CRITICAL if missing)
@@ -200,12 +200,12 @@ async def openclaw_gateway_auth_check(
 
 # ── M3 — Baileys credentials check ───────────────────────────────────────────
 
-async def openclaw_credentials_check(
+async def firm_credentials_check(
     credentials_dir: str | None = None,
     max_age_days: int = 30,
 ) -> dict[str, Any]:
     """
-    M3 — Check OpenClaw channel credentials (Baileys WhatsApp, Telegram tokens).
+    M3 — Check Firm channel credentials (Baileys WhatsApp, Telegram tokens).
 
     Validates:
     - Baileys creds.json exists and is not older than max_age_days
@@ -249,7 +249,7 @@ async def openclaw_credentials_check(
                     "channel": channel_name,
                     "severity": "HIGH",
                     "description": f"No credentials found for channel '{channel_name}'",
-                    "fix": f"Re-run: openclaw channels login --channel {channel_name}",
+                    "fix": f"Re-run: firm channels login --channel {channel_name}",
                 })
             else:
                 entry["files"] = [f.name for f in json_files]
@@ -271,7 +271,7 @@ async def openclaw_credentials_check(
                     "description": f"creds.json corrupted for '{channel_name}'",
                     "fix": (
                         f"Delete and re-pair: rm -rf {creds_file} && "
-                        f"openclaw channels login --channel {channel_name}"
+                        f"firm channels login --channel {channel_name}"
                     ),
                 })
 
@@ -286,7 +286,7 @@ async def openclaw_credentials_check(
                         f"Credentials for '{channel_name}' are {age_days:.1f} days old "
                         f"(threshold: {max_age_days}d)"
                     ),
-                    "fix": f"Consider re-pairing: openclaw channels login --channel {channel_name}",
+                    "fix": f"Consider re-pairing: firm channels login --channel {channel_name}",
                 })
 
         channels.append(entry)
@@ -312,14 +312,14 @@ async def openclaw_credentials_check(
 
 # ── M4 — Webhook signature check ─────────────────────────────────────────────
 
-async def openclaw_webhook_sig_check(
+async def firm_webhook_sig_check(
     config_path: str | None = None,
     channel: str | None = None,
 ) -> dict[str, Any]:
     """
     M4 — Validate that webhook-exposed channels have HMAC signing secrets configured.
 
-    Reads openclaw.json and checks each channel's webhook configuration.
+    Reads config.json and checks each channel's webhook configuration.
     A channel with webhookPath but no signingSecret/webhookSecret is at risk
     (unauthenticated webhook — any actor can post fake events).
 
@@ -380,7 +380,7 @@ async def openclaw_webhook_sig_check(
                     "any external actor can forge events"
                 ),
                 "fix": (
-                    f'Add channels.{ch}.webhookSecret: "<random-32-byte-hex>" to openclaw.json\n'
+                    f'Add channels.{ch}.webhookSecret: "<random-32-byte-hex>" to config.json\n'
                     "Generate: python3 -c \"import secrets; print(secrets.token_hex(32))\""
                 ),
             })
@@ -406,11 +406,11 @@ async def openclaw_webhook_sig_check(
 
 # ── M7 — Log config check ─────────────────────────────────────────────────────
 
-async def openclaw_log_config_check(
+async def firm_log_config_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    M7 — Validate that OpenClaw logging is properly configured.
+    M7 — Validate that Firm logging is properly configured.
 
     Checks:
     - logging.level is set and valid (warn/info/error — not debug/trace in production)
@@ -433,9 +433,9 @@ async def openclaw_log_config_check(
                 {
                     "id": "no_log_config",
                     "severity": "MEDIUM",
-                    "description": "No openclaw.json found — default log level (info) with no redaction patterns",
+                    "description": "No config.json found — default log level (info) with no redaction patterns",
                     "fix": (
-                        'Add to openclaw.json:\n  "logging": {\n    "level": "warn",\n'
+                        'Add to config.json:\n  "logging": {\n    "level": "warn",\n'
                         '    "redactPatterns": ["(?i)token", "(?i)secret", "(?i)api_key", '
                         '"(?i)password", "BEARER\\\\s+\\\\S+"]\n  }'
                     ),
@@ -519,12 +519,12 @@ async def openclaw_log_config_check(
 
 # ── M8 — Workspace integrity check ───────────────────────────────────────────
 
-async def openclaw_workspace_integrity_check(
+async def firm_workspace_integrity_check(
     workspace_dir: str | None = None,
     stale_days: int = 30,
 ) -> dict[str, Any]:
     """
-    M8 — Verify the integrity and health of the OpenClaw workspace directory.
+    M8 — Verify the integrity and health of the workspace directory.
 
     Checks:
     - Workspace exists and has required files (AGENTS.md, SOUL.md)
@@ -549,11 +549,11 @@ async def openclaw_workspace_integrity_check(
                 {
                     "id": "workspace_missing",
                     "severity": "HIGH",
-                    "description": f"OpenClaw workspace not found at {resolved}",
+                    "description": f"Firm workspace not found at {resolved}",
                     "fix": (
-                        "Run: openclaw onboard --install-daemon\n"
-                        "Or initialize manually: mkdir -p ~/.openclaw/workspace && "
-                        "openclaw workspace init"
+                        "Run: firm onboard --install-daemon\n"
+                        "Or initialize manually: mkdir -p ~/.firm/workspace && "
+                        "firm workspace init"
                     ),
                 }
             ],
@@ -573,7 +573,7 @@ async def openclaw_workspace_integrity_check(
                 "description": f"{fname} not found in workspace — agent identity incomplete",
                 "fix": (
                     f"Create {resolved / fname} with your agent configuration, "
-                    "or run: openclaw workspace init"
+                    "or run: firm workspace init"
                 ),
             })
 
@@ -625,7 +625,7 @@ async def openclaw_workspace_integrity_check(
                         f"{fpath.relative_to(resolved)} is {size_mb:.1f} MB — "
                         "may cause context bloat and slow agent responses"
                     ),
-                    "fix": f"Move or archive: mv {fpath} /tmp/openclaw-archive/",
+                    "fix": f"Move or archive: mv {fpath} /tmp/firm-archive/",
                 })
     except OSError:
         pass
@@ -672,17 +672,17 @@ async def openclaw_workspace_integrity_check(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_gateway_auth_check",
+        "name": "firm_gateway_auth_check",
         "title": "Gateway Auth Audit",
         "description": (
-            "Checks the OpenClaw Gateway authentication configuration. "
+            "Checks the Gateway authentication configuration. "
             "Gap H2: Funnel mode without password auth is a CRITICAL exposure — "
             "anyone on the internet can reach the Gateway without authentication. "
             "Also detects dangerouslyDisableDeviceAuth=true (HIGH). "
             "Returns: findings list with severity and remediation."
         ),
         "category": "security",
-        "handler": openclaw_gateway_auth_check,
+        "handler": firm_gateway_auth_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -700,22 +700,22 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Absolute path to openclaw.json. Defaults to ~/.openclaw/openclaw.json.",
+                    "description": "Absolute path to config.json. Defaults to ~/.firm/config.json.",
                 },
             },
         },
     },
     {
-        "name": "openclaw_credentials_check",
+        "name": "firm_credentials_check",
         "title": "Credentials Freshness Check",
         "description": (
-            "Checks the integrity and freshness of OpenClaw channel credentials. "
+            "Checks the integrity and freshness of the server channel credentials. "
             "Gap M3: Baileys WhatsApp creds.json can silently corrupt, preventing reconnection. "
             "Validates JSON integrity (CRITICAL if corrupted) and staleness (MEDIUM if > max_age_days). "
             "Returns: per-credentials-dir findings with severity."
         ),
         "category": "security",
-        "handler": openclaw_credentials_check,
+        "handler": firm_credentials_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -733,7 +733,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "credentials_dir": {
                     "type": "string",
-                    "description": "Path to credentials directory. Defaults to ~/.openclaw/credentials.",
+                    "description": "Path to credentials directory. Defaults to ~/.firm/credentials.",
                 },
                 "max_age_days": {
                     "type": "integer",
@@ -746,7 +746,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_webhook_sig_check",
+        "name": "firm_webhook_sig_check",
         "title": "Webhook Signature Check",
         "description": (
             "Checks that each inbound webhook channel has a signing secret configured. "
@@ -756,7 +756,7 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: findings list with severity HIGH for any channel with webhook but no secret."
         ),
         "category": "security",
-        "handler": openclaw_webhook_sig_check,
+        "handler": firm_webhook_sig_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -774,7 +774,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Absolute path to openclaw.json. Defaults to ~/.openclaw/openclaw.json.",
+                    "description": "Absolute path to config.json. Defaults to ~/.firm/config.json.",
                 },
                 "channel": {
                     "type": "string",
@@ -784,16 +784,16 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_log_config_check",
+        "name": "firm_log_config_check",
         "title": "Log Config Audit",
         "description": (
-            "Audits the OpenClaw logging configuration. "
+            "Audits the logging configuration. "
             "Gap M7: debug/trace logging leaks tokens and PII into log files. "
             "Missing redactPatterns means secrets appear in plain text. "
             "Returns: findings with severity HIGH (verbose level) or MEDIUM (missing redact patterns)."
         ),
         "category": "security",
-        "handler": openclaw_log_config_check,
+        "handler": firm_log_config_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -811,22 +811,22 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Absolute path to openclaw.json. Defaults to ~/.openclaw/openclaw.json.",
+                    "description": "Absolute path to config.json. Defaults to ~/.firm/config.json.",
                 },
             },
         },
     },
     {
-        "name": "openclaw_workspace_integrity_check",
+        "name": "firm_workspace_integrity_check",
         "title": "Workspace Integrity Check",
         "description": (
-            "Validates the integrity of the OpenClaw workspace directory (~/.openclaw/workspace). "
+            "Validates the integrity of the workspace directory (~/.firm/workspace). "
             "Gap M8: Missing AGENTS.md / SOUL.md means agents have no identity or instructions. "
             "Stale MEMORY.md blocks context continuity. Large files cause agent context bloat. "
             "Returns: file inventory, fingerprint, and findings with severity."
         ),
         "category": "security",
-        "handler": openclaw_workspace_integrity_check,
+        "handler": firm_workspace_integrity_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -844,7 +844,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "workspace_dir": {
                     "type": "string",
-                    "description": "Path to workspace directory. Defaults to ~/.openclaw/workspace.",
+                    "description": "Path to workspace directory. Defaults to ~/.firm/workspace.",
                 },
                 "stale_days": {
                     "type": "integer",

@@ -1,12 +1,12 @@
 """
-n8n_bridge.py — OpenClaw ↔ n8n workflow automation bridge
+n8n_bridge.py — Firm ↔ n8n workflow automation bridge
 
 Tools:
-  openclaw_n8n_workflow_export   — export an agent pipeline as an n8n-compatible workflow JSON
-  openclaw_n8n_workflow_import   — validate & import an n8n workflow JSON into the workspace
+  firm_n8n_workflow_export   — export an agent pipeline as an n8n-compatible workflow JSON
+  firm_n8n_workflow_import   — validate & import an n8n workflow JSON into the workspace
 
 Gap T8: Workflow Automation is the #1 trending MCP category (50k+ stars).
-Bridges the gap between OpenClaw agent orchestration and n8n's visual workflow engine.
+Bridges the gap between Firm agent orchestration and n8n's visual workflow engine.
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 _N8N_SCHEMA_VERSION = "1.0"
 
-# Known n8n node types we can map from OpenClaw concepts
-_OPENCLAW_TO_N8N_NODE_MAP: dict[str, str] = {
+# Known n8n node types we can map from the server concepts
+_FIRM_TO_N8N_NODE_MAP: dict[str, str] = {
     "http_request": "n8n-nodes-base.httpRequest",
     "webhook": "n8n-nodes-base.webhook",
     "code": "n8n-nodes-base.code",
@@ -65,7 +65,7 @@ def _make_n8n_node(
     position: tuple[int, int] = (0, 0),
 ) -> dict[str, Any]:
     """Create a single n8n workflow node."""
-    n8n_type = _OPENCLAW_TO_N8N_NODE_MAP.get(node_type, f"n8n-nodes-base.{node_type}")
+    n8n_type = _FIRM_TO_N8N_NODE_MAP.get(node_type, f"n8n-nodes-base.{node_type}")
     return {
         "id": node_id,
         "name": name,
@@ -136,7 +136,7 @@ def _export_pipeline_to_n8n(
     steps: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
-    Convert an OpenClaw-style pipeline definition to n8n workflow JSON.
+    Convert a server-style pipeline definition to n8n workflow JSON.
 
     Each step should have: name, type, and optionally parameters, depends_on.
     """
@@ -189,8 +189,8 @@ def _export_pipeline_to_n8n(
         },
         "meta": {
             "templateCredsSetupCompleted": False,
-            "openclaw_exported": True,
-            "openclaw_export_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "firm_exported": True,
+            "firm_export_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "schema_version": _N8N_SCHEMA_VERSION,
         },
     }
@@ -198,15 +198,15 @@ def _export_pipeline_to_n8n(
     return workflow
 
 
-# ── Tool: openclaw_n8n_workflow_export ────────────────────────────────────────
+# ── Tool: firm_n8n_workflow_export ────────────────────────────────────────
 
-async def openclaw_n8n_workflow_export(
+async def firm_n8n_workflow_export(
     pipeline_name: str,
     steps: list[dict[str, Any]],
     output_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    Export an OpenClaw agent pipeline as an n8n-compatible workflow JSON.
+    Export a server agent pipeline as an n8n-compatible workflow JSON.
 
     Takes a pipeline definition (list of steps with name, type, parameters,
     and optional depends_on) and converts it to an n8n workflow format that
@@ -253,9 +253,9 @@ async def openclaw_n8n_workflow_export(
     return result
 
 
-# ── Tool: openclaw_n8n_workflow_import ────────────────────────────────────────
+# ── Tool: firm_n8n_workflow_import ────────────────────────────────────────
 
-async def openclaw_n8n_workflow_import(
+async def firm_n8n_workflow_import(
     workflow_path: str,
     target_dir: str | None = None,
     strict: bool = True,
@@ -348,15 +348,15 @@ async def openclaw_n8n_workflow_import(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_n8n_workflow_export",
+        "name": "firm_n8n_workflow_export",
         "title": "Export to n8n Workflow",
         "description": (
-            "Export an OpenClaw agent pipeline as an n8n-compatible workflow JSON. "
+            "Export a server agent pipeline as an n8n-compatible workflow JSON. "
             "Converts pipeline steps (name, type, parameters, depends_on) to n8n format "
             "with proper node layout and connections. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
-        "handler": openclaw_n8n_workflow_export,
+        "handler": firm_n8n_workflow_export,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -380,7 +380,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_n8n_workflow_import",
+        "name": "firm_n8n_workflow_import",
         "title": "Import n8n Workflow",
         "description": (
             "Validate and import an n8n workflow JSON file. Checks structure (nodes, "
@@ -388,7 +388,7 @@ TOOLS: list[dict[str, Any]] = [
             "copies to workspace. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
-        "handler": openclaw_n8n_workflow_import,
+        "handler": firm_n8n_workflow_import,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {

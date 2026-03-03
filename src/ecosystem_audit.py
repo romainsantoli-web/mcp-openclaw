@@ -11,13 +11,13 @@ Implements the high-impact tools from ecosystem trend analysis:
   - Token budget optimization
 
 Tools exposed (7):
-  openclaw_mcp_firewall_check     — MCP gateway firewall policies
-  openclaw_rag_pipeline_check     — RAG pipeline health & config
-  openclaw_sandbox_exec_check     — sandbox execution isolation
-  openclaw_context_health_check   — context rot detection
-  openclaw_provenance_tracker     — cryptographic audit trail
-  openclaw_cost_analytics         — usage/cost tracking
-  openclaw_token_budget_optimizer — token optimization analysis
+  firm_mcp_firewall_check     — MCP gateway firewall policies
+  firm_rag_pipeline_check     — RAG pipeline health & config
+  firm_sandbox_exec_check     — sandbox execution isolation
+  firm_context_health_check   — context rot detection
+  firm_provenance_tracker     — cryptographic audit trail
+  firm_cost_analytics         — usage/cost tracking
+  firm_token_budget_optimizer — token optimization analysis
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ _PROVENANCE_CHAIN: list[dict[str, Any]] = []
 
 # ── Tool handlers ────────────────────────────────────────────────────────────
 
-def openclaw_mcp_firewall_check(
+def firm_mcp_firewall_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -181,7 +181,7 @@ def openclaw_mcp_firewall_check(
     }
 
 
-def openclaw_rag_pipeline_check(
+def firm_rag_pipeline_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -306,7 +306,7 @@ def openclaw_rag_pipeline_check(
     }
 
 
-def openclaw_sandbox_exec_check(
+def firm_sandbox_exec_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -428,7 +428,7 @@ def openclaw_sandbox_exec_check(
     }
 
 
-def openclaw_context_health_check(
+def firm_context_health_check(
     session_data: dict[str, Any] | None = None,
     config_path: str | None = None,
 ) -> dict[str, Any]:
@@ -540,7 +540,7 @@ def openclaw_context_health_check(
     }
 
 
-def openclaw_provenance_tracker(
+def firm_provenance_tracker(
     action: str = "status",
     entry: dict[str, Any] | None = None,
     chain_path: str | None = None,
@@ -645,7 +645,7 @@ def openclaw_provenance_tracker(
         }
 
 
-def openclaw_cost_analytics(
+def firm_cost_analytics(
     session_data: dict[str, Any] | None = None,
     config_path: str | None = None,
 ) -> dict[str, Any]:
@@ -728,7 +728,7 @@ def openclaw_cost_analytics(
     }
 
 
-def openclaw_token_budget_optimizer(
+def firm_token_budget_optimizer(
     session_data: dict[str, Any] | None = None,
     config_path: str | None = None,
 ) -> dict[str, Any]:
@@ -825,7 +825,7 @@ def openclaw_token_budget_optimizer(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_mcp_firewall_check",
+        "name": "firm_mcp_firewall_check",
         "title": "MCP Firewall Policy Check",
         "description": (
             "MCP Gateway firewall policy audit. Checks tool allowlists, "
@@ -833,7 +833,7 @@ TOOLS: list[dict[str, Any]] = [
             "prevention, request size limits. Gap G21."
         ),
         "category": "ecosystem",
-        "handler": openclaw_mcp_firewall_check,
+        "handler": firm_mcp_firewall_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -849,20 +849,20 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_rag_pipeline_check",
+        "name": "firm_rag_pipeline_check",
         "title": "RAG Pipeline Validation",
         "description": (
             "RAG pipeline health & configuration audit. Checks embedding model, "
             "vector store, chunk settings, retrieval top-K, index freshness. Gap G22."
         ),
         "category": "ecosystem",
-        "handler": openclaw_rag_pipeline_check,
+        "handler": firm_rag_pipeline_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -878,13 +878,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_sandbox_exec_check",
+        "name": "firm_sandbox_exec_check",
         "title": "Sandbox Execution Check",
         "description": (
             "Sandbox execution isolation audit. Checks sandbox mode, "
@@ -892,7 +892,7 @@ TOOLS: list[dict[str, Any]] = [
             "timeout enforcement. Gap G26."
         ),
         "category": "ecosystem",
-        "handler": openclaw_sandbox_exec_check,
+        "handler": firm_sandbox_exec_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -908,20 +908,20 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_context_health_check",
+        "name": "firm_context_health_check",
         "title": "Context Window Health",
         "description": (
             "Context rot / cognitive health detection. Checks token utilization, "
             "session age, turn count, compression ratio, recovery recommendations. Gap G23."
         ),
         "category": "ecosystem",
-        "handler": openclaw_context_health_check,
+        "handler": firm_context_health_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -931,13 +931,13 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "description": "Session data with tokensUsed, contextWindow, createdAt, turns.",
                 },
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_provenance_tracker",
+        "name": "firm_provenance_tracker",
         "title": "Provenance Chain Tracker",
         "description": (
             "Cryptographic audit trail / provenance tracking. "
@@ -945,7 +945,7 @@ TOOLS: list[dict[str, Any]] = [
             "status, export. Gap G24."
         ),
         "category": "ecosystem",
-        "handler": openclaw_provenance_tracker,
+        "handler": firm_provenance_tracker,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -971,14 +971,14 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_cost_analytics",
+        "name": "firm_cost_analytics",
         "title": "Cost Analytics Dashboard",
         "description": (
             "Usage/cost tracking and analysis. Estimates cost per session, "
             "checks budget thresholds, analyzes tool call patterns. Gap G27."
         ),
         "category": "ecosystem",
-        "handler": openclaw_cost_analytics,
+        "handler": firm_cost_analytics,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -988,20 +988,20 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "description": "Session data with model, tokens, toolCalls, budget.",
                 },
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_token_budget_optimizer",
+        "name": "firm_token_budget_optimizer",
         "title": "Token Budget Optimizer",
         "description": (
             "Token optimization analysis. Finds compression opportunities, "
             "prompt deduplication, caching improvements, tool result savings. Gap G25."
         ),
         "category": "ecosystem",
-        "handler": openclaw_token_budget_optimizer,
+        "handler": firm_token_budget_optimizer,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -1011,7 +1011,7 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "description": "Session data with tokensUsed, messages, cache stats.",
                 },
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },

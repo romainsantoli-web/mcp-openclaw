@@ -179,21 +179,21 @@ class TestExtractLayer2Rules:
 
 class TestHebbianHarvest:
     def test_file_not_found(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         with patch.dict(os.environ, {"HEBBIAN_ALLOWED_DIRS": str(tmp_path)}):
-            r = _run(openclaw_hebbian_harvest(session_jsonl_path=str(tmp_path / "nope.jsonl")))
+            r = _run(firm_hebbian_harvest(session_jsonl_path=str(tmp_path / "nope.jsonl")))
             assert r.get("ok") is False or "error" in r
 
     def test_wrong_extension(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         f = tmp_path / "data.txt"
         f.write_text("")
         with patch.dict(os.environ, {"HEBBIAN_ALLOWED_DIRS": str(tmp_path)}):
-            r = _run(openclaw_hebbian_harvest(session_jsonl_path=str(f)))
+            r = _run(firm_hebbian_harvest(session_jsonl_path=str(f)))
             assert r.get("ok") is False or "error" in r
 
     def test_happy_path(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         f = tmp_path / "sessions.jsonl"
         lines = [
             json.dumps({
@@ -209,48 +209,48 @@ class TestHebbianHarvest:
         f.write_text("\n".join(lines))
         db_path = str(tmp_path / "hebb.db")
         with patch.dict(os.environ, {"HEBBIAN_ALLOWED_DIRS": str(tmp_path)}):
-            r = _run(openclaw_hebbian_harvest(
+            r = _run(firm_hebbian_harvest(
                 session_jsonl_path=str(f),
                 db_path=db_path,
             ))
             assert r.get("ok") is True or r.get("harvested", 0) >= 0
 
     def test_bad_json_lines(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         f = tmp_path / "bad.jsonl"
         f.write_text("not json\n{bad\n")
         db_path = str(tmp_path / "h.db")
         with patch.dict(os.environ, {"HEBBIAN_ALLOWED_DIRS": str(tmp_path)}):
-            r = _run(openclaw_hebbian_harvest(session_jsonl_path=str(f), db_path=db_path))
+            r = _run(firm_hebbian_harvest(session_jsonl_path=str(f), db_path=db_path))
             # Should handle gracefully
             assert isinstance(r, dict)
 
     def test_max_lines(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         f = tmp_path / "large.jsonl"
         lines = [json.dumps({"session_id": f"s{i}", "summary": f"S{i}", "tags": "[]", "rules_activated": "[]", "quality_score": 0.5, "timestamp": time.time()}) for i in range(10)]
         f.write_text("\n".join(lines))
         db_path = str(tmp_path / "h.db")
         with patch.dict(os.environ, {"HEBBIAN_ALLOWED_DIRS": str(tmp_path)}):
-            r = _run(openclaw_hebbian_harvest(session_jsonl_path=str(f), db_path=db_path, max_lines=3))
+            r = _run(firm_hebbian_harvest(session_jsonl_path=str(f), db_path=db_path, max_lines=3))
             assert isinstance(r, dict)
 
 
 class TestHebbianWeightUpdate:
     def test_claude_md_not_found(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
-        r = _run(openclaw_hebbian_weight_update(claude_md_path=str(tmp_path / "nope.md")))
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
+        r = _run(firm_hebbian_weight_update(claude_md_path=str(tmp_path / "nope.md")))
         assert r.get("ok") is False or "error" in r
 
     def test_no_layer2_rules(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         md = tmp_path / "CLAUDE.md"
         md.write_text("# CLAUDE\nNo layer 2 rules here.")
-        r = _run(openclaw_hebbian_weight_update(claude_md_path=str(md)))
+        r = _run(firm_hebbian_weight_update(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_dry_run(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         md = tmp_path / "CLAUDE.md"
         md.write_text("""# CLAUDE
 ## Layer 2 — Weighted Rules
@@ -258,20 +258,20 @@ class TestHebbianWeightUpdate:
 - [0.80] Keep code DRY
 """)
         db_path = str(tmp_path / "h.db")
-        r = _run(openclaw_hebbian_weight_update(
+        r = _run(firm_hebbian_weight_update(
             claude_md_path=str(md), db_path=db_path, dry_run=True,
         ))
         assert isinstance(r, dict)
 
     def test_actual_write(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         md = tmp_path / "CLAUDE.md"
         md.write_text("""# CLAUDE
 ## Layer 2 — Weighted Rules
 - [0.50] Always test before push
 """)
         db_path = str(tmp_path / "h.db")
-        r = _run(openclaw_hebbian_weight_update(
+        r = _run(firm_hebbian_weight_update(
             claude_md_path=str(md), db_path=db_path, dry_run=False,
         ))
         assert isinstance(r, dict)
@@ -326,20 +326,20 @@ class TestApplyWeightChanges:
 
 class TestHebbianAnalyze:
     def test_no_db(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
-        r = _run(openclaw_hebbian_analyze(db_path=str(tmp_path / "nope.db")))
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
+        r = _run(firm_hebbian_analyze(db_path=str(tmp_path / "nope.db")))
         assert isinstance(r, dict)
 
     def test_empty_db(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
         from src.hebbian_memory._helpers import _init_db
         db = str(tmp_path / "h.db")
         _init_db(db)
-        r = _run(openclaw_hebbian_analyze(db_path=db))
+        r = _run(firm_hebbian_analyze(db_path=db))
         assert isinstance(r, dict)
 
     def test_with_sessions(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_analyze
+        from src.hebbian_memory._analysis import firm_hebbian_analyze
         from src.hebbian_memory._helpers import _init_db
         db = str(tmp_path / "h.db")
         _init_db(db)
@@ -351,26 +351,26 @@ class TestHebbianAnalyze:
             )
         conn.commit()
         conn.close()
-        r = _run(openclaw_hebbian_analyze(db_path=db, min_cluster_size=1))
+        r = _run(firm_hebbian_analyze(db_path=db, min_cluster_size=1))
         assert isinstance(r, dict)
 
 
 class TestHebbianStatus:
     def test_no_db(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
-        r = _run(openclaw_hebbian_status(db_path=str(tmp_path / "nope.db")))
+        from src.hebbian_memory._analysis import firm_hebbian_status
+        r = _run(firm_hebbian_status(db_path=str(tmp_path / "nope.db")))
         assert r.get("db_exists") is False
 
     def test_with_db(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
+        from src.hebbian_memory._analysis import firm_hebbian_status
         from src.hebbian_memory._helpers import _init_db
         db = str(tmp_path / "h.db")
         _init_db(db)
-        r = _run(openclaw_hebbian_status(db_path=db))
+        r = _run(firm_hebbian_status(db_path=db))
         assert isinstance(r, dict)
 
     def test_with_claude_md(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
+        from src.hebbian_memory._analysis import firm_hebbian_status
         from src.hebbian_memory._helpers import _init_db
         db = str(tmp_path / "h.db")
         _init_db(db)
@@ -379,15 +379,15 @@ class TestHebbianStatus:
 - [0.95] Promoted rule
 - [0.05] Atrophy rule
 """)
-        r = _run(openclaw_hebbian_status(db_path=db, claude_md_path=str(md)))
+        r = _run(firm_hebbian_status(db_path=db, claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_claude_md_not_found(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
+        from src.hebbian_memory._analysis import firm_hebbian_status
         from src.hebbian_memory._helpers import _init_db
         db = str(tmp_path / "h.db")
         _init_db(db)
-        r = _run(openclaw_hebbian_status(db_path=db, claude_md_path=str(tmp_path / "nope.md")))
+        r = _run(firm_hebbian_status(db_path=db, claude_md_path=str(tmp_path / "nope.md")))
         assert isinstance(r, dict)
 
 
@@ -397,20 +397,20 @@ class TestHebbianStatus:
 
 class TestLayerValidate:
     def test_file_not_found(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(tmp_path / "nope.md")))
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(tmp_path / "nope.md")))
         assert r.get("ok") is False or "error" in r
 
     def test_missing_layers(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text("# CLAUDE\nJust some text without any layers.")
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)
         assert len(r.get("findings", [])) > 0
 
     def test_all_layers_present(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text("""# CLAUDE
 ## Layer 1 — Foundation
@@ -422,44 +422,44 @@ emerging
 ## Layer 4 — Meta-Cognitive
 meta
 """)
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_high_weight_flagged(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text("""## Layer 2 — Weighted Rules
 - [0.96] Over threshold rule
 - [-0.10] Negative weight
 """)
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_pii_in_rules(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text("""## Layer 2 — Weighted Rules
 - [0.50] Contact user@example.com for info
 """)
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
 
 class TestPiiCheck:
     def test_no_config(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
-        r = _run(openclaw_hebbian_pii_check())
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
+        r = _run(firm_hebbian_pii_check())
         assert isinstance(r, dict)
 
     def test_no_hebbian_section(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({"gateway": {}}))
-        r = _run(openclaw_hebbian_pii_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_pii_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
     def test_with_hebbian_config(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({
             "hebbian": {
@@ -469,30 +469,30 @@ class TestPiiCheck:
                 "access_restriction": {"mode": "allowlist", "allowed": ["admin"]},
             },
         }))
-        r = _run(openclaw_hebbian_pii_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_pii_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
     def test_pii_disabled(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({"hebbian": {"pii": {"enabled": False}}}))
-        r = _run(openclaw_hebbian_pii_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_pii_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
     def test_config_data_dict(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
-        r = _run(openclaw_hebbian_pii_check(config_data={"hebbian": {"pii": {"enabled": True, "patterns": ["email"]}}}))
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
+        r = _run(firm_hebbian_pii_check(config_data={"hebbian": {"pii": {"enabled": True, "patterns": ["email"]}}}))
         assert isinstance(r, dict)
 
 
 class TestDecayConfigCheck:
     def test_no_config(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
-        r = _run(openclaw_hebbian_decay_config_check())
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
+        r = _run(firm_hebbian_decay_config_check())
         assert isinstance(r, dict)
 
     def test_good_config(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({
             "hebbian": {
@@ -505,51 +505,51 @@ class TestDecayConfigCheck:
                 "max_consecutive_auto_changes": 3,
             },
         }))
-        r = _run(openclaw_hebbian_decay_config_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_decay_config_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
     def test_bad_learning_rate(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({"hebbian": {"learning_rate": 5.0, "decay": 0.5}}))
-        r = _run(openclaw_hebbian_decay_config_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_decay_config_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
     def test_bad_poids(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
         cfg = tmp_path / "cfg.json"
         cfg.write_text(json.dumps({"hebbian": {"poids_max": 1.5, "poids_min": -0.5, "max_consecutive_auto_changes": 10}}))
-        r = _run(openclaw_hebbian_decay_config_check(config_path=str(cfg)))
+        r = _run(firm_hebbian_decay_config_check(config_path=str(cfg)))
         assert isinstance(r, dict)
 
 
 class TestDriftCheck:
     def test_current_not_found(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
-        r = _run(openclaw_hebbian_drift_check(claude_md_path=str(tmp_path / "nope.md")))
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
+        r = _run(firm_hebbian_drift_check(claude_md_path=str(tmp_path / "nope.md")))
         assert r.get("ok") is False or "error" in r
 
     def test_no_baseline(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         md = tmp_path / "CLAUDE.md"
         md.write_text("# Current CLAUDE.md content")
-        r = _run(openclaw_hebbian_drift_check(claude_md_path=str(md)))
+        r = _run(firm_hebbian_drift_check(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_identical_baseline(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         md = tmp_path / "CLAUDE.md"
         md.write_text("# Same content here")
         baseline = tmp_path / "baseline.md"
         baseline.write_text("# Same content here")
-        r = _run(openclaw_hebbian_drift_check(claude_md_path=str(md), baseline_path=str(baseline)))
+        r = _run(firm_hebbian_drift_check(claude_md_path=str(md), baseline_path=str(baseline)))
         assert isinstance(r, dict)
 
     def test_drifted(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_drift_check
+        from src.hebbian_memory._validation import firm_hebbian_drift_check
         md = tmp_path / "CLAUDE.md"
         md.write_text("# Completely new content with different words and topics about space exploration")
         baseline = tmp_path / "baseline.md"
         baseline.write_text("# Original content about gardening and flowers and soil types")
-        r = _run(openclaw_hebbian_drift_check(claude_md_path=str(md), baseline_path=str(baseline), threshold=0.99))
+        r = _run(firm_hebbian_drift_check(claude_md_path=str(md), baseline_path=str(baseline), threshold=0.99))
         assert isinstance(r, dict)

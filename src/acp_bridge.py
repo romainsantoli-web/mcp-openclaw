@@ -1,7 +1,7 @@
 """
 acp_bridge.py — ACP session persistence & autonomous session tools
 
-Comble les gaps identifiés dans openclaw/openclaw :
+Comble les gaps identifiés dans the server :
   C4 — ACP bridge session state en mémoire uniquement (crash = perte sessions)
   H3 — Sessions isolées ne peuvent pas accéder aux env vars des providers
   H4 — Cron tools sur denylist sandbox (automation bloquée)
@@ -13,7 +13,7 @@ Tools exposed:
   acp_session_list_active   — liste toutes les sessions ACP actives
   fleet_session_inject_env  — injecte les provider env vars dans sessions non-main
   fleet_cron_schedule       — planifie un cron task sans passer par sandbox
-  openclaw_workspace_lock   — advisory file lock pour éviter les race conditions
+  firm_workspace_lock   — advisory file lock pour éviter les race conditions
 """
 
 from __future__ import annotations
@@ -34,18 +34,18 @@ logger = logging.getLogger(__name__)
 
 ACP_SESSIONS_PATH: str = os.getenv(
     "ACP_SESSIONS_PATH",
-    os.path.expanduser("~/.openclaw/acp_sessions.json"),
+    os.path.expanduser("~/.firm/acp_sessions.json"),
 )
 
 WORKSPACE_LOCKS_DIR: str = os.getenv(
     "WORKSPACE_LOCKS_DIR",
-    os.path.expanduser("~/.openclaw/locks"),
+    os.path.expanduser("~/.firm/locks"),
 )
 
 # Allowlist strict des clés d'env vars pouvant être injectées dans les sessions (H3)
 _ENV_KEY_ALLOWLIST_PATTERN = re.compile(
     r"^(ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|GEMINI_API_KEY"
-    r"|OPENCLAW_MODEL|OPENCLAW_PROVIDER|OPENCLAW_MAX_TOKENS"
+    r"|FIRM_MODEL|FIRM_PROVIDER|FIRM_MAX_TOKENS"
     r"|CLAW_MODEL|CLAW_PROVIDER|PROXY_URL|CUSTOM_[A-Z0-9_]+)$"
 )
 
@@ -100,7 +100,7 @@ async def acp_session_persist(
 
     Args:
         run_id: ACP run ID (from AgentRunRequest.run_id).
-        gateway_session_key: The corresponding OpenClaw Gateway session key.
+        gateway_session_key: The corresponding Firm Gateway session key.
         metadata: Optional metadata to store with the session.
 
     Returns:
@@ -275,7 +275,7 @@ async def fleet_session_inject_env(
     from src.gateway_fleet import firm_gateway_fleet_broadcast  # local import to avoid cycle
 
     broadcast_result = await firm_gateway_fleet_broadcast(
-        agent="openclaw",
+        agent="firm",
         message=json.dumps({
             "type": "env_inject",
             "env": validated,
@@ -300,7 +300,7 @@ async def fleet_session_inject_env(
 
 # ── Fleet cron schedule (H4) ──────────────────────────────────────────────────
 
-_CRON_SCHEDULE_PATH: str = os.path.expanduser("~/.openclaw/cron_schedules.json")
+_CRON_SCHEDULE_PATH: str = os.path.expanduser("~/.firm/cron_schedules.json")
 
 
 def _validate_cron_expression(expr: str) -> bool:
@@ -398,7 +398,7 @@ async def fleet_cron_schedule(
         "session": session,
         "description": description,
         "note": (
-            "Schedule persisted. To activate, use the OpenClaw cron integration "
+            "Schedule persisted. To activate, use the cron integration "
             "on the main session (not inside sandbox). See gap H4 workaround."
         ),
         "next_run_hint": f"Cron expression '{schedule}' — use crontab.guru to verify timing.",
@@ -407,7 +407,7 @@ async def fleet_cron_schedule(
 
 # ── Workspace advisory lock (H5) ─────────────────────────────────────────────
 
-async def openclaw_workspace_lock(
+async def firm_workspace_lock(
     path: str,
     action: str,
     owner: str,
@@ -520,7 +520,7 @@ _ACPX_MIN_VERSION = "0.1.15"
 _ACPX_RECOMMENDED_STREAMING = "final_only"
 
 
-async def openclaw_acpx_version_check(
+async def firm_acpx_version_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -530,7 +530,7 @@ async def openclaw_acpx_version_check(
     The `final_only` streaming mode is required to avoid partial task results.
 
     Args:
-        config_path: Path to openclaw.json (default: ~/.openclaw/openclaw.json).
+        config_path: Path to config.json (default: ~/.firm/config.json).
 
     Returns:
         {ok, severity, findings, config_path}
@@ -540,7 +540,7 @@ async def openclaw_acpx_version_check(
     if config_path:
         no_path_traversal(config_path)
 
-    resolved = config_path or os.path.expanduser("~/.openclaw/openclaw.json")
+    resolved = config_path or os.path.expanduser("~/.firm/config.json")
     p = Path(resolved)
     if not p.exists():
         return {
@@ -562,7 +562,7 @@ async def openclaw_acpx_version_check(
 
     # Check plugins section for ACPX
     plugins = config.get("plugins", {})
-    acpx_cfg = plugins.get("acpx", plugins.get("@openclaw/acpx", {}))
+    acpx_cfg = plugins.get("acpx", plugins.get("@firm/acpx", {}))
 
     if not acpx_cfg:
         findings.append({
@@ -660,7 +660,7 @@ TOOLS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "run_id": {"type": "string", "description": "ACP run ID."},
-                "gateway_session_key": {"type": "string", "description": "OpenClaw Gateway session key."},
+                "gateway_session_key": {"type": "string", "description": "Firm Gateway session key."},
                 "metadata": {"type": "object", "description": "Optional metadata dict."},
             },
             "required": ["run_id", "gateway_session_key"],
@@ -785,7 +785,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_workspace_lock",
+        "name": "firm_workspace_lock",
         "title": "Workspace Advisory Lock",
         "description": (
             "Advisory file lock with timeout and owner tracking. "
@@ -793,7 +793,7 @@ TOOLS: list[dict[str, Any]] = [
             "can corrupt shared resources. Actions: acquire / release / status."
         ),
         "category": "acp",
-        "handler": openclaw_workspace_lock,
+        "handler": firm_workspace_lock,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -824,7 +824,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_acpx_version_check",
+        "name": "firm_acpx_version_check",
         "title": "ACPX Version Pin Check",
         "description": (
             "Checks ACPX plugin version pin (>= 0.1.15) and streaming mode (final_only). "
@@ -834,13 +834,13 @@ TOOLS: list[dict[str, Any]] = [
         "category": "acp",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-        "handler": openclaw_acpx_version_check,
+        "handler": firm_acpx_version_check,
         "inputSchema": {
             "type": "object",
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Path to openclaw.json (default: ~/.openclaw/openclaw.json).",
+                    "description": "Path to config.json (default: ~/.firm/config.json).",
                 },
             },
             "required": [],

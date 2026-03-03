@@ -1,10 +1,10 @@
 """
-runtime_audit.py — OpenClaw runtime environment & config safety audits
+runtime_audit.py — Firm runtime environment & config safety audits
 
-Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
+Comble les gaps identifiés dans the server (CHANGELOG ≤ 2026.2.27) :
   C5  — Node.js version < 22.12.0 (CVE-2025-59466, CVE-2026-21636)
-  C6  — Secrets hardcodés dans openclaw.json au lieu d'utiliser le workflow
-         `openclaw secrets` (External Secrets Management, 2026.2.26)
+  C6  — Secrets hardcodés dans config.json au lieu d'utiliser le workflow
+         `firm secrets` (External Secrets Management, 2026.2.26)
   H9  — HTTP security headers absents (HSTS, X-Content-Type-Options,
          Referrer-Policy) ajoutés en 2026.2.23 / 2026.2.20
   H10 — gateway.nodes.allowCommands override dangereux (critical si gateway exposé)
@@ -13,13 +13,13 @@ Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
   M16 — dmPolicy=allowlist avec allowFrom vide → fail-closed non appliqué
 
 Tools exposed:
-  openclaw_node_version_check       — vérifie la version Node.js (C5)
-  openclaw_secrets_workflow_check   — détecte les secrets hardcodés (C6)
-  openclaw_http_headers_check       — vérifie les security headers HTTP (H9)
-  openclaw_nodes_commands_check     — vérifie gateway.nodes.allowCommands (H10)
-  openclaw_trusted_proxy_check      — vérifie la config trusted-proxy (H11)
-  openclaw_session_disk_budget_check— vérifie le budget disque des sessions (M15)
-  openclaw_dm_allowlist_check       — vérifie dmPolicy + allowFrom (M16)
+  firm_node_version_check       — vérifie la version Node.js (C5)
+  firm_secrets_workflow_check   — détecte les secrets hardcodés (C6)
+  firm_http_headers_check       — vérifie les security headers HTTP (H9)
+  firm_nodes_commands_check     — vérifie gateway.nodes.allowCommands (H10)
+  firm_trusted_proxy_check      — vérifie la config trusted-proxy (H11)
+  firm_session_disk_budget_check— vérifie le budget disque des sessions (M15)
+  firm_dm_allowlist_check       — vérifie dmPolicy + allowFrom (M16)
 """
 
 from __future__ import annotations
@@ -38,8 +38,8 @@ logger = logging.getLogger(__name__)
 
 # ── Default paths (overridable via env) ──────────────────────────────────────
 
-_OPENCLAW_DIR = Path(os.getenv("OPENCLAW_DIR", Path.home() / ".openclaw"))
-_CONFIG_PATH = Path(os.getenv("OPENCLAW_CONFIG", _OPENCLAW_DIR / "openclaw.json"))
+_FIRM_DIR = Path(os.getenv("FIRM_DIR", Path.home() / ".firm"))
+_CONFIG_PATH = Path(os.getenv("FIRM_CONFIG", _FIRM_DIR / "config.json"))
 
 # ── Node.js minimum version requirement (SECURITY.md Runtime Requirements) ───
 
@@ -82,7 +82,7 @@ def _load_config(config_path: str | None) -> tuple[dict[str, Any], str]:
 # Tool 1 — C5: Node.js version check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_node_version_check(node_binary: str | None = None) -> dict[str, Any]:
+async def firm_node_version_check(node_binary: str | None = None) -> dict[str, Any]:
     """
     C5 — Vérifie que Node.js ≥ 22.12.0 est installé.
 
@@ -107,7 +107,7 @@ async def openclaw_node_version_check(node_binary: str | None = None) -> dict[st
             "findings": [{
                 "id": "node_not_found",
                 "severity": "CRITICAL",
-                "message": "node binary not found in PATH — OpenClaw requires Node.js ≥ 22.12.0",
+                "message": "node binary not found in PATH — Firm requires Node.js ≥ 22.12.0",
             }],
         }
 
@@ -195,7 +195,7 @@ def _scan_secrets_in_dict(
                             "severity": "CRITICAL",
                             "message": (
                                 f"Hardcoded secret detected at '{full_path}' — "
-                                "migrate to `openclaw secrets configure` / env var / "
+                                "migrate to `firm secrets configure` / env var / "
                                 "$include with restricted permissions"
                             ),
                         })
@@ -206,15 +206,15 @@ def _scan_secrets_in_dict(
     return hits
 
 
-async def openclaw_secrets_workflow_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_secrets_workflow_check(config_path: str | None = None) -> dict[str, Any]:
     """
-    C6 — Détecte les secrets hardcodés dans openclaw.json.
+    C6 — Détecte les secrets hardcodés dans config.json.
 
-    La version 2026.2.26 introduit `openclaw secrets` (audit/configure/apply/reload).
+    La version 2026.2.26 introduit `firm secrets` (audit/configure/apply/reload).
     Tout token/apiKey/password stocké en clair dans le fichier de config est un C6.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, hardcoded_count, findings}
@@ -248,7 +248,7 @@ async def openclaw_secrets_workflow_check(config_path: str | None = None) -> dic
         "hardcoded_count": len(unique_hits),
         "findings": unique_hits,
         "remediation": (
-            "Run `openclaw secrets configure` to migrate secrets to the "
+            "Run `firm secrets configure` to migrate secrets to the "
             "External Secrets Management workflow (2026.2.26+). "
             "Use `$ENV_VAR` placeholders or `$include` restricted files."
         ) if unique_hits else None,
@@ -259,7 +259,7 @@ async def openclaw_secrets_workflow_check(config_path: str | None = None) -> dic
 # Tool 3 — H9: HTTP security headers check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_http_headers_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_http_headers_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H9 — Vérifie la présence des security headers HTTP dans la config gateway.
 
@@ -269,7 +269,7 @@ async def openclaw_http_headers_check(config_path: str | None = None) -> dict[st
       - Referrer-Policy: no-referrer
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -356,16 +356,16 @@ async def openclaw_http_headers_check(config_path: str | None = None) -> dict[st
 # Tool 4 — H10: gateway.nodes.allowCommands dangerous override
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_nodes_commands_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_nodes_commands_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H10 — Détecte les overrides dangereux de gateway.nodes.allowCommands.
 
-    `openclaw security audit` émet `gateway.nodes.allow_commands_dangerous`
+    `firm security audit` émet `gateway.nodes.allow_commands_dangerous`
     quand ce champ est configuré, avec severity CRITICAL si le gateway est
     exposé à distance (2026.2.20 changelog).
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, allow_commands, findings}
@@ -395,7 +395,7 @@ async def openclaw_nodes_commands_check(config_path: str | None = None) -> dict[
             "message": (
                 f"gateway.nodes.allowCommands is set ({allow_commands!r}). "
                 f"This expands node command allowlists {'on a remote-exposed gateway' if is_remote else 'on a local gateway'}. "
-                "Use `openclaw security audit` finding `gateway.nodes.allow_commands_dangerous` "
+                "Use `firm security audit` finding `gateway.nodes.allow_commands_dangerous` "
                 "and review explicitly. Remove or restrict to minimum needed."
             ),
         })
@@ -427,7 +427,7 @@ async def openclaw_nodes_commands_check(config_path: str | None = None) -> dict[
             "message": (
                 f"gateway.nodes.denyCommands is set ({deny_commands!r}). "
                 "Verify entries are not ineffective (no path wildcards issues). "
-                "See `openclaw security audit` finding for gating guidance."
+                "See `firm security audit` finding for gating guidance."
             ),
         })
 
@@ -448,7 +448,7 @@ async def openclaw_nodes_commands_check(config_path: str | None = None) -> dict[
 # Tool 5 — H11: Trusted proxy misconfiguration
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_trusted_proxy_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_trusted_proxy_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H11 — Vérifie la cohérence de la config trusted-proxy.
 
@@ -459,7 +459,7 @@ async def openclaw_trusted_proxy_check(config_path: str | None = None) -> dict[s
       - parse X-Forwarded-For selon proxies configurés
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, auth_mode, bind, trusted_proxies, findings}
@@ -554,7 +554,7 @@ async def openclaw_trusted_proxy_check(config_path: str | None = None) -> dict[s
 # Tool 6 — M15: Session disk budget
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_session_disk_budget_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_session_disk_budget_check(config_path: str | None = None) -> dict[str, Any]:
     """
     M15 — Vérifie que le budget disque des sessions est configuré.
 
@@ -563,7 +563,7 @@ async def openclaw_session_disk_budget_check(config_path: str | None = None) -> 
     Sans ces limites, les sessions peuvent consommer de l'espace disque illimité.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, max_disk_bytes, high_water_bytes, findings}
@@ -593,7 +593,7 @@ async def openclaw_session_disk_budget_check(config_path: str | None = None) -> 
                 "session.maintenance.maxDiskBytes not configured. "
                 "Sessions can grow unbounded on disk. "
                 f"Recommended: set to a reasonable limit (e.g., {_DEFAULT_RECOMMENDED_BYTES // (1024*1024)} MB). "
-                "Feature added in 2026.2.23 via `openclaw sessions cleanup`."
+                "Feature added in 2026.2.23 via `firm sessions cleanup`."
             ),
         })
     elif isinstance(max_disk_bytes, (int, float)) and max_disk_bytes <= 0:
@@ -628,16 +628,16 @@ async def openclaw_session_disk_budget_check(config_path: str | None = None) -> 
 # Tool 7 — M16: DM allowlist safety (fail-closed)
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_dm_allowlist_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_dm_allowlist_check(config_path: str | None = None) -> dict[str, Any]:
     """
     M16 — Vérifie que dmPolicy=allowlist avec allowFrom vide est détecté.
 
     Fix 2026.2.26 : `dmPolicy: "allowlist"` avec `allowFrom: []` doit rejeter
-    tous les senders (fail-closed). OpenClaw doctor --fix peut réparer cela,
+    tous les senders (fail-closed). Firm doctor --fix peut réparer cela,
     mais cette combinaison dangereuse doit être détectée en audit.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, channel_findings, findings}
@@ -675,7 +675,7 @@ async def openclaw_dm_allowlist_check(config_path: str | None = None) -> dict[st
                     "message": (
                         f"channels.{channel}.dmPolicy='allowlist' with empty allowFrom. "
                         "This was silently allowing all senders in older versions. "
-                        "Run `openclaw doctor --fix` to restore expected fail-closed behavior, "
+                        "Run `firm doctor --fix` to restore expected fail-closed behavior, "
                         "or add explicit allowFrom entries. (Fix 2026.2.26)"
                     ),
                 })
@@ -759,7 +759,7 @@ async def openclaw_dm_allowlist_check(config_path: str | None = None) -> dict[st
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_node_version_check",
+        "name": "firm_node_version_check",
         "title": "Node.js Version Check",
         "description": (
             "C5 — Vérifie que Node.js ≥ 22.12.0 est installé "
@@ -775,7 +775,7 @@ TOOLS: list[dict[str, Any]] = [
                 },
             },
         },
-        "handler": openclaw_node_version_check,
+        "handler": firm_node_version_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -790,23 +790,23 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_secrets_workflow_check",
+        "name": "firm_secrets_workflow_check",
         "title": "Hardcoded Secrets Check",
         "description": (
-            "C6 — Détecte les secrets hardcodés dans openclaw.json "
+            "C6 — Détecte les secrets hardcodés dans config.json "
             "(tokens, API keys, passwords). Guide la migration vers "
-            "`openclaw secrets` workflow (External Secrets Management, 2026.2.26+)."
+            "`firm secrets` workflow (External Secrets Management, 2026.2.26+)."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)",
+                    "description": "Chemin vers config.json (default: ~/.firm/config.json)",
                 },
             },
         },
-        "handler": openclaw_secrets_workflow_check,
+        "handler": firm_secrets_workflow_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -821,23 +821,23 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_http_headers_check",
+        "name": "firm_http_headers_check",
         "title": "HTTP Security Headers Check",
         "description": (
             "H9 — Vérifie la présence des HTTP security headers dans la config gateway "
             "(HSTS, X-Content-Type-Options, Referrer-Policy). "
-            "Ajoutés dans OpenClaw 2026.2.23 / 2026.2.20."
+            "Ajoutés dans Firm 2026.2.23 / 2026.2.20."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_http_headers_check,
+        "handler": firm_http_headers_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -852,23 +852,23 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_nodes_commands_check",
+        "name": "firm_nodes_commands_check",
         "title": "Dangerous Commands Check",
         "description": (
             "H10 — Détecte les overrides dangereux de gateway.nodes.allowCommands. "
             "Remplace le finding `gateway.nodes.allow_commands_dangerous` "
-            "de `openclaw security audit` (severity CRITICAL si gateway exposé)."
+            "de `firm security audit` (severity CRITICAL si gateway exposé)."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_nodes_commands_check,
+        "handler": firm_nodes_commands_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -883,7 +883,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_trusted_proxy_check",
+        "name": "firm_trusted_proxy_check",
         "title": "Trusted Proxy Check",
         "description": (
             "H11 — Vérifie la cohérence de la config trusted-proxy "
@@ -895,11 +895,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_trusted_proxy_check,
+        "handler": firm_trusted_proxy_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -914,23 +914,23 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_session_disk_budget_check",
+        "name": "firm_session_disk_budget_check",
         "title": "Session Disk Budget Check",
         "description": (
             "M15 — Vérifie que session.maintenance.maxDiskBytes et highWaterBytes "
             "sont configurés pour éviter la croissance illimitée des transcripts. "
-            "Fonctionnalité ajoutée dans OpenClaw 2026.2.23."
+            "Fonctionnalité ajoutée dans Firm 2026.2.23."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_session_disk_budget_check,
+        "handler": firm_session_disk_budget_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -945,7 +945,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_dm_allowlist_check",
+        "name": "firm_dm_allowlist_check",
         "title": "DM Allowlist Policy Check",
         "description": (
             "M16 — Vérifie que dmPolicy=allowlist avec allowFrom vide est détecté "
@@ -957,11 +957,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_dm_allowlist_check,
+        "handler": firm_dm_allowlist_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

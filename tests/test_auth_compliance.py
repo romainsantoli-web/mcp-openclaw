@@ -14,7 +14,7 @@ class TestToolsRegistry:
 
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
-        expected = {"openclaw_oauth_oidc_audit", "openclaw_token_scope_check"}
+        expected = {"firm_oauth_oidc_audit", "firm_token_scope_check"}
         assert names == expected
 
     def test_all_have_handler(self):

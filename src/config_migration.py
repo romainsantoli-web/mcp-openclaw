@@ -1,7 +1,7 @@
 """
-config_migration.py — OpenClaw configuration migration & runtime hardening (Phase 4, Part 2)
+config_migration.py — server configuration migration & runtime hardening (Phase 4, Part 2)
 
-Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
+Comble les gaps identifiés dans the server (CHANGELOG ≤ 2026.2.27) :
   H17 — Shell environment sanitization (SHELL/HOME/ZDOTDIR + LD_*/DYLD_*)
   H18 — Plugin install integrity/pin + drift warnings
   H19 — hooks.token ≠ gateway.auth.token (token separation)
@@ -9,11 +9,11 @@ Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
   M21 — Control-plane RPC rate limiting config
 
 Tools exposed:
-  openclaw_shell_env_check          — vérifie l'assainissement shell env (H17)
-  openclaw_plugin_integrity_check   — vérifie l'intégrité des plugins (H18)
-  openclaw_token_separation_check   — vérifie la séparation des tokens (H19)
-  openclaw_otel_redaction_check     — vérifie la rédaction OTEL (M17)
-  openclaw_rpc_rate_limit_check     — vérifie le rate limiting RPC (M21)
+  firm_shell_env_check          — vérifie l'assainissement shell env (H17)
+  firm_plugin_integrity_check   — vérifie l'intégrité des plugins (H18)
+  firm_token_separation_check   — vérifie la séparation des tokens (H19)
+  firm_otel_redaction_check     — vérifie la rédaction OTEL (M17)
+  firm_rpc_rate_limit_check     — vérifie le rate limiting RPC (M21)
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 # ── Default paths (overridable via env) ──────────────────────────────────────
 
-_OPENCLAW_DIR = Path(os.getenv("OPENCLAW_DIR", Path.home() / ".openclaw"))
-_CONFIG_PATH = Path(os.getenv("OPENCLAW_CONFIG", _OPENCLAW_DIR / "openclaw.json"))
+_FIRM_DIR = Path(os.getenv("FIRM_DIR", Path.home() / ".firm"))
+_CONFIG_PATH = Path(os.getenv("FIRM_CONFIG", _FIRM_DIR / "config.json"))
 
 # ── Dangerous env vars that must be sanitized ────────────────────────────────
 
@@ -48,8 +48,8 @@ _OTEL_SENSITIVE_KEYS = re.compile(
 
 # ── Plugin integrity directory ───────────────────────────────────────────────
 
-_PLUGINS_DIR = _OPENCLAW_DIR / "plugins"
-_PLUGIN_MANIFEST = _OPENCLAW_DIR / "plugin-manifest.json"
+_PLUGINS_DIR = _FIRM_DIR / "plugins"
+_PLUGIN_MANIFEST = _FIRM_DIR / "plugin-manifest.json"
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -66,7 +66,7 @@ def _load_config(config_path: str | None) -> tuple[dict[str, Any], str]:
 # Tool 1 — H17: Shell environment sanitization
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_shell_env_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_shell_env_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H17 — Vérifie l'assainissement des variables d'environnement shell.
 
@@ -80,7 +80,7 @@ async def openclaw_shell_env_check(config_path: str | None = None) -> dict[str, 
       - hooks.env est assaini
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -123,26 +123,26 @@ async def openclaw_shell_env_check(config_path: str | None = None) -> dict[str, 
                     })
                     break
 
-    # Check 1b (2026.3.1): OPENCLAW_SHELL env marker
-    has_openclaw_shell = False
+    # Check 1b (2026.3.1): FIRM_SHELL env marker
+    has_firm_shell = False
     has_any_env = False
     for location, env_dict in env_locations:
         if not isinstance(env_dict, dict) or not env_dict:
             continue
         has_any_env = True
-        if "OPENCLAW_SHELL" in env_dict:
-            has_openclaw_shell = True
+        if "FIRM_SHELL" in env_dict:
+            has_firm_shell = True
             break
 
-    if has_any_env and not has_openclaw_shell:
+    if has_any_env and not has_firm_shell:
         findings.append({
-            "id": "openclaw_shell_marker_missing",
+            "id": "firm_shell_marker_missing",
             "severity": "MEDIUM",
             "message": (
-                "No env location sets OPENCLAW_SHELL. "
-                "2026.3.1 introduced OPENCLAW_SHELL as a marker env var that "
+                "No env location sets FIRM_SHELL. "
+                "2026.3.1 introduced FIRM_SHELL as a marker env var that "
                 "child processes can use to detect they are running inside an "
-                "OpenClaw-managed shell. Set OPENCLAW_SHELL=1 in agents.defaults.env "
+                "Firm-managed shell. Set FIRM_SHELL=1 in agents.defaults.env "
                 "for proper detection."
             ),
         })
@@ -192,7 +192,7 @@ async def openclaw_shell_env_check(config_path: str | None = None) -> dict[str, 
 # Tool 2 — H18: Plugin install integrity/pin
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_plugin_integrity_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_plugin_integrity_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H18 — Vérifie l'intégrité et le pin des plugins installés.
 
@@ -201,7 +201,7 @@ async def openclaw_plugin_integrity_check(config_path: str | None = None) -> dic
     les fichiers installés n'ont pas dérivé du manifest.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -267,7 +267,7 @@ async def openclaw_plugin_integrity_check(config_path: str | None = None) -> dic
                 "severity": "MEDIUM",
                 "message": (
                     f"Plugin '{pid}' (source: {source}) has no integrity/pin hash. "
-                    "Enable integrity tracking with `openclaw plugin pin {pid}` "
+                    "Enable integrity tracking with `firm plugin pin {pid}` "
                     "to detect post-install modifications. (2026.2.26+)"
                 ),
             })
@@ -296,7 +296,7 @@ async def openclaw_plugin_integrity_check(config_path: str | None = None) -> dic
                                     f"Plugin '{pid}' main file '{main_file}' has drifted "
                                     f"from manifest. Expected sha256={expected_hash[:16]}…, "
                                     f"got {actual_hash[:16]}…. Possible tampering. "
-                                    "Reinstall with `openclaw plugin install --verify {pid}`. "
+                                    "Reinstall with `firm plugin install --verify {pid}`. "
                                     "(Drift warning 2026.2.26+)"
                                 ),
                             })
@@ -325,7 +325,7 @@ async def openclaw_plugin_integrity_check(config_path: str | None = None) -> dic
 # Tool 3 — H19: Token separation check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_token_separation_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_token_separation_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H19 — Vérifie que hooks.token ≠ gateway.auth.token.
 
@@ -334,7 +334,7 @@ async def openclaw_token_separation_check(config_path: str | None = None) -> dic
     distincts et de longueur suffisante.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -424,7 +424,7 @@ async def openclaw_token_separation_check(config_path: str | None = None) -> dic
 # Tool 4 — M17: OTEL secret redaction
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_otel_redaction_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_otel_redaction_check(config_path: str | None = None) -> dict[str, Any]:
     """
     M17 — Vérifie la rédaction des secrets dans l'export OTEL/diagnostics.
 
@@ -433,7 +433,7 @@ async def openclaw_otel_redaction_check(config_path: str | None = None) -> dict[
     Ce tool vérifie la config OTEL et les attributs de span personnalisés.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -544,7 +544,7 @@ async def openclaw_otel_redaction_check(config_path: str | None = None) -> dict[
 # Tool 5 — M21: Control-plane RPC rate limiting
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_rpc_rate_limit_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_rpc_rate_limit_check(config_path: str | None = None) -> dict[str, Any]:
     """
     M21 — Vérifie la configuration du rate limiting pour le control-plane RPC.
 
@@ -553,7 +553,7 @@ async def openclaw_rpc_rate_limit_check(config_path: str | None = None) -> dict[
     Vérifie que gateway.rateLimit est configuré avec des seuils raisonnables.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -661,7 +661,7 @@ async def openclaw_rpc_rate_limit_check(config_path: str | None = None) -> dict[
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_shell_env_check",
+        "name": "firm_shell_env_check",
         "title": "Shell Env Sanitization Check",
         "description": (
             "H17 — Vérifie l'assainissement des variables d'environnement shell. "
@@ -673,11 +673,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)",
+                    "description": "Chemin vers config.json (default: ~/.firm/config.json)",
                 },
             },
         },
-        "handler": openclaw_shell_env_check,
+        "handler": firm_shell_env_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -692,7 +692,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_plugin_integrity_check",
+        "name": "firm_plugin_integrity_check",
         "title": "Plugin Integrity Check",
         "description": (
             "H18 — Vérifie l'intégrité et le pin des plugins installés. "
@@ -704,11 +704,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_plugin_integrity_check,
+        "handler": firm_plugin_integrity_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -723,7 +723,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_token_separation_check",
+        "name": "firm_token_separation_check",
         "title": "Token Separation Check",
         "description": (
             "H19 — Vérifie que hooks.token ≠ gateway.auth.token. "
@@ -735,11 +735,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_token_separation_check,
+        "handler": firm_token_separation_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -754,7 +754,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_otel_redaction_check",
+        "name": "firm_otel_redaction_check",
         "title": "OTEL Redaction Check",
         "description": (
             "M17 — Vérifie la rédaction des secrets dans l'export OTEL/diagnostics. "
@@ -766,11 +766,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_otel_redaction_check,
+        "handler": firm_otel_redaction_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -785,7 +785,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_rpc_rate_limit_check",
+        "name": "firm_rpc_rate_limit_check",
         "title": "RPC Rate Limit Check",
         "description": (
             "M21 — Vérifie la configuration du rate limiting pour le control-plane "
@@ -797,11 +797,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_rpc_rate_limit_check,
+        "handler": firm_rpc_rate_limit_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

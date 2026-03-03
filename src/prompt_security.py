@@ -191,7 +191,7 @@ _AUDIT_OUTPUT_SCHEMA = {
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_prompt_injection_check",
+        "name": "firm_prompt_injection_check",
         "title": "Prompt Injection Detection",
         "description": (
             "Scan text for prompt injection and jailbreak patterns. "
@@ -217,7 +217,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_prompt_injection_batch",
+        "name": "firm_prompt_injection_batch",
         "title": "Batch Prompt Injection Scan",
         "description": (
             "Batch scan multiple text inputs for injection patterns. "

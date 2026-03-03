@@ -1,10 +1,10 @@
 """
-Shared fixtures for mcp-openclaw-extensions test suite.
+Shared fixtures for firm-mcp-server test suite.
 
 Provides:
   - tmp_config: temporary YAML/JSON config files
   - soul_dir: temporary SOUL.md directory structure
-  - mock_config: factory for fake OpenClaw config dicts
+  - mock_config: factory for fake Firm config dicts
   - sample_agent_card: valid A2A Agent Card dict
 """
 
@@ -58,7 +58,7 @@ def soul_dir(tmp_path: Path):
 
 @pytest.fixture
 def mock_config():
-    """Factory for fake OpenClaw config dicts."""
+    """Factory for fake Firm config dicts."""
 
     def _make(**overrides: Any) -> dict[str, Any]:
         base: dict[str, Any] = {

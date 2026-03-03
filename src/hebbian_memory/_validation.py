@@ -29,7 +29,7 @@ from ._helpers import (
 logger = logging.getLogger(__name__)
 
 
-async def openclaw_hebbian_layer_validate(
+async def firm_hebbian_layer_validate(
     claude_md_path: str,
 ) -> dict[str, Any]:
     """Validate the 4-layer structure of a Hebbian-augmented Claude.md."""
@@ -100,7 +100,7 @@ async def openclaw_hebbian_layer_validate(
     }
 
 
-async def openclaw_hebbian_pii_check(
+async def firm_hebbian_pii_check(
     config_path: str | None = None,
     config_data: dict | None = None,
 ) -> dict[str, Any]:
@@ -195,7 +195,7 @@ async def openclaw_hebbian_pii_check(
     }
 
 
-async def openclaw_hebbian_decay_config_check(
+async def firm_hebbian_decay_config_check(
     config_path: str | None = None,
     config_data: dict | None = None,
 ) -> dict[str, Any]:
@@ -292,7 +292,7 @@ async def openclaw_hebbian_decay_config_check(
     }
 
 
-async def openclaw_hebbian_drift_check(
+async def firm_hebbian_drift_check(
     claude_md_path: str,
     baseline_path: str | None = None,
     threshold: float = 0.7,

@@ -22,7 +22,7 @@ def _run(coro):
         loop.close()
 
 
-def _write_config(tmp_path, data, name="openclaw.json"):
+def _write_config(tmp_path, data, name="config.json"):
     p = tmp_path / name
     p.write_text(json.dumps(data), encoding="utf-8")
     return str(p)
@@ -233,16 +233,16 @@ class TestExecApprovalFreezeDeep:
     """H12 — shell wrappers + applyPatch checks."""
 
     def test_apply_patch_not_workspace_only(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         cfg = _write_config(tmp_path, {
             "tools": {"exec": {"applyPatch": {"workspaceOnly": False}}},
         })
-        r = _run(openclaw_exec_approval_freeze_check(config_path=cfg))
+        r = _run(firm_exec_approval_freeze_check(config_path=cfg))
         assert isinstance(r, dict)
         assert len(r.get("findings", [])) > 0
 
     def test_shell_wrapper_in_approvals(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         approvals = tmp_path / "exec-approvals.json"
         approvals.write_text(json.dumps([
             {"executable": "/bin/sh", "args": ["-c", "echo test"]},
@@ -250,7 +250,7 @@ class TestExecApprovalFreezeDeep:
         cfg = _write_config(tmp_path, {
             "tools": {"exec": {"approvalsFile": str(approvals)}},
         })
-        r = _run(openclaw_exec_approval_freeze_check(config_path=cfg))
+        r = _run(firm_exec_approval_freeze_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -258,45 +258,45 @@ class TestHookSessionRoutingCheck:
     """H12 — hook session key + auth."""
 
     def test_allow_session_key_no_prefix(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {
                 "allowRequestSessionKey": True,
                 "allowedSessionKeyPrefixes": [],
             },
         })
-        r = _run(openclaw_hook_session_routing_check(config_path=cfg))
+        r = _run(firm_hook_session_routing_check(config_path=cfg))
         assert isinstance(r, dict)
         assert len(r.get("findings", [])) > 0
 
     def test_allow_session_key_with_prefix(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {
                 "allowRequestSessionKey": True,
                 "allowedSessionKeyPrefixes": ["hook:"],
             },
         })
-        r = _run(openclaw_hook_session_routing_check(config_path=cfg))
+        r = _run(firm_hook_session_routing_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_no_default_session_key(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {"mappings": [{"path": "/webhook"}]},
         })
-        r = _run(openclaw_hook_session_routing_check(config_path=cfg))
+        r = _run(firm_hook_session_routing_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_no_hooks_token(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {
                 "mappings": [{"path": "/webhook"}],
                 "defaultSessionKey": "default",
             },
         })
-        r = _run(openclaw_hook_session_routing_check(config_path=cfg))
+        r = _run(firm_hook_session_routing_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -304,21 +304,21 @@ class TestConfigIncludeCheckDeep:
     """H13 — include file guards."""
 
     def test_include_oversized_file(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         big_file = tmp_path / "big.json"
         big_file.write_text("{}" + " " * 2_000_000)  # >1MB
         cfg = _write_config(tmp_path, {"$include": [str(big_file)]})
-        r = _run(openclaw_config_include_check(config_path=cfg))
+        r = _run(firm_config_include_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_include_nonexistent(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = _write_config(tmp_path, {"$include": [str(tmp_path / "missing.json")]})
-        r = _run(openclaw_config_include_check(config_path=cfg))
+        r = _run(firm_config_include_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_include_outside_root(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         outside = tmp_path / "outside"
         outside.mkdir()
         ext_file = outside / "ext.json"
@@ -326,7 +326,7 @@ class TestConfigIncludeCheckDeep:
         cfg_dir = tmp_path / "config"
         cfg_dir.mkdir()
         cfg = _write_config(cfg_dir, {"$include": [str(ext_file)]})
-        r = _run(openclaw_config_include_check(config_path=cfg))
+        r = _run(firm_config_include_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -334,7 +334,7 @@ class TestSafeBinsProfileCheckDeep:
     """H15 — interpreter bins + profiles."""
 
     def test_interpreter_without_profile(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {
                 "exec": {
@@ -343,12 +343,12 @@ class TestSafeBinsProfileCheckDeep:
                 },
             },
         })
-        r = _run(openclaw_safe_bins_profile_check(config_path=cfg))
+        r = _run(firm_safe_bins_profile_check(config_path=cfg))
         assert isinstance(r, dict)
         assert len(r.get("findings", [])) > 0
 
     def test_interpreter_stdin_safe(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {
                 "exec": {
@@ -357,11 +357,11 @@ class TestSafeBinsProfileCheckDeep:
                 },
             },
         })
-        r = _run(openclaw_safe_bins_profile_check(config_path=cfg))
+        r = _run(firm_safe_bins_profile_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_non_interpreter_without_profile(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {
                 "exec": {
@@ -370,11 +370,11 @@ class TestSafeBinsProfileCheckDeep:
                 },
             },
         })
-        r = _run(openclaw_safe_bins_profile_check(config_path=cfg))
+        r = _run(firm_safe_bins_profile_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_correct_profile(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {
                 "exec": {
@@ -383,7 +383,7 @@ class TestSafeBinsProfileCheckDeep:
                 },
             },
         })
-        r = _run(openclaw_safe_bins_profile_check(config_path=cfg))
+        r = _run(firm_safe_bins_profile_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -556,38 +556,38 @@ class TestPluginIntegrityCheckDeep:
     """H18 — plugin version pinning + sha256 drift."""
 
     def test_no_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write_config(tmp_path, {
             "plugins": {"registered": [{"name": "myplugin"}]},
         })
-        r = _run(openclaw_plugin_integrity_check(config_path=cfg))
+        r = _run(firm_plugin_integrity_check(config_path=cfg))
         assert isinstance(r, dict)
         assert len(r.get("findings", [])) > 0
 
     def test_loose_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write_config(tmp_path, {
             "plugins": {"registered": [{"name": "myplugin", "version": "^1.0.0"}]},
         })
-        r = _run(openclaw_plugin_integrity_check(config_path=cfg))
+        r = _run(firm_plugin_integrity_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_no_integrity_npm(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write_config(tmp_path, {
             "plugins": {"registered": [{"name": "myplugin", "version": "1.0.0", "source": "npm"}]},
         })
-        r = _run(openclaw_plugin_integrity_check(config_path=cfg))
+        r = _run(firm_plugin_integrity_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_pinned_with_integrity(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write_config(tmp_path, {
             "plugins": {"registered": [
                 {"name": "myplugin", "version": "1.0.0", "source": "npm", "integrity": "sha256-abc123"},
             ]},
         })
-        r = _run(openclaw_plugin_integrity_check(config_path=cfg))
+        r = _run(firm_plugin_integrity_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -595,22 +595,22 @@ class TestOtelRedactionCheckDeep:
     """M17 — OTEL active without redaction."""
 
     def test_otel_no_redaction(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write_config(tmp_path, {
             "otel": {"endpoint": "https://collector.example.com"},
         })
-        r = _run(openclaw_otel_redaction_check(config_path=cfg))
+        r = _run(firm_otel_redaction_check(config_path=cfg))
         assert isinstance(r, dict)
 
     def test_otel_with_redaction(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write_config(tmp_path, {
             "otel": {
                 "endpoint": "https://collector.example.com",
                 "redaction": {"patterns": ["token", "secret"]},
             },
         })
-        r = _run(openclaw_otel_redaction_check(config_path=cfg))
+        r = _run(firm_otel_redaction_check(config_path=cfg))
         assert isinstance(r, dict)
 
 
@@ -623,8 +623,8 @@ class TestContextHealthCheckDeep:
     """Context window utilization + session age."""
 
     def test_critical_utilization(self):
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = firm_context_health_check(session_data={
             "tokensUsed": 190000,
             "contextWindow": 200000,
         })
@@ -632,24 +632,24 @@ class TestContextHealthCheckDeep:
         assert r.get("severity") == "CRITICAL"
 
     def test_high_utilization(self):
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = firm_context_health_check(session_data={
             "tokensUsed": 160000,
             "contextWindow": 200000,
         })
         assert isinstance(r, dict)
 
     def test_medium_utilization(self):
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = firm_context_health_check(session_data={
             "tokensUsed": 110000,
             "contextWindow": 200000,
         })
         assert isinstance(r, dict)
 
     def test_old_session(self):
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = firm_context_health_check(session_data={
             "tokensUsed": 1000,
             "contextWindow": 200000,
             "createdAt": time.time() - 100000,
@@ -658,8 +658,8 @@ class TestContextHealthCheckDeep:
         assert isinstance(r, dict)
 
     def test_medium_age_session(self):
-        from src.ecosystem_audit import openclaw_context_health_check
-        r = openclaw_context_health_check(session_data={
+        from src.ecosystem_audit import firm_context_health_check
+        r = firm_context_health_check(session_data={
             "tokensUsed": 1000,
             "contextWindow": 200000,
             "createdAt": time.time() - 36000,
@@ -672,22 +672,22 @@ class TestProvenanceTrackerDeep:
     """Provenance chain export."""
 
     def test_export_chain(self, tmp_path):
-        from src.ecosystem_audit import openclaw_provenance_tracker
+        from src.ecosystem_audit import firm_provenance_tracker
         chain_path = str(tmp_path / "chain.json")
         # First append some entries
-        r1 = openclaw_provenance_tracker(action="append", entry={
+        r1 = firm_provenance_tracker(action="append", entry={
             "tool": "test_tool",
             "input": {"key": "value"},
             "output": {"result": "ok"},
         })
         assert isinstance(r1, dict)
         # Then export
-        r2 = openclaw_provenance_tracker(action="export", chain_path=chain_path)
+        r2 = firm_provenance_tracker(action="export", chain_path=chain_path)
         assert isinstance(r2, dict)
 
     def test_export_invalid_path(self, tmp_path):
-        from src.ecosystem_audit import openclaw_provenance_tracker
-        r = openclaw_provenance_tracker(
+        from src.ecosystem_audit import firm_provenance_tracker
+        r = firm_provenance_tracker(
             action="export",
             chain_path="/nonexistent_dir_xyz/chain.json",
         )
@@ -698,8 +698,8 @@ class TestCostAnalyticsDeep:
     """Cost analytics with tool call stats."""
 
     def test_tool_call_analysis(self):
-        from src.ecosystem_audit import openclaw_cost_analytics
-        r = openclaw_cost_analytics(session_data={
+        from src.ecosystem_audit import firm_cost_analytics
+        r = firm_cost_analytics(session_data={
             "toolCalls": [
                 {"name": "foo", "tokensUsed": 100},
                 {"name": "foo", "tokensUsed": 200},
@@ -711,8 +711,8 @@ class TestCostAnalyticsDeep:
         assert isinstance(r, dict)
 
     def test_empty_session(self):
-        from src.ecosystem_audit import openclaw_cost_analytics
-        r = openclaw_cost_analytics(session_data={})
+        from src.ecosystem_audit import firm_cost_analytics
+        r = firm_cost_analytics(session_data={})
         assert isinstance(r, dict)
 
 
@@ -720,32 +720,32 @@ class TestTokenBudgetOptimizerDeep:
     """Token budget optimization: prompt ratio, cache, dedup."""
 
     def test_high_system_prompt_ratio(self):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(session_data={
             "tokensUsed": 1000,
             "systemPromptTokens": 400,
         })
         assert isinstance(r, dict)
 
     def test_high_tool_result_ratio(self):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(session_data={
             "tokensUsed": 1000,
             "toolResultTokens": 500,
         })
         assert isinstance(r, dict)
 
     def test_low_cache_hit_rate(self):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(session_data={
             "cacheHits": 2,
             "cacheMisses": 8,
         })
         assert isinstance(r, dict)
 
     def test_message_deduplication(self):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
-        r = openclaw_token_budget_optimizer(session_data={
+        from src.ecosystem_audit import firm_token_budget_optimizer
+        r = firm_token_budget_optimizer(session_data={
             "messages": [{"content": "duplicate"}] * 15,
         })
         assert isinstance(r, dict)
@@ -893,37 +893,37 @@ class TestSessionConfigCheckDeep:
     """Session config — env file + compose checks."""
 
     def test_env_with_session_secret(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         env_file = tmp_path / ".env"
         env_file.write_text("SESSION_SECRET=supersecret123\n")
-        r = _run(openclaw_session_config_check(
+        r = _run(firm_session_config_check(
             env_file_path=str(env_file),
         ))
         assert isinstance(r, dict)
 
     def test_env_without_session_secret(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         env_file = tmp_path / ".env"
         env_file.write_text("OTHER_VAR=value\n")
-        r = _run(openclaw_session_config_check(
+        r = _run(firm_session_config_check(
             env_file_path=str(env_file),
         ))
         assert isinstance(r, dict)
 
-    def test_compose_with_openclaw(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+    def test_compose_with_firm(self, tmp_path):
+        from src.security_audit import firm_session_config_check
         compose = tmp_path / "docker-compose.yml"
-        compose.write_text("services:\n  openclaw:\n    image: openclaw:latest\n")
-        r = _run(openclaw_session_config_check(
+        compose.write_text("services:\n  firm:\n    image: firm:latest\n")
+        r = _run(firm_session_config_check(
             compose_file_path=str(compose),
         ))
         assert isinstance(r, dict)
 
     def test_compose_with_session_secret(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         compose = tmp_path / "docker-compose.yml"
-        compose.write_text("services:\n  openclaw:\n    environment:\n      SESSION_SECRET: secret123\n")
-        r = _run(openclaw_session_config_check(
+        compose.write_text("services:\n  firm:\n    environment:\n      SESSION_SECRET: secret123\n")
+        r = _run(firm_session_config_check(
             compose_file_path=str(compose),
         ))
         assert isinstance(r, dict)
@@ -938,8 +938,8 @@ class TestHebbianPiiCheckDeep:
     """PII stripping config validation."""
 
     def test_disabled_no_patterns(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
-        r = _run(openclaw_hebbian_pii_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
+        r = _run(firm_hebbian_pii_check(config_data={
             "hebbian": {
                 "pii_stripping": {"patterns": [], "enabled": False},
             },
@@ -948,8 +948,8 @@ class TestHebbianPiiCheckDeep:
         assert len(r.get("findings", [])) > 0
 
     def test_partial_patterns(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
-        r = _run(openclaw_hebbian_pii_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
+        r = _run(firm_hebbian_pii_check(config_data={
             "hebbian": {
                 "pii_stripping": {"patterns": ["email"], "enabled": True},
                 "security": {},
@@ -958,8 +958,8 @@ class TestHebbianPiiCheckDeep:
         assert isinstance(r, dict)
 
     def test_full_config(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_pii_check
-        r = _run(openclaw_hebbian_pii_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_pii_check
+        r = _run(firm_hebbian_pii_check(config_data={
             "hebbian": {
                 "pii_stripping": {
                     "patterns": ["email", "phone", "ip", "api_key", "ssn"],
@@ -979,8 +979,8 @@ class TestHebbianDecayConfigCheckDeep:
     """Learning parameters full validation."""
 
     def test_all_bad_params(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
-        r = _run(openclaw_hebbian_decay_config_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
+        r = _run(firm_hebbian_decay_config_check(config_data={
             "hebbian": {
                 "parameters": {
                     "learning_rate": 0.8,
@@ -1001,8 +1001,8 @@ class TestHebbianDecayConfigCheckDeep:
         assert len(r.get("findings", [])) >= 4
 
     def test_valid_params(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
-        r = _run(openclaw_hebbian_decay_config_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
+        r = _run(firm_hebbian_decay_config_check(config_data={
             "hebbian": {
                 "parameters": {
                     "learning_rate": 0.1,
@@ -1022,8 +1022,8 @@ class TestHebbianDecayConfigCheckDeep:
         assert isinstance(r, dict)
 
     def test_defaults(self):
-        from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
-        r = _run(openclaw_hebbian_decay_config_check(config_data={
+        from src.hebbian_memory._validation import firm_hebbian_decay_config_check
+        r = _run(firm_hebbian_decay_config_check(config_data={
             "hebbian": {"parameters": {"learning_rate": 0.1, "decay": 0.05}},
         }))
         assert isinstance(r, dict)
@@ -1033,23 +1033,23 @@ class TestHebbianLayerValidateDeep:
     """Layer 2 weight + PII checks."""
 
     def test_high_weight(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text(textwrap.dedent("""\
             # CLAUDE.md
             ## LAYER 2 — CORE
             - Rule: always validate [1.5] importance
         """))
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)
 
     def test_pii_in_content(self, tmp_path):
-        from src.hebbian_memory._validation import openclaw_hebbian_layer_validate
+        from src.hebbian_memory._validation import firm_hebbian_layer_validate
         md = tmp_path / "CLAUDE.md"
         md.write_text(textwrap.dedent("""\
             # CLAUDE.md
             ## LAYER 2 — CORE
             - Rule: contact user@example.com [0.8]
         """))
-        r = _run(openclaw_hebbian_layer_validate(claude_md_path=str(md)))
+        r = _run(firm_hebbian_layer_validate(claude_md_path=str(md)))
         assert isinstance(r, dict)

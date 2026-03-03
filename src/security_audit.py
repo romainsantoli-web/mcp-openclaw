@@ -1,17 +1,17 @@
 """
-security_audit.py — OpenClaw security audit & hardening tools
+security_audit.py — Firm security audit & hardening tools
 
-Comble les gaps critiques identifiés dans openclaw/openclaw :
+Comble les gaps critiques identifiés dans the server :
   C1 — SQL injection dans /api/metrics/database
   C2 — sandbox.mode: off par défaut (RCE potentiel via prompt injection)
   C3 — express-session secret régénéré à chaque restart container
   H8 — Pas de rate limiting documenté sur le WS Gateway
 
 Tools exposed:
-  openclaw_security_scan         — détection SQL injection et patterns dangereux
-  openclaw_sandbox_audit         — vérifie la config sandbox avant déploiement
-  openclaw_session_config_check  — vérifie la persistance du session secret
-  openclaw_rate_limit_check      — vérifie la présence d'un rate limiter devant le Gateway
+  firm_security_scan         — détection SQL injection et patterns dangereux
+  firm_sandbox_audit         — vérifie la config sandbox avant déploiement
+  firm_session_config_check  — vérifie la persistance du session secret
+  firm_rate_limit_check      — vérifie la présence d'un rate limiter devant le Gateway
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ _REMEDIATION = {
 }
 
 
-async def openclaw_security_scan(
+async def firm_security_scan(
     target_path: str,
     endpoint: str | None = None,
     scan_depth: int = 3,
@@ -174,7 +174,7 @@ async def openclaw_security_scan(
 
 _SANDBOX_FIX = """
 # Fix: activer le sandbox sur les sessions non-main
-# Dans config.yaml ou config.json OpenClaw :
+# Dans config.yaml ou config.json the server :
 
 agents:
   defaults:
@@ -198,17 +198,17 @@ _SANDBOX_EXPLAIN = (
 )
 
 
-async def openclaw_sandbox_audit(
+async def firm_sandbox_audit(
     config_path: str,
 ) -> dict[str, Any]:
     """
-    Audits the OpenClaw config for sandbox.mode settings.
+    Audits the config for sandbox.mode settings.
 
     Addresses gap C2: sandbox.mode defaults to 'off', exposing the host to
     prompt injection attacks with full shell access.
 
     Args:
-        config_path: Absolute path to the OpenClaw config file (YAML or JSON).
+        config_path: Absolute path to the config file (YAML or JSON).
 
     Returns:
         dict with keys: ok, severity, sandbox_mode, finding, fix, command.
@@ -227,7 +227,7 @@ async def openclaw_sandbox_audit(
     elif "mode: all" in content or '"mode": "all"' in content:
         mode_found = "all"
     else:
-        # Default in OpenClaw is 'off' if not specified
+        # Default in the server is 'off' if not specified
         mode_found = "off (implicit default — not set in config)"
 
     if "off" in mode_found:
@@ -264,17 +264,17 @@ _SESSION_SECRET_FIX_DOCKER = """
 # docker-compose.yml
 
 services:
-  openclaw:
-    image: ghcr.io/openclaw/openclaw:stable
+  firm:
+    image: ghcr.io/the server:stable
     environment:
       # Charger le secret depuis un fichier ou une variable d'environnement externe
       SESSION_SECRET: "${SESSION_SECRET:?SESSION_SECRET env var required}"
     volumes:
-      - openclaw_data:/home/user/.openclaw
+      - firm_data:/home/user/.firm
 
 # Créer le secret :
-#   openssl rand -base64 48 > /etc/openclaw/session.secret
-#   export SESSION_SECRET=$(cat /etc/openclaw/session.secret)
+#   openssl rand -base64 48 > /etc/firm/session.secret
+#   export SESSION_SECRET=$(cat /etc/firm/session.secret)
 """
 
 _SESSION_SECRET_FIX_ENV = """
@@ -287,14 +287,14 @@ SESSION_SECRET=<run: openssl rand -base64 48>
 """
 
 
-async def openclaw_session_config_check(
+async def firm_session_config_check(
     env_file_path: str | None = None,
     compose_file_path: str | None = None,
 ) -> dict[str, Any]:
     """
     Checks if the express-session secret is configured as a persistent env var.
 
-    Addresses gap C3: OpenClaw regenerates the session secret on every container
+    Addresses gap C3: Firm regenerates the session secret on every container
     restart, causing infinite login loops in rolling/crash deployments.
 
     Args:
@@ -328,9 +328,9 @@ async def openclaw_session_config_check(
                 findings.append(f"SESSION_SECRET found in {compose_file_path}")
             else:
                 findings.append(f"SESSION_SECRET NOT found in {compose_file_path}")
-                if "openclaw" in content.lower():
+                if "firm" in content.lower():
                     findings.append(
-                        "docker-compose references openclaw but has no SESSION_SECRET — "
+                        "docker-compose references firm but has no SESSION_SECRET — "
                         "container restarts will regenerate the secret and break active web sessions (issue #29955)"
                     )
         else:
@@ -363,15 +363,15 @@ async def openclaw_session_config_check(
 # ── Rate limit check (H8) ─────────────────────────────────────────────────────
 
 _RATE_LIMIT_NGINX = """
-# Nginx rate limiting for OpenClaw Gateway
-limit_req_zone $binary_remote_addr zone=openclaw_ws:10m rate=30r/m;
+# Nginx rate limiting for the server Gateway
+limit_req_zone $binary_remote_addr zone=firm_ws:10m rate=30r/m;
 
 server {
     listen 80;
     server_name your-gateway.example.com;
 
     location /ws {
-        limit_req zone=openclaw_ws burst=10 nodelay;
+        limit_req zone=firm_ws burst=10 nodelay;
         limit_req_status 429;
         proxy_pass http://127.0.0.1:18789;
         proxy_http_version 1.1;
@@ -380,7 +380,7 @@ server {
     }
 
     location / {
-        limit_req zone=openclaw_ws burst=20 nodelay;
+        limit_req zone=firm_ws burst=20 nodelay;
         proxy_pass http://127.0.0.1:18789;
     }
 }
@@ -390,7 +390,7 @@ _RATE_LIMIT_CADDY = """
 # Caddyfile rate limiting (requires caddy-ratelimit plugin)
 your-gateway.example.com {
     rate_limit {
-        zone openclaw_ws {
+        zone firm_ws {
             key {remote_host}
             events 30
             window 1m
@@ -407,18 +407,18 @@ _RATE_LIMIT_WARNING_FUNNEL = (
 )
 
 
-async def openclaw_rate_limit_check(
+async def firm_rate_limit_check(
     gateway_config_path: str,
     check_funnel: bool = True,
 ) -> dict[str, Any]:
     """
-    Checks if a rate limiter is configured in front of the OpenClaw Gateway.
+    Checks if a rate limiter is configured in front of the Gateway.
 
     Addresses gap H8: no rate limiting documented, Tailscale Funnel exposure
     creates an amplification risk.
 
     Args:
-        gateway_config_path: Path to OpenClaw config file.
+        gateway_config_path: Path to config file.
         check_funnel: If True, checks whether funnel mode is active.
 
     Returns:
@@ -486,16 +486,16 @@ async def openclaw_rate_limit_check(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_security_scan",
+        "name": "firm_security_scan",
         "title": "Security Source Scan",
         "description": (
             "Scans source files for SQL injection patterns and dangerous query constructs. "
-            "Specifically targets the /api/metrics/database vulnerability (openclaw issue #29951). "
+            "Specifically targets the /api/metrics/database vulnerability (issue #29951). "
             "Returns: vulnerabilities with file/line/severity, CVSS-style severity classification, "
             "and ready-to-apply remediation snippets."
         ),
         "category": "security",
-        "handler": openclaw_security_scan,
+        "handler": firm_security_scan,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -531,15 +531,15 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_sandbox_audit",
+        "name": "firm_sandbox_audit",
         "title": "Sandbox Mode Audit",
         "description": (
-            "Audits the OpenClaw config for sandbox.mode setting. "
+            "Audits the config for sandbox.mode setting. "
             "CRITICAL gap C2: sandbox defaults to 'off', giving any agent session full host shell access. "
             "A prompt injection → RCE with mode:off. Returns: severity, current mode, fix snippet."
         ),
         "category": "security",
-        "handler": openclaw_sandbox_audit,
+        "handler": firm_sandbox_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -557,23 +557,23 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Absolute path to the OpenClaw config file (YAML or JSON).",
+                    "description": "Absolute path to the config file (YAML or JSON).",
                 },
             },
             "required": ["config_path"],
         },
     },
     {
-        "name": "openclaw_session_config_check",
+        "name": "firm_session_config_check",
         "title": "Session Config Check",
         "description": (
             "Checks if the express-session secret is configured as a persistent env var. "
-            "Gap C3: OpenClaw regenerates the session secret on every container restart, "
+            "Gap C3: Firm regenerates the session secret on every container restart, "
             "causing infinite login loops in rolling/crash deployments (issue #29955). "
             "Returns: severity, secret found?, Docker and .env fix snippets."
         ),
         "category": "security",
-        "handler": openclaw_session_config_check,
+        "handler": firm_session_config_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -602,15 +602,15 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_rate_limit_check",
+        "name": "firm_rate_limit_check",
         "title": "Rate Limit Check",
         "description": (
-            "Checks if a rate limiter is configured in front of the OpenClaw Gateway. "
+            "Checks if a rate limiter is configured in front of the Gateway. "
             "Gap H8: no rate limiting means Tailscale Funnel exposure creates amplification risk. "
             "Returns: funnel status, rate limiter detected?, Nginx/Caddy fix snippets."
         ),
         "category": "security",
-        "handler": openclaw_rate_limit_check,
+        "handler": firm_rate_limit_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -628,7 +628,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "gateway_config_path": {
                     "type": "string",
-                    "description": "Path to OpenClaw config file.",
+                    "description": "Path to config file.",
                 },
                 "check_funnel": {
                     "type": "boolean",

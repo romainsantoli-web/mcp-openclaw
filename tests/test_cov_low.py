@@ -26,35 +26,35 @@ def _run(coro):
 
 class TestPgvectorMemoryCheck:
     def test_no_args(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check())
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check())
         assert r["ok"] is False
 
     def test_file_not_found(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_path="/nonexistent.json"))
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_path="/nonexistent.json"))
         assert r["ok"] is False
 
     def test_invalid_json(self, tmp_path):
-        from src.memory_audit import openclaw_pgvector_memory_check
+        from src.memory_audit import firm_pgvector_memory_check
         f = tmp_path / "bad.json"
         f.write_text("{bad")
-        r = _run(openclaw_pgvector_memory_check(config_path=str(f)))
+        r = _run(firm_pgvector_memory_check(config_path=str(f)))
         assert r["ok"] is False
 
     def test_no_vector_config(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={}))
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={}))
         assert isinstance(r, dict)
 
     def test_non_pgvector_backend(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={"memory": {"vector": {"backend": "pinecone"}}}))
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={"memory": {"vector": {"backend": "pinecone"}}}))
         assert isinstance(r, dict)
 
     def test_hnsw_good_config(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {
                 "backend": "pgvector",
                 "index_type": "hnsw",
@@ -67,8 +67,8 @@ class TestPgvectorMemoryCheck:
         assert isinstance(r, dict)
 
     def test_hnsw_bad_params(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {
                 "backend": "pgvector",
                 "index_type": "hnsw",
@@ -83,44 +83,44 @@ class TestPgvectorMemoryCheck:
         assert "MEDIUM" in sev or "HIGH" in sev
 
     def test_ivfflat_index(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {"backend": "pg", "index_type": "ivfflat"}},
         }))
         assert any("ivfflat" in f["message"].lower() for f in r.get("findings", []) if "message" in f)
 
     def test_unknown_index(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {"backend": "pg", "index_type": "weird"}},
         }))
         assert isinstance(r, dict)
 
     def test_no_index(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {"backend": "pg"}},
         }))
         sev = [f["severity"] for f in r.get("findings", [])]
         assert "HIGH" in sev
 
     def test_no_dims(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {"backend": "pg", "index_type": "hnsw"}},
         }))
         assert isinstance(r, dict)
 
     def test_no_metric(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(config_data={
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(config_data={
             "memory": {"vector": {"backend": "pg", "index_type": "hnsw", "dimensions": 768}},
         }))
         assert isinstance(r, dict)
 
     def test_creds_in_conn_string(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(
             config_data={"memory": {"vector": {"backend": "pgvector", "index_type": "hnsw", "dimensions": 768, "distance": "cosine"}}},
             connection_string="postgresql://user:pass123@host:5432/db",
         ))
@@ -128,8 +128,8 @@ class TestPgvectorMemoryCheck:
         assert "CRITICAL" in sev
 
     def test_clean_conn_string(self):
-        from src.memory_audit import openclaw_pgvector_memory_check
-        r = _run(openclaw_pgvector_memory_check(
+        from src.memory_audit import firm_pgvector_memory_check
+        r = _run(firm_pgvector_memory_check(
             config_data={"memory": {"vector": {"backend": "pgvector", "index_type": "hnsw", "dimensions": 768, "distance": "cosine"}}},
             connection_string="postgresql://$PG_USER@host:5432/db",
         ))
@@ -138,30 +138,30 @@ class TestPgvectorMemoryCheck:
 
 class TestKnowledgeGraphCheck:
     def test_no_args(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check())
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check())
         assert r["ok"] is False
 
     def test_file_not_found(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_path="/nonexistent.json"))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_path="/nonexistent.json"))
         assert r["ok"] is False
 
     def test_invalid_json(self, tmp_path):
-        from src.memory_audit import openclaw_knowledge_graph_check
+        from src.memory_audit import firm_knowledge_graph_check
         f = tmp_path / "bad.json"
         f.write_text("{bad")
-        r = _run(openclaw_knowledge_graph_check(config_path=str(f)))
+        r = _run(firm_knowledge_graph_check(config_path=str(f)))
         assert r["ok"] is False
 
     def test_no_graph_config(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={}))
         assert isinstance(r, dict)
 
     def test_good_graph_config(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={
             "memory": {"graph": {
                 "backend": "neo4j",
                 "ttl_seconds": 86400,
@@ -172,35 +172,35 @@ class TestKnowledgeGraphCheck:
         assert isinstance(r, dict)
 
     def test_unknown_backend(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "unknown_db"}}}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "unknown_db"}}}))
         sev = [f["severity"] for f in r.get("findings", [])]
         assert "MEDIUM" in sev
 
     def test_no_backend(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={"memory": {"graph": {"ttl": 3600}}}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={"memory": {"graph": {"ttl": 3600}}}))
         sev = [f["severity"] for f in r.get("findings", [])]
         assert "HIGH" in sev
 
     def test_short_ttl(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 60}}}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 60}}}))
         assert isinstance(r, dict)
 
     def test_long_ttl(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 999999999}}}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 999999999}}}))
         assert isinstance(r, dict)
 
     def test_no_ttl(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j"}}}))
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={"memory": {"graph": {"backend": "neo4j"}}}))
         sev = [f["severity"] for f in r.get("findings", [])]
         assert "HIGH" in sev
 
     def test_graph_data_with_orphans_and_cycles(self, tmp_path):
-        from src.memory_audit import openclaw_knowledge_graph_check
+        from src.memory_audit import firm_knowledge_graph_check
         gd = tmp_path / "graph.json"
         gd.write_text(json.dumps({
             "nodes": [{"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "orphan"}],
@@ -210,7 +210,7 @@ class TestKnowledgeGraphCheck:
                 {"source": "c", "target": "a"},
             ],
         }))
-        r = _run(openclaw_knowledge_graph_check(
+        r = _run(firm_knowledge_graph_check(
             config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 86400}}},
             graph_data_path=str(gd),
         ))
@@ -218,18 +218,18 @@ class TestKnowledgeGraphCheck:
         assert r.get("metrics", {}).get("orphan_nodes", 0) >= 1
 
     def test_graph_data_bad_json(self, tmp_path):
-        from src.memory_audit import openclaw_knowledge_graph_check
+        from src.memory_audit import firm_knowledge_graph_check
         gd = tmp_path / "bad.json"
         gd.write_text("{bad")
-        r = _run(openclaw_knowledge_graph_check(
+        r = _run(firm_knowledge_graph_check(
             config_data={"memory": {"graph": {"backend": "neo4j", "ttl": 86400}}},
             graph_data_path=str(gd),
         ))
         assert isinstance(r, dict)
 
     def test_no_backup_no_max_nodes(self):
-        from src.memory_audit import openclaw_knowledge_graph_check
-        r = _run(openclaw_knowledge_graph_check(config_data={
+        from src.memory_audit import firm_knowledge_graph_check
+        r = _run(firm_knowledge_graph_check(config_data={
             "memory": {"graph": {"backend": "sqlite", "ttl": 7200}},
         }))
         sev = [f["severity"] for f in r.get("findings", [])]
@@ -901,66 +901,66 @@ class TestGatewayProbe:
             from src import reliability_probe
             importlib.reload(reliability_probe)
             # The function handles ImportError internally
-            r = _run(reliability_probe.openclaw_gateway_probe())
+            r = _run(reliability_probe.firm_gateway_probe())
             assert isinstance(r, dict)
 
     def test_connection_refused(self):
-        from src.reliability_probe import openclaw_gateway_probe
-        r = _run(openclaw_gateway_probe(gateway_url="ws://127.0.0.1:19999", max_retries=1, backoff_factor=0.01))
+        from src.reliability_probe import firm_gateway_probe
+        r = _run(firm_gateway_probe(gateway_url="ws://127.0.0.1:19999", max_retries=1, backoff_factor=0.01))
         assert r["ok"] is False
 
 
 class TestDocSyncCheck:
     def test_no_package_json(self):
-        from src.reliability_probe import openclaw_doc_sync_check
-        r = _run(openclaw_doc_sync_check("/nonexistent/package.json"))
+        from src.reliability_probe import firm_doc_sync_check
+        r = _run(firm_doc_sync_check("/nonexistent/package.json"))
         assert r["ok"] is False
 
     def test_empty_deps(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"name": "test"}))
-        r = _run(openclaw_doc_sync_check(str(pj)))
+        r = _run(firm_doc_sync_check(str(pj)))
         assert isinstance(r, dict)
         assert r["desynced"] == 0
 
     def test_no_md_files(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"dependencies": {"lodash": "^4.17.21"}}))
-        r = _run(openclaw_doc_sync_check(str(pj), docs_glob="*.md"))
+        r = _run(firm_doc_sync_check(str(pj), docs_glob="*.md"))
         assert isinstance(r, dict)
 
     def test_stale_docs(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"dependencies": {"@agentclientprotocol/sdk": "^0.14.1"}}))
         md = tmp_path / "docs.md"
         md.write_text("Using agentclientprotocol/sdk version 0.13.x for integration.")
-        r = _run(openclaw_doc_sync_check(str(pj), docs_glob="*.md"))
+        r = _run(firm_doc_sync_check(str(pj), docs_glob="*.md"))
         assert isinstance(r, dict)
 
 
 class TestChannelAudit:
     def test_no_package_json(self):
-        from src.reliability_probe import openclaw_channel_audit
-        r = _run(openclaw_channel_audit("/nonexistent/package.json", "/nonexistent/README.md"))
+        from src.reliability_probe import firm_channel_audit
+        r = _run(firm_channel_audit("/nonexistent/package.json", "/nonexistent/README.md"))
         assert r["ok"] is False
 
     def test_no_readme(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"dependencies": {"baileys": "^6.0.0"}}))
-        r = _run(openclaw_channel_audit(str(pj), str(tmp_path / "nope.md")))
+        r = _run(firm_channel_audit(str(pj), str(tmp_path / "nope.md")))
         assert r["ok"] is False
 
     def test_zombie_channel(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"dependencies": {"@line/bot-sdk": "^17.0.0"}}))
         readme = tmp_path / "README.md"
-        readme.write_text("# OpenClaw\nSupports WhatsApp and Slack channels.")
-        r = _run(openclaw_channel_audit(str(pj), str(readme)))
+        readme.write_text("# Firm\nSupports WhatsApp and Slack channels.")
+        r = _run(firm_channel_audit(str(pj), str(readme)))
         assert isinstance(r, dict)
         assert r.get("zombie_deps", 0) >= 0
 
@@ -1016,17 +1016,17 @@ class TestAdrGenerate:
 
 class TestBrowserContextCheck:
     def test_workspace_not_found(self):
-        from src.browser_audit import openclaw_browser_context_check
-        r = _run(openclaw_browser_context_check("/nonexistent/workspace"))
+        from src.browser_audit import firm_browser_context_check
+        r = _run(firm_browser_context_check("/nonexistent/workspace"))
         assert r["ok"] is False
 
     def test_empty_workspace(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
-        r = _run(openclaw_browser_context_check(str(tmp_path)))
+        from src.browser_audit import firm_browser_context_check
+        r = _run(firm_browser_context_check(str(tmp_path)))
         assert isinstance(r, dict)
 
     def test_playwright_config(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         cfg = tmp_path / "playwright.config.js"
         cfg.write_text("""
 const config = {
@@ -1041,12 +1041,12 @@ module.exports = config;
 """)
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"devDependencies": {"@playwright/test": "^1.40.0"}}))
-        r = _run(openclaw_browser_context_check(str(tmp_path)))
+        r = _run(firm_browser_context_check(str(tmp_path)))
         assert isinstance(r, dict)
 
     def test_config_override(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
-        r = _run(openclaw_browser_context_check(str(tmp_path), config_override={
+        from src.browser_audit import firm_browser_context_check
+        r = _run(firm_browser_context_check(str(tmp_path), config_override={
             "framework": "playwright",
             "headless": True,
             "args": ["--no-sandbox"],
@@ -1056,7 +1056,7 @@ module.exports = config;
         assert isinstance(r, dict)
 
     def test_puppeteer_config(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
+        from src.browser_audit import firm_browser_context_check
         cfg = tmp_path / ".puppeteerrc.json"
         cfg.write_text(json.dumps({
             "launch": {
@@ -1066,10 +1066,10 @@ module.exports = config;
         }))
         pj = tmp_path / "package.json"
         pj.write_text(json.dumps({"dependencies": {"puppeteer": "^21.0.0"}}))
-        r = _run(openclaw_browser_context_check(str(tmp_path)))
+        r = _run(firm_browser_context_check(str(tmp_path)))
         assert isinstance(r, dict)
 
     def test_no_check_deps(self, tmp_path):
-        from src.browser_audit import openclaw_browser_context_check
-        r = _run(openclaw_browser_context_check(str(tmp_path), check_deps=False))
+        from src.browser_audit import firm_browser_context_check
+        r = _run(firm_browser_context_check(str(tmp_path), check_deps=False))
         assert isinstance(r, dict)

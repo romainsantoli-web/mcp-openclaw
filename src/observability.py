@@ -1,9 +1,9 @@
 """
-observability.py — OpenClaw observability & CI pipeline audit tools
+observability.py — Firm observability & CI pipeline audit tools
 
 Tools:
-  openclaw_observability_pipeline  — ingests JSONL traces into SQLite for analysis
-  openclaw_ci_pipeline_check       — validates CI workflow completeness (lint, test, secrets)
+  firm_observability_pipeline  — ingests JSONL traces into SQLite for analysis
+  firm_ci_pipeline_check       — validates CI workflow completeness (lint, test, secrets)
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-_DEFAULT_DB_PATH = os.path.expanduser("~/.openclaw/traces.db")
+_DEFAULT_DB_PATH = os.path.expanduser("~/.firm/traces.db")
 
 _REQUIRED_CI_STEPS = {
     "lint":    re.compile(r"(ruff|flake8|eslint|pylint|black|prettier)\b", re.I),
@@ -35,9 +35,9 @@ _RECOMMENDED_CI_STEPS = {
 }
 
 
-# ── Tool: openclaw_observability_pipeline ────────────────────────────────────
+# ── Tool: firm_observability_pipeline ────────────────────────────────────
 
-async def openclaw_observability_pipeline(
+async def firm_observability_pipeline(
     jsonl_path: str,
     db_path: str | None = None,
     table_name: str = "traces",
@@ -52,7 +52,7 @@ async def openclaw_observability_pipeline(
 
     Args:
         jsonl_path: Path to the JSONL file to ingest.
-        db_path: Path to the SQLite database. Default: ~/.openclaw/traces.db.
+        db_path: Path to the SQLite database. Default: ~/.firm/traces.db.
         table_name: Table name in the database. Default: "traces".
         max_lines: Maximum number of lines to ingest (safety limit). Default: 50000.
 
@@ -209,9 +209,9 @@ def _flush_batch(
     return inserted, dups
 
 
-# ── Tool: openclaw_ci_pipeline_check ─────────────────────────────────────────
+# ── Tool: firm_ci_pipeline_check ─────────────────────────────────────────
 
-async def openclaw_ci_pipeline_check(
+async def firm_ci_pipeline_check(
     repo_path: str,
     ci_dir: str = ".github/workflows",
 ) -> dict[str, Any]:
@@ -315,7 +315,7 @@ async def openclaw_ci_pipeline_check(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_observability_pipeline",
+        "name": "firm_observability_pipeline",
         "title": "Observability Pipeline Ingest",
         "description": (
             "Ingests JSONL structured logs/traces (OpenTelemetry format) into a local SQLite database "
@@ -323,7 +323,7 @@ TOOLS: list[dict[str, Any]] = [
             "field extraction. Gap T1: no observability pipeline existed."
         ),
         "category": "observability",
-        "handler": openclaw_observability_pipeline,
+        "handler": firm_observability_pipeline,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -335,7 +335,7 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "db_path": {
                     "type": "string",
-                    "description": "Path to SQLite database. Default: ~/.openclaw/traces.db.",
+                    "description": "Path to SQLite database. Default: ~/.firm/traces.db.",
                 },
                 "table_name": {
                     "type": "string",
@@ -354,7 +354,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_ci_pipeline_check",
+        "name": "firm_ci_pipeline_check",
         "title": "CI Pipeline Validation",
         "description": (
             "Validates CI workflow completeness: checks that .github/workflows/ contains lint, "
@@ -362,7 +362,7 @@ TOOLS: list[dict[str, Any]] = [
             "Gap T6: no CI validation tool existed."
         ),
         "category": "observability",
-        "handler": openclaw_ci_pipeline_check,
+        "handler": firm_ci_pipeline_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

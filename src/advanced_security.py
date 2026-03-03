@@ -1,8 +1,8 @@
 """
-advanced_security.py — OpenClaw advanced security audits (Phase 4, Part 1)
+advanced_security.py — Firm advanced security audits (Phase 4, Part 1)
 
-Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
-  C7  — External Secrets workflow non validé (`openclaw secrets` lifecycle)
+Comble les gaps identifiés dans the server (CHANGELOG ≤ 2026.2.27) :
+  C7  — External Secrets workflow non validé (`firm secrets` lifecycle)
   C8  — Plugin channel HTTP auth bypass (path canonicalization)
   C9  — Exec approval plan mutabilité (symlink cwd rebind)
   H12 — Hook session-key routing non durci
@@ -12,14 +12,14 @@ Comble les gaps identifiés dans openclaw/openclaw (CHANGELOG ≤ 2026.2.27) :
   H16 — Group policy default silencieux (channels.<provider> absent)
 
 Tools exposed:
-  openclaw_secrets_lifecycle_check       — vérifie le lifecycle secrets (C7)
-  openclaw_channel_auth_canon_check      — vérifie la canonicalisation auth (C8)
-  openclaw_exec_approval_freeze_check    — vérifie l'immutabilité exec plans (C9)
-  openclaw_hook_session_routing_check    — vérifie le routing hooks session (H12)
-  openclaw_config_include_check          — vérifie $include hardlink/size (H13)
-  openclaw_config_prototype_check        — vérifie prototype pollution (H14)
-  openclaw_safe_bins_profile_check       — vérifie safeBins profils (H15)
-  openclaw_group_policy_default_check    — vérifie group policy defaults (H16)
+  firm_secrets_lifecycle_check       — vérifie le lifecycle secrets (C7)
+  firm_channel_auth_canon_check      — vérifie la canonicalisation auth (C8)
+  firm_exec_approval_freeze_check    — vérifie l'immutabilité exec plans (C9)
+  firm_hook_session_routing_check    — vérifie le routing hooks session (H12)
+  firm_config_include_check          — vérifie $include hardlink/size (H13)
+  firm_config_prototype_check        — vérifie prototype pollution (H14)
+  firm_safe_bins_profile_check       — vérifie safeBins profils (H15)
+  firm_group_policy_default_check    — vérifie group policy defaults (H16)
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 # ── Default paths (overridable via env) ──────────────────────────────────────
 
-_OPENCLAW_DIR = Path(os.getenv("OPENCLAW_DIR", Path.home() / ".openclaw"))
-_CONFIG_PATH = Path(os.getenv("OPENCLAW_CONFIG", _OPENCLAW_DIR / "openclaw.json"))
+_FIRM_DIR = Path(os.getenv("FIRM_DIR", Path.home() / ".firm"))
+_CONFIG_PATH = Path(os.getenv("FIRM_CONFIG", _FIRM_DIR / "config.json"))
 
 # ── Prototype pollution keys ─────────────────────────────────────────────────
 
@@ -113,16 +113,16 @@ def _scan_proto_keys(
 # Tool 1 — C7: External Secrets lifecycle check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_secrets_lifecycle_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_secrets_lifecycle_check(config_path: str | None = None) -> dict[str, Any]:
     """
     C7 — Vérifie le lifecycle complet du workflow External Secrets.
 
-    La version 2026.2.26 introduit `openclaw secrets` (audit/configure/apply/reload)
+    La version 2026.2.26 introduit `firm secrets` (audit/configure/apply/reload)
     avec strict target-path validation, migration scrubbing, et ref-only auth-profile
     support. Ce tool vérifie que la migration est effective.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -165,8 +165,8 @@ async def openclaw_secrets_lifecycle_check(config_path: str | None = None) -> di
                 f"Found {len(inline_creds)} inline credential(s) in auth.profiles: "
                 f"{inline_creds[:5]}{'...' if len(inline_creds) > 5 else ''}. "
                 "Migrate to ref-only auth profiles using "
-                "`openclaw secrets configure` (2026.2.26+). "
-                "Use `openclaw secrets audit` to identify all inline secrets."
+                "`firm secrets configure` (2026.2.26+). "
+                "Use `firm secrets audit` to identify all inline secrets."
             ),
         })
 
@@ -191,7 +191,7 @@ async def openclaw_secrets_lifecycle_check(config_path: str | None = None) -> di
             "severity": "HIGH",
             "message": (
                 "secrets.managed is configured but snapshotActivated is false. "
-                "Run `openclaw secrets apply` to activate the runtime snapshot. "
+                "Run `firm secrets apply` to activate the runtime snapshot. "
                 "Without activation, managed secrets are not loaded at runtime."
             ),
         })
@@ -203,7 +203,7 @@ async def openclaw_secrets_lifecycle_check(config_path: str | None = None) -> di
             "severity": "HIGH",
             "message": (
                 "No External Secrets workflow configured (secrets.managed / secrets.backend). "
-                "Inline credentials detected — migrate to `openclaw secrets configure`. "
+                "Inline credentials detected — migrate to `firm secrets configure`. "
                 "See External Secrets Management docs (2026.2.26+)."
             ),
         })
@@ -224,7 +224,7 @@ async def openclaw_secrets_lifecycle_check(config_path: str | None = None) -> di
 # Tool 2 — C8: Plugin channel HTTP auth canonicalization
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_channel_auth_canon_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_channel_auth_canon_check(config_path: str | None = None) -> dict[str, Any]:
     """
     C8 — Vérifie la canonicalisation des chemins auth pour les channels plugins.
 
@@ -239,7 +239,7 @@ async def openclaw_channel_auth_canon_check(config_path: str | None = None) -> d
       - pas de URLs custom non canonicalisées
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -340,7 +340,7 @@ async def openclaw_channel_auth_canon_check(config_path: str | None = None) -> d
 # Tool 3 — C9: Exec approval plan immutability
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_exec_approval_freeze_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_exec_approval_freeze_check(config_path: str | None = None) -> dict[str, Any]:
     """
     C9 — Vérifie les conditions d'immutabilité des plans d'exécution.
 
@@ -349,7 +349,7 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
     parent-symlink cwd paths.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -390,7 +390,7 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
 
     # Check 3: allow-always patterns with shell wrappers
     # Fix 2026.2.22: allow-always persists inner executable patterns, not wrapper shells
-    approval_store_path = _OPENCLAW_DIR / "exec-approvals.json"
+    approval_store_path = _FIRM_DIR / "exec-approvals.json"
     if approval_store_path.exists():
         try:
             with approval_store_path.open("r", encoding="utf-8") as fh:
@@ -445,7 +445,7 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
                     "BREAKING in 2026.3.1: Node exec approval payloads now require "
                     "'systemRunPlan'. Payloads without it are REJECTED. "
                     "Ensure your approval hooks/integrations include systemRunPlan "
-                    "in approval request payloads. Update to OpenClaw ≥2026.3.1."
+                    "in approval request payloads. Update to the server ≥2026.3.1."
                 ),
             })
 
@@ -465,7 +465,7 @@ async def openclaw_exec_approval_freeze_check(config_path: str | None = None) ->
 # Tool 4 — H12: Hook session-key routing hardening
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_hook_session_routing_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_hook_session_routing_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H12 — Vérifie le durcissement du routing session-key pour les hooks.
 
@@ -474,7 +474,7 @@ async def openclaw_hook_session_routing_check(config_path: str | None = None) ->
     doivent être configurés pour le routing sécurisé.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -566,7 +566,7 @@ async def openclaw_hook_session_routing_check(config_path: str | None = None) ->
 # Tool 5 — H13: Config $include hardlink/size check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_config_include_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_config_include_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H13 — Vérifie les guardrails $include dans la config.
 
@@ -575,7 +575,7 @@ async def openclaw_config_include_check(config_path: str | None = None) -> dict[
     Config includes must remain bounded to trusted in-root files.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -707,7 +707,7 @@ def _find_includes(d: Any, results: list[str] | None = None) -> list[str]:
 # Tool 6 — H14: Prototype pollution config check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_config_prototype_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_config_prototype_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H14 — Détecte les clés de prototype pollution dans la config.
 
@@ -716,7 +716,7 @@ async def openclaw_config_prototype_check(config_path: str | None = None) -> dic
     complète pour ces clés dangereuses.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -741,7 +741,7 @@ async def openclaw_config_prototype_check(config_path: str | None = None) -> dic
         "findings": hits,
         "remediation": (
             "Remove all __proto__, constructor, and prototype keys from "
-            "openclaw.json immediately. These can inject properties into "
+            "config.json immediately. These can inject properties into "
             "Object.prototype during config merge/migration. (Fix 2026.2.22)"
         ) if hits else None,
     }
@@ -751,7 +751,7 @@ async def openclaw_config_prototype_check(config_path: str | None = None) -> dic
 # Tool 7 — H15: SafeBins profile enforcement
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_safe_bins_profile_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_safe_bins_profile_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H15 — Vérifie que les safeBins ont des profils explicites.
 
@@ -760,7 +760,7 @@ async def openclaw_safe_bins_profile_check(config_path: str | None = None) -> di
     Un profil explicite est requis pour chaque safe bin entry.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -840,7 +840,7 @@ async def openclaw_safe_bins_profile_check(config_path: str | None = None) -> di
 # Tool 8 — H16: Group policy default check
 # ════════════════════════════════════════════════════════════════════════════
 
-async def openclaw_group_policy_default_check(config_path: str | None = None) -> dict[str, Any]:
+async def firm_group_policy_default_check(config_path: str | None = None) -> dict[str, Any]:
     """
     H16 — Vérifie que le default group policy est fail-closed.
 
@@ -849,7 +849,7 @@ async def openclaw_group_policy_default_check(config_path: str | None = None) ->
     (fail-closed). Ce tool vérifie que chaque canal a un groupPolicy explicite.
 
     Args:
-        config_path: Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)
+        config_path: Chemin vers config.json (default: ~/.firm/config.json)
 
     Returns:
         {status, config_path, findings}
@@ -925,7 +925,7 @@ async def openclaw_group_policy_default_check(config_path: str | None = None) ->
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_secrets_lifecycle_check",
+        "name": "firm_secrets_lifecycle_check",
         "title": "Secrets Lifecycle Check",
         "description": (
             "C7 — Vérifie le lifecycle complet du workflow External Secrets "
@@ -937,11 +937,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json (default: ~/.openclaw/openclaw.json)",
+                    "description": "Chemin vers config.json (default: ~/.firm/config.json)",
                 },
             },
         },
-        "handler": openclaw_secrets_lifecycle_check,
+        "handler": firm_secrets_lifecycle_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -956,7 +956,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_channel_auth_canon_check",
+        "name": "firm_channel_auth_canon_check",
         "title": "Channel Auth Path Check",
         "description": (
             "C8 — Vérifie la canonicalisation des chemins auth pour les channel plugins. "
@@ -968,11 +968,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_channel_auth_canon_check,
+        "handler": firm_channel_auth_canon_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -987,7 +987,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_exec_approval_freeze_check",
+        "name": "firm_exec_approval_freeze_check",
         "title": "Exec Plan Freeze Check",
         "description": (
             "C9 — Vérifie l'immutabilité des plans d'exécution (argv/cwd/agentId/sessionKey). "
@@ -999,11 +999,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_exec_approval_freeze_check,
+        "handler": firm_exec_approval_freeze_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1018,7 +1018,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_hook_session_routing_check",
+        "name": "firm_hook_session_routing_check",
         "title": "Hook Session Routing Check",
         "description": (
             "H12 — Vérifie le durcissement du routing session-key pour les hooks. "
@@ -1030,11 +1030,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_hook_session_routing_check,
+        "handler": firm_hook_session_routing_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1049,7 +1049,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_config_include_check",
+        "name": "firm_config_include_check",
         "title": "Config Include Guards",
         "description": (
             "H13 — Vérifie les guardrails $include dans la config. "
@@ -1061,11 +1061,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_config_include_check,
+        "handler": firm_config_include_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1080,11 +1080,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_config_prototype_check",
+        "name": "firm_config_prototype_check",
         "title": "Prototype Pollution Check",
         "description": (
             "H14 — Détecte les clés de prototype pollution (__proto__, constructor, "
-            "prototype) dans openclaw.json. Bloquées dans config merge/patch "
+            "prototype) dans config.json. Bloquées dans config merge/patch "
             "depuis 2026.2.22."
         ),
         "inputSchema": {
@@ -1092,11 +1092,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_config_prototype_check,
+        "handler": firm_config_prototype_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1111,7 +1111,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_safe_bins_profile_check",
+        "name": "firm_safe_bins_profile_check",
         "title": "SafeBins Profile Check",
         "description": (
             "H15 — Vérifie que les safeBins ont des profils explicites dans "
@@ -1123,11 +1123,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_safe_bins_profile_check,
+        "handler": firm_safe_bins_profile_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1142,7 +1142,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_group_policy_default_check",
+        "name": "firm_group_policy_default_check",
         "title": "Group Policy Default Check",
         "description": (
             "H16 — Vérifie que le group policy par défaut est fail-closed (allowlist). "
@@ -1153,11 +1153,11 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Chemin vers openclaw.json",
+                    "description": "Chemin vers config.json",
                 },
             },
         },
-        "handler": openclaw_group_policy_default_check,
+        "handler": firm_group_policy_default_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

@@ -1,5 +1,7 @@
 # mcp-openclaw-extensions
 
+<!-- mcp-name: io.github.romainsantoli-web/mcp-openclaw -->
+
 > Python MCP server (port **8012**) that bridges VS Code Copilot agents to the
 > [OpenClaw](https://github.com/openclaw/openclaw) Gateway ecosystem.
 > Companion to [setup-vs-agent-firm](https://github.com/romainsantoli-web/setup-vs-agent-firm).

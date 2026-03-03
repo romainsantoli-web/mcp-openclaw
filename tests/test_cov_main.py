@@ -491,6 +491,33 @@ class TestHandleHealth:
         assert resp.status == 200
 
 
+# ── _handle_metrics ──────────────────────────────────────────────────────────
+
+class TestHandleMetrics:
+    @pytest.mark.asyncio
+    async def test_metrics_endpoint(self, mcp_client):
+        resp = await mcp_client.get("/metrics")
+        assert resp.status == 200
+        body = await resp.text()
+        assert "mcp_server_info" in body
+        assert "mcp_tools_registered_total" in body
+        assert "mcp_uptime_seconds" in body
+        assert "mcp_requests_total" in body
+
+    @pytest.mark.asyncio
+    async def test_metrics_contains_tool_count(self, mcp_client):
+        resp = await mcp_client.get("/metrics")
+        body = await resp.text()
+        # Should contain the tool count as a gauge
+        for line in body.split("\n"):
+            if line.startswith("mcp_tools_registered_total"):
+                count = int(line.split()[-1])
+                assert count >= 100
+                break
+        else:
+            pytest.fail("mcp_tools_registered_total not found in metrics")
+
+
 # ── _handle_sse ──────────────────────────────────────────────────────────────
 
 class TestHandleSSE:

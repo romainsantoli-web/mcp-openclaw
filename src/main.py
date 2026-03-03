@@ -45,6 +45,19 @@ MCP_PORT: int = int(os.getenv("MCP_EXT_PORT", "8012"))
 MCP_AUTH_TOKEN: str | None = os.getenv("MCP_AUTH_TOKEN")  # Optional Bearer auth
 TOOL_TIMEOUT_S: float = float(os.getenv("TOOL_TIMEOUT_S", "120"))  # Per-tool timeout
 
+# ── Metrics counters (Prometheus-compatible) ─────────────────────────────────
+_METRICS: dict[str, int | float] = {
+    "mcp_requests_total": 0,
+    "mcp_tool_calls_total": 0,
+    "mcp_tool_errors_total": 0,
+    "mcp_tool_timeouts_total": 0,
+    "mcp_auth_failures_total": 0,
+}
+_TOOL_CALL_COUNTS: dict[str, int] = {}
+_TOOL_ERROR_COUNTS: dict[str, int] = {}
+_TOOL_LATENCY_SUM: dict[str, float] = {}
+_SERVER_START_TIME: float = time.time()
+
 # ── Import tool modules ───────────────────────────────────────────────────────
 from src import (  # noqa: E402
     a2a_bridge,
@@ -225,28 +238,41 @@ async def _mcp_call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]
         k: v for k, v in arguments.items() if k in sig.parameters
     }
 
+    _METRICS["mcp_tool_calls_total"] += 1
+    _TOOL_CALL_COUNTS[name] = _TOOL_CALL_COUNTS.get(name, 0) + 1
+    t0 = time.monotonic()
+
     try:
         if asyncio.iscoroutinefunction(handler):
             result = await asyncio.wait_for(handler(**filtered), timeout=TOOL_TIMEOUT_S)
         else:
             result = handler(**filtered)
     except asyncio.TimeoutError:
+        _METRICS["mcp_tool_timeouts_total"] += 1
+        _TOOL_ERROR_COUNTS[name] = _TOOL_ERROR_COUNTS.get(name, 0) + 1
         logger.error("Tool %s timed out after %.0fs", name, TOOL_TIMEOUT_S)
         return {
             "isError": True,
             "content": [{"type": "text", "text": f"Tool timed out after {TOOL_TIMEOUT_S}s"}],
         }
     except TypeError as exc:
+        _METRICS["mcp_tool_errors_total"] += 1
+        _TOOL_ERROR_COUNTS[name] = _TOOL_ERROR_COUNTS.get(name, 0) + 1
         return {
             "isError": True,
             "content": [{"type": "text", "text": f"Invalid arguments: {exc}"}],
         }
     except Exception as exc:
+        _METRICS["mcp_tool_errors_total"] += 1
+        _TOOL_ERROR_COUNTS[name] = _TOOL_ERROR_COUNTS.get(name, 0) + 1
         logger.exception("Tool %s raised an error", name)
         return {
             "isError": True,
             "content": [{"type": "text", "text": f"Tool error: {exc}"}],
         }
+
+    elapsed = time.monotonic() - t0
+    _TOOL_LATENCY_SUM[name] = _TOOL_LATENCY_SUM.get(name, 0.0) + elapsed
 
     return {
         "content": [{"type": "text", "text": json.dumps(result, indent=2, default=str)}],
@@ -403,7 +429,10 @@ async def _handle_mcp(request: web.Request) -> web.Response:
     """
     auth_error = _check_auth(request)
     if auth_error is not None:
+        _METRICS["mcp_auth_failures_total"] += 1
         return auth_error
+
+    _METRICS["mcp_requests_total"] += 1
 
     try:
         body = await request.json()
@@ -546,6 +575,58 @@ async def _handle_health(request: web.Request) -> web.Response:
     })
 
 
+async def _handle_metrics(request: web.Request) -> web.Response:
+    """Prometheus-compatible /metrics endpoint."""
+    lines = [
+        "# HELP mcp_server_info MCP server metadata",
+        "# TYPE mcp_server_info gauge",
+        f'mcp_server_info{{version="{__version__}"}} 1',
+        "",
+        "# HELP mcp_tools_registered_total Total number of registered tools",
+        "# TYPE mcp_tools_registered_total gauge",
+        f"mcp_tools_registered_total {len(TOOL_REGISTRY)}",
+        "",
+        "# HELP mcp_uptime_seconds Server uptime in seconds",
+        "# TYPE mcp_uptime_seconds gauge",
+        f"mcp_uptime_seconds {time.time() - _SERVER_START_TIME:.1f}",
+        "",
+    ]
+
+    # Global counters
+    for metric, value in sorted(_METRICS.items()):
+        lines.append(f"# HELP {metric} {metric.replace('_', ' ')}")
+        lines.append(f"# TYPE {metric} counter")
+        lines.append(f"{metric} {value}")
+        lines.append("")
+
+    # Per-tool call counts
+    if _TOOL_CALL_COUNTS:
+        lines.append("# HELP mcp_tool_calls_by_name Tool calls by tool name")
+        lines.append("# TYPE mcp_tool_calls_by_name counter")
+        for name, count in sorted(_TOOL_CALL_COUNTS.items()):
+            lines.append(f'mcp_tool_calls_by_name{{tool="{name}"}} {count}')
+        lines.append("")
+
+    # Per-tool error counts
+    if _TOOL_ERROR_COUNTS:
+        lines.append("# HELP mcp_tool_errors_by_name Tool errors by tool name")
+        lines.append("# TYPE mcp_tool_errors_by_name counter")
+        for name, count in sorted(_TOOL_ERROR_COUNTS.items()):
+            lines.append(f'mcp_tool_errors_by_name{{tool="{name}"}} {count}')
+        lines.append("")
+
+    # Per-tool latency sums
+    if _TOOL_LATENCY_SUM:
+        lines.append("# HELP mcp_tool_latency_seconds_total Cumulative tool latency")
+        lines.append("# TYPE mcp_tool_latency_seconds_total counter")
+        for name, total in sorted(_TOOL_LATENCY_SUM.items()):
+            lines.append(f'mcp_tool_latency_seconds_total{{tool="{name}"}} {total:.4f}')
+        lines.append("")
+
+    body = "\n".join(lines) + "\n"
+    return web.Response(text=body, content_type="text/plain", charset="utf-8")
+
+
 # ── Server lifecycle ──────────────────────────────────────────────────────────
 
 # M-H6: SSE event queue for streaming
@@ -597,6 +678,7 @@ async def _build_app() -> web.Application:
     app.router.add_get("/mcp/sse", _handle_sse)  # M-H6: SSE streaming
     app.router.add_get("/health", _handle_health)
     app.router.add_get("/healthz", _handle_health)
+    app.router.add_get("/metrics", _handle_metrics)
     return app
 
 

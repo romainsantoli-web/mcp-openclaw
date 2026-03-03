@@ -2,8 +2,8 @@
 skill_loader.py — Lazy SKILL.md loader for performance optimization
 
 Tools exposed:
-  openclaw_skill_lazy_loader — load SKILL.md metadata without full content parsing
-  openclaw_skill_search      — search skills by keyword/tag across all SKILL.md files
+  firm_skill_lazy_loader — load SKILL.md metadata without full content parsing
+  firm_skill_search      — search skills by keyword/tag across all SKILL.md files
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ _CACHE_TS: float = 0.0
 _CACHE_TTL: float = 300.0  # 5 minutes
 
 
-async def openclaw_skill_lazy_loader(
+async def firm_skill_lazy_loader(
     skills_dir: str,
     skill_name: str | None = None,
     refresh: bool = False,
@@ -96,7 +96,7 @@ async def openclaw_skill_lazy_loader(
     }
 
 
-async def openclaw_skill_search(
+async def firm_skill_search(
     skills_dir: str,
     query: str,
     tags: list[str] | None = None,
@@ -113,7 +113,7 @@ async def openclaw_skill_search(
         dict with: ok, results (list of matching skills), total_matches.
     """
     # Ensure cache is loaded
-    loader_result = await openclaw_skill_lazy_loader(skills_dir)
+    loader_result = await firm_skill_lazy_loader(skills_dir)
     if not loader_result.get("ok"):
         return loader_result
 
@@ -234,7 +234,7 @@ def _extract_metadata(skill_file: Path, dir_name: str) -> dict[str, Any]:
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_skill_lazy_loader",
+        "name": "firm_skill_lazy_loader",
         "title": "Lazy Skill Loader",
         "description": (
             "Lazy-loads SKILL.md metadata (YAML front-matter) without parsing full content. "
@@ -242,7 +242,7 @@ TOOLS: list[dict[str, Any]] = [
             "Gap T7/issue #26301: reduces startup time for large skill catalogs."
         ),
         "category": "performance",
-        "handler": openclaw_skill_lazy_loader,
+        "handler": firm_skill_lazy_loader,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -266,7 +266,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_skill_search",
+        "name": "firm_skill_search",
         "title": "Skill Keyword Search",
         "description": (
             "Search skills by keyword/tags across all SKILL.md files. "
@@ -274,7 +274,7 @@ TOOLS: list[dict[str, Any]] = [
             "Uses the lazy loader cache for performance."
         ),
         "category": "performance",
-        "handler": openclaw_skill_search,
+        "handler": firm_skill_search,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start mcp-openclaw-extensions in background
+# Start firm-mcp-server in background
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,7 +37,7 @@ echo $! > "$PID_FILE"
 sleep 1
 
 if kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-  echo "Started mcp-openclaw-extensions (PID $(cat "$PID_FILE"))"
+  echo "Started firm-mcp-server (PID $(cat "$PID_FILE"))"
   echo "  MCP : http://${MCP_EXT_HOST:-127.0.0.1}:${MCP_EXT_PORT:-8012}/mcp"
   echo "  Log : $LOG_FILE"
 else

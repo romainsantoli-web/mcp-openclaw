@@ -9,7 +9,7 @@ PID_FILE="$ROOT_DIR/.mcp_ext.pid"
 HOST="${MCP_EXT_HOST:-127.0.0.1}"
 PORT="${MCP_EXT_PORT:-8012}"
 
-echo "=== mcp-openclaw-extensions status ==="
+echo "=== firm-mcp-server status ==="
 
 # PID
 if [[ -f "$PID_FILE" ]]; then

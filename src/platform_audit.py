@@ -1,5 +1,5 @@
 """
-platform_audit.py — OpenClaw 2026.2 platform alignment audit tools
+platform_audit.py — Firm 2026.2 platform alignment audit tools
 
 Covers the platform evolution gaps from 2026.1.5 → 2026.2.27:
   - External secrets v2 workflow validation
@@ -12,14 +12,14 @@ Covers the platform evolution gaps from 2026.1.5 → 2026.2.27:
   - SQLite-vec memory backend check
 
 Tools exposed (8):
-  openclaw_secrets_v2_audit         — audit new openclaw secrets lifecycle
-  openclaw_agent_routing_check      — validate agent bindings/routes
-  openclaw_voice_security_check     — TTS/voice channel security
-  openclaw_trust_model_check        — multi-user heuristics & hardening
-  openclaw_autoupdate_check         — self-update supply chain integrity
-  openclaw_plugin_sdk_check         — plugin slots/hooks/migrations
-  openclaw_content_boundary_check   — wrapExternalContent, anti-prompt-injection
-  openclaw_sqlite_vec_check         — SQLite-vec memory backend validation
+  firm_secrets_v2_audit         — audit new firm secrets lifecycle
+  firm_agent_routing_check      — validate agent bindings/routes
+  firm_voice_security_check     — TTS/voice channel security
+  firm_trust_model_check        — multi-user heuristics & hardening
+  firm_autoupdate_check         — self-update supply chain integrity
+  firm_plugin_sdk_check         — plugin slots/hooks/migrations
+  firm_content_boundary_check   — wrapExternalContent, anti-prompt-injection
+  firm_sqlite_vec_check         — SQLite-vec memory backend validation
 """
 
 from __future__ import annotations
@@ -83,12 +83,12 @@ _ADAPTIVE_THINKING_VALUES = {"adaptive", "low", "medium", "high", "disabled"}
 
 # ── Tool handlers ────────────────────────────────────────────────────────────
 
-def openclaw_secrets_v2_audit(
+def firm_secrets_v2_audit(
     config_path: str | None = None,
     secrets_config_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    Audit the new OpenClaw secrets v2 lifecycle (2026.2.26+).
+    Audit the new Firm secrets v2 lifecycle (2026.2.26+).
 
     Checks:
     - External secrets provider configuration
@@ -113,7 +113,7 @@ def openclaw_secrets_v2_audit(
             "severity": "CRITICAL",
             "check": "secrets.provider",
             "message": "No external secrets provider configured. "
-                       "Use 'openclaw secrets configure' to set up.",
+                       "Use 'firm secrets configure' to set up.",
         })
     elif provider in ("env", "plaintext", "inline"):
         findings.append({
@@ -183,7 +183,7 @@ def openclaw_secrets_v2_audit(
     }
 
 
-def openclaw_agent_routing_check(
+def firm_agent_routing_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -269,7 +269,7 @@ def openclaw_agent_routing_check(
     }
 
 
-def openclaw_voice_security_check(
+def firm_voice_security_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -350,7 +350,7 @@ def openclaw_voice_security_check(
     }
 
 
-def openclaw_trust_model_check(
+def firm_trust_model_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -434,7 +434,7 @@ def openclaw_trust_model_check(
     }
 
 
-def openclaw_autoupdate_check(
+def firm_autoupdate_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -519,7 +519,7 @@ def openclaw_autoupdate_check(
     }
 
 
-def openclaw_plugin_sdk_check(
+def firm_plugin_sdk_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -610,7 +610,7 @@ def openclaw_plugin_sdk_check(
     }
 
 
-def openclaw_content_boundary_check(
+def firm_content_boundary_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -688,7 +688,7 @@ def openclaw_content_boundary_check(
     }
 
 
-def openclaw_sqlite_vec_check(
+def firm_sqlite_vec_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -802,7 +802,7 @@ def openclaw_sqlite_vec_check(
 
 # ── Claude 4.6 adaptive thinking audit (2026.3.1) ───────────────────────────
 
-def openclaw_adaptive_thinking_check(
+def firm_adaptive_thinking_check(
     config_path: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -815,12 +815,12 @@ def openclaw_adaptive_thinking_check(
     recognized so the default (`adaptive`) applies correctly.
 
     Args:
-        config_path: Path to openclaw.json.
+        config_path: Path to config.json.
 
     Returns:
         {ok, severity, findings, finding_count, config_path}
     """
-    cfg_path = config_path or "~/.openclaw/openclaw.json"
+    cfg_path = config_path or "~/.firm/config.json"
     try:
         config, cfg_path = load_config(cfg_path)
     except Exception as exc:
@@ -914,15 +914,15 @@ def openclaw_adaptive_thinking_check(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_secrets_v2_audit",
+        "name": "firm_secrets_v2_audit",
         "title": "Secrets v2 Lifecycle Audit",
         "description": (
-            "Audit the OpenClaw secrets v2 lifecycle (2026.2.26+). "
+            "Audit the secrets v2 lifecycle (2026.2.26+). "
             "Checks external provider, rotation policy, audit log, "
             "runtime snapshots, and hardcoded secret detection. Gap G12."
         ),
         "category": "platform",
-        "handler": openclaw_secrets_v2_audit,
+        "handler": firm_secrets_v2_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -938,21 +938,21 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
                 "secrets_config_path": {"type": "string", "description": "Secrets-specific config."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_agent_routing_check",
+        "name": "firm_agent_routing_check",
         "title": "Agent Routing Validation",
         "description": (
             "Validate agent routing bindings (2026.2.26+). "
             "Checks default route, scope isolation, circular routing. Gap G13."
         ),
         "category": "platform",
-        "handler": openclaw_agent_routing_check,
+        "handler": firm_agent_routing_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -968,13 +968,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_voice_security_check",
+        "name": "firm_voice_security_check",
         "title": "Voice/TTS Security Audit",
         "description": (
             "TTS/voice channel security audit (2026.2.24+). "
@@ -982,7 +982,7 @@ TOOLS: list[dict[str, Any]] = [
             "voice channel isolation. Gap G14."
         ),
         "category": "platform",
-        "handler": openclaw_voice_security_check,
+        "handler": firm_voice_security_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -998,20 +998,20 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_trust_model_check",
+        "name": "firm_trust_model_check",
         "title": "Trust Model Validation",
         "description": (
             "Validate trust model and multi-user heuristics (2026.2.24+). "
             "Checks multi-user DM scope, trust model, gateway hardening. Gap G15."
         ),
         "category": "platform",
-        "handler": openclaw_trust_model_check,
+        "handler": firm_trust_model_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1027,20 +1027,20 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_autoupdate_check",
+        "name": "firm_autoupdate_check",
         "title": "Auto-Update Integrity Check",
         "description": (
             "Self-update supply chain integrity check (2026.2.22+). "
             "Checks update channel, signature verification, rollout delay, rollback. Gap G16."
         ),
         "category": "platform",
-        "handler": openclaw_autoupdate_check,
+        "handler": firm_autoupdate_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1056,13 +1056,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_plugin_sdk_check",
+        "name": "firm_plugin_sdk_check",
         "title": "Plugin SDK Integrity",
         "description": (
             "Plugin SDK integrity validation (2026.1.16+). "
@@ -1070,7 +1070,7 @@ TOOLS: list[dict[str, Any]] = [
             "package install restrictions. Gap G17."
         ),
         "category": "platform",
-        "handler": openclaw_plugin_sdk_check,
+        "handler": firm_plugin_sdk_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1086,13 +1086,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_content_boundary_check",
+        "name": "firm_content_boundary_check",
         "title": "Content Boundary Audit",
         "description": (
             "Content boundary & anti-prompt-injection audit (2026.2+). "
@@ -1100,7 +1100,7 @@ TOOLS: list[dict[str, Any]] = [
             "content boundary markers. Gap G19."
         ),
         "category": "platform",
-        "handler": openclaw_content_boundary_check,
+        "handler": firm_content_boundary_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1116,13 +1116,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_sqlite_vec_check",
+        "name": "firm_sqlite_vec_check",
         "title": "SQLite-vec Memory Check",
         "description": (
             "SQLite-vec memory backend validation (2026.1.12+). "
@@ -1130,7 +1130,7 @@ TOOLS: list[dict[str, Any]] = [
             "index settings, lazy sync. Gap G20."
         ),
         "category": "platform",
-        "handler": openclaw_sqlite_vec_check,
+        "handler": firm_sqlite_vec_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -1146,13 +1146,13 @@ TOOLS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_adaptive_thinking_check",
+        "name": "firm_adaptive_thinking_check",
         "title": "Claude 4.6 Adaptive Thinking Check",
         "description": (
             "Checks Claude 4.6 model configs for correct adaptive thinking defaults (2026.3.1). "
@@ -1172,11 +1172,11 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"]
         },
-        "handler": openclaw_adaptive_thinking_check,
+        "handler": firm_adaptive_thinking_check,
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "OpenClaw config path."},
+                "config_path": {"type": "string", "description": "Firm config path."},
             },
             "required": [],
         },

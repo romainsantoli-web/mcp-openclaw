@@ -10,12 +10,12 @@ Implements 6 tools for the Market Research department:
   - Competitive monitoring (continuous tracking of competitor moves)
 
 Tools exposed (6):
-  openclaw_market_competitive_analysis   — competitive landscape + SWOT + positioning
-  openclaw_market_sizing                 — TAM/SAM/SOM with confidence scoring
-  openclaw_market_financial_benchmark    — unit economics + pricing analysis
-  openclaw_market_web_research           — structured web OSINT research
-  openclaw_market_report_generate        — professional Markdown report generation
-  openclaw_market_research_monitor       — continuous competitive monitoring
+  firm_market_competitive_analysis   — competitive landscape + SWOT + positioning
+  firm_market_sizing                 — TAM/SAM/SOM with confidence scoring
+  firm_market_financial_benchmark    — unit economics + pricing analysis
+  firm_market_web_research           — structured web OSINT research
+  firm_market_report_generate        — professional Markdown report generation
+  firm_market_research_monitor       — continuous competitive monitoring
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 OUTPUT_DIR: str = os.getenv(
     "MARKET_RESEARCH_OUTPUT_DIR",
-    os.path.expanduser("~/.openclaw/market-research"),
+    os.path.expanduser("~/.firm/market-research"),
 )
 
 _CONFIDENCE_LEVELS = {"HIGH", "MEDIUM", "LOW"}
@@ -130,9 +130,9 @@ def _ai_footer() -> str:
     )
 
 
-# ── Tool: openclaw_market_competitive_analysis ───────────────────────────────
+# ── Tool: firm_market_competitive_analysis ───────────────────────────────
 
-def openclaw_market_competitive_analysis(
+def firm_market_competitive_analysis(
     sector: str,
     competitors: list[str] | None = None,
     geography: str | None = None,
@@ -209,11 +209,11 @@ def openclaw_market_competitive_analysis(
         "positioning_map": positioning if include_positioning else None,
         "methodology": {
             "approach": "Structured competitive analysis framework",
-            "data_sources": "Public sources — to be enriched via openclaw_market_web_research",
+            "data_sources": "Public sources — to be enriched via firm_market_web_research",
             "confidence": "LOW — template generated, requires data enrichment",
         },
         "next_steps": [
-            "Enrichir la feature matrix via openclaw_market_web_research",
+            "Enrichir la feature matrix via firm_market_web_research",
             "Compléter les SWOT avec des données primaires",
             "Valider le positionnement avec le département Commercial",
             "Générer les battlecards individuelles par concurrent",
@@ -225,9 +225,9 @@ def openclaw_market_competitive_analysis(
     return result
 
 
-# ── Tool: openclaw_market_sizing ─────────────────────────────────────────────
+# ── Tool: firm_market_sizing ─────────────────────────────────────────────
 
-def openclaw_market_sizing(
+def firm_market_sizing(
     sector: str,
     geography: str | None = None,
     target_segment: str | None = None,
@@ -329,9 +329,9 @@ def openclaw_market_sizing(
     return result
 
 
-# ── Tool: openclaw_market_financial_benchmark ────────────────────────────────
+# ── Tool: firm_market_financial_benchmark ────────────────────────────────
 
-def openclaw_market_financial_benchmark(
+def firm_market_financial_benchmark(
     sector: str,
     metrics: list[str] | None = None,
     competitors: list[str] | None = None,
@@ -436,9 +436,9 @@ def openclaw_market_financial_benchmark(
     return result
 
 
-# ── Tool: openclaw_market_web_research ───────────────────────────────────────
+# ── Tool: firm_market_web_research ───────────────────────────────────────
 
-def openclaw_market_web_research(
+def firm_market_web_research(
     query: str,
     sources: list[str] | None = None,
     competitor: str | None = None,
@@ -510,7 +510,7 @@ def openclaw_market_web_research(
     return result
 
 
-# ── Tool: openclaw_market_report_generate ────────────────────────────────────
+# ── Tool: firm_market_report_generate ────────────────────────────────────
 
 _REPORT_SECTIONS = {
     "executive_summary": "## 1. Executive Summary",
@@ -525,7 +525,7 @@ _REPORT_SECTIONS = {
 }
 
 
-def openclaw_market_report_generate(
+def firm_market_report_generate(
     title: str,
     sections: list[str] | None = None,
     data: dict[str, Any] | None = None,
@@ -827,9 +827,9 @@ def openclaw_market_report_generate(
     return result
 
 
-# ── Tool: openclaw_market_research_monitor ───────────────────────────────────
+# ── Tool: firm_market_research_monitor ───────────────────────────────────
 
-def openclaw_market_research_monitor(
+def firm_market_research_monitor(
     action: str = "status",
     competitor: str | None = None,
     watch: list[str] | None = None,
@@ -954,7 +954,7 @@ _MARKET_RESEARCH_OUTPUT_SCHEMA = {
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_market_competitive_analysis",
+        "name": "firm_market_competitive_analysis",
         "title": "Competitive Landscape Analysis",
         "description": (
             "Full competitive landscape analysis. Produces feature matrix, "
@@ -969,7 +969,7 @@ TOOLS: list[dict[str, Any]] = [
             "openWorldHint": True,
         },
         "outputSchema": _MARKET_RESEARCH_OUTPUT_SCHEMA,
-        "handler": openclaw_market_competitive_analysis,
+        "handler": firm_market_competitive_analysis,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -993,7 +993,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_market_sizing",
+        "name": "firm_market_sizing",
         "title": "Market Sizing (TAM/SAM/SOM)",
         "description": (
             "TAM/SAM/SOM market sizing with top-down and bottom-up approaches. "
@@ -1007,7 +1007,7 @@ TOOLS: list[dict[str, Any]] = [
             "openWorldHint": True,
         },
         "outputSchema": _MARKET_RESEARCH_OUTPUT_SCHEMA,
-        "handler": openclaw_market_sizing,
+        "handler": firm_market_sizing,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1027,7 +1027,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_market_financial_benchmark",
+        "name": "firm_market_financial_benchmark",
         "title": "Financial Benchmarking",
         "description": (
             "Financial benchmarking — unit economics (CAC, LTV, ARPU, churn), "
@@ -1041,7 +1041,7 @@ TOOLS: list[dict[str, Any]] = [
             "openWorldHint": True,
         },
         "outputSchema": _MARKET_RESEARCH_OUTPUT_SCHEMA,
-        "handler": openclaw_market_financial_benchmark,
+        "handler": firm_market_financial_benchmark,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1063,7 +1063,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_market_web_research",
+        "name": "firm_market_web_research",
         "title": "Web Research & OSINT",
         "description": (
             "Structured web research and OSINT intelligence gathering. "
@@ -1077,7 +1077,7 @@ TOOLS: list[dict[str, Any]] = [
             "openWorldHint": True,
         },
         "outputSchema": _MARKET_RESEARCH_OUTPUT_SCHEMA,
-        "handler": openclaw_market_web_research,
+        "handler": firm_market_web_research,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1094,7 +1094,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_market_report_generate",
+        "name": "firm_market_report_generate",
         "title": "Market Research Report Generator",
         "description": (
             "Generate a complete professional market research report in Markdown. "
@@ -1117,7 +1117,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok"],
         },
-        "handler": openclaw_market_report_generate,
+        "handler": firm_market_report_generate,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1141,7 +1141,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_market_research_monitor",
+        "name": "firm_market_research_monitor",
         "title": "Competitive Monitoring",
         "description": (
             "Continuous competitive monitoring. Actions: add/remove competitors, "
@@ -1163,7 +1163,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok"],
         },
-        "handler": openclaw_market_research_monitor,
+        "handler": firm_market_research_monitor,
         "inputSchema": {
             "type": "object",
             "properties": {

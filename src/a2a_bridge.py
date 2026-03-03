@@ -1,5 +1,5 @@
 """
-a2a_bridge.py — Agent-to-Agent (A2A) Protocol RC v1.0 bridge for OpenClaw
+a2a_bridge.py — Agent-to-Agent (A2A) Protocol RC v1.0 bridge for the server
 
 Implements the full A2A RC v1.0 specification:
   - Agent Card v2 generation from SOUL.md files (.well-known/agent-card.json)
@@ -14,14 +14,14 @@ Implements the full A2A RC v1.0 specification:
   - A2A-Version header enforcement
 
 Tools exposed (8 tools):
-  openclaw_a2a_card_generate   — generate .well-known/agent-card.json from a SOUL
-  openclaw_a2a_card_validate   — validate an Agent Card against A2A RC v1.0
-  openclaw_a2a_task_send       — send a message/task to an A2A agent
-  openclaw_a2a_task_status     — get task status (GetTask) or list tasks (ListTasks)
-  openclaw_a2a_cancel_task     — cancel a running task (CancelTask)
-  openclaw_a2a_subscribe_task  — subscribe to task updates (SubscribeToTask)
-  openclaw_a2a_push_config     — CRUD for push notification webhooks
-  openclaw_a2a_discovery       — discover agents via Agent Card endpoints
+  firm_a2a_card_generate   — generate .well-known/agent-card.json from a SOUL
+  firm_a2a_card_validate   — validate an Agent Card against A2A RC v1.0
+  firm_a2a_task_send       — send a message/task to an A2A agent
+  firm_a2a_task_status     — get task status (GetTask) or list tasks (ListTasks)
+  firm_a2a_cancel_task     — cancel a running task (CancelTask)
+  firm_a2a_subscribe_task  — subscribe to task updates (SubscribeToTask)
+  firm_a2a_push_config     — CRUD for push notification webhooks
+  firm_a2a_discovery       — discover agents via Agent Card endpoints
 """
 
 from __future__ import annotations
@@ -354,7 +354,7 @@ def _create_task(
 
 # ── Tool handlers ───────────────────────────────────────────────────────────
 
-def openclaw_a2a_card_generate(
+def firm_a2a_card_generate(
     soul_path: str,
     base_url: str,
     output_path: str | None = None,
@@ -405,7 +405,7 @@ def openclaw_a2a_card_generate(
     return result
 
 
-def openclaw_a2a_card_validate(
+def firm_a2a_card_validate(
     card_path: str | None = None,
     card_json: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -452,7 +452,7 @@ def openclaw_a2a_card_validate(
     }
 
 
-async def openclaw_a2a_task_send(
+async def firm_a2a_task_send(
     agent_url: str,
     message: str,
     context_id: str | None = None,
@@ -477,7 +477,7 @@ async def openclaw_a2a_task_send(
     }
 
 
-async def openclaw_a2a_task_status(
+async def firm_a2a_task_status(
     task_id: str | None = None,
     context_id: str | None = None,
     include_history: bool = False,
@@ -508,7 +508,7 @@ async def openclaw_a2a_task_status(
     }
 
 
-async def openclaw_a2a_cancel_task(task_id: str) -> dict[str, Any]:
+async def firm_a2a_cancel_task(task_id: str) -> dict[str, Any]:
     """Cancel a running A2A task (RC v1.0 CancelTask)."""
     task = _TASKS.get(task_id)
     if not task:
@@ -520,7 +520,7 @@ async def openclaw_a2a_cancel_task(task_id: str) -> dict[str, Any]:
     return {"ok": True, "a2a_method": "CancelTask", "a2a_version": A2A_SPEC_VERSION, "task_id": task_id, "status": task["status"]}
 
 
-async def openclaw_a2a_subscribe_task(
+async def firm_a2a_subscribe_task(
     task_id: str,
     callback_url: str | None = None,
 ) -> dict[str, Any]:
@@ -550,7 +550,7 @@ async def openclaw_a2a_subscribe_task(
     }
 
 
-def openclaw_a2a_push_config(
+def firm_a2a_push_config(
     task_id: str, action: str = "list",
     webhook_url: str | None = None, auth_token: str | None = None,
     config_id: str | None = None,
@@ -594,7 +594,7 @@ def openclaw_a2a_push_config(
         return {"ok": False, "error": f"Unknown action: {action}. Use: create, get, list, delete"}
 
 
-async def openclaw_a2a_discovery(
+async def firm_a2a_discovery(
     urls: list[str] | None = None, souls_dir: str | None = None,
     check_reachability: bool = False,
 ) -> dict[str, Any]:
@@ -637,11 +637,11 @@ async def openclaw_a2a_discovery(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_a2a_card_generate",
+        "name": "firm_a2a_card_generate",
         "title": "Generate A2A Agent Card v2",
         "description": "Generate .well-known/agent-card.json from a SOUL.md file. RC v1.0 compliant with extensions, JCS+JWS signing, defaultInputModes/defaultOutputModes.",
         "category": "a2a",
-        "handler": openclaw_a2a_card_generate,
+        "handler": firm_a2a_card_generate,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -662,11 +662,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_card_validate",
+        "name": "firm_a2a_card_validate",
         "title": "Validate A2A Agent Card",
         "description": "Validate an A2A Agent Card against RC v1.0 spec. Detects deprecated v0.4.0 patterns (kind discriminator).",
         "category": "a2a",
-        "handler": openclaw_a2a_card_validate,
+        "handler": firm_a2a_card_validate,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -679,11 +679,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_task_send",
+        "name": "firm_a2a_task_send",
         "title": "Send A2A Task",
         "description": "Send a message/task to an A2A agent (RC v1.0 SendMessage). Typed parts (TextPart/FilePart/DataPart), contextId multi-turn support.",
         "category": "a2a",
-        "handler": openclaw_a2a_task_send,
+        "handler": firm_a2a_task_send,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -699,11 +699,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_task_status",
+        "name": "firm_a2a_task_status",
         "title": "A2A Task Status / List",
         "description": "Get task status (GetTask) or list tasks (ListTasks). RC v1.0 with contextId filtering.",
         "category": "a2a",
-        "handler": openclaw_a2a_task_status,
+        "handler": firm_a2a_task_status,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -717,11 +717,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_cancel_task",
+        "name": "firm_a2a_cancel_task",
         "title": "Cancel A2A Task",
         "description": "Cancel a running A2A task (RC v1.0 CancelTask). Error if task is in terminal state.",
         "category": "a2a",
-        "handler": openclaw_a2a_cancel_task,
+        "handler": firm_a2a_cancel_task,
         "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": False, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -731,11 +731,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_subscribe_task",
+        "name": "firm_a2a_subscribe_task",
         "title": "Subscribe to A2A Task",
         "description": "Subscribe to task updates via SSE (RC v1.0 SubscribeToTask). Streams TaskStatusUpdateEvent and TaskArtifactUpdateEvent.",
         "category": "a2a",
-        "handler": openclaw_a2a_subscribe_task,
+        "handler": firm_a2a_subscribe_task,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -748,11 +748,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_push_config",
+        "name": "firm_a2a_push_config",
         "title": "A2A Push Notification Config",
         "description": "CRUD for push notification webhooks (RC v1.0). Create/Get/List/Delete push configs for tasks.",
         "category": "a2a",
-        "handler": openclaw_a2a_push_config,
+        "handler": firm_a2a_push_config,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {
@@ -768,11 +768,11 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_a2a_discovery",
+        "name": "firm_a2a_discovery",
         "title": "A2A Agent Discovery",
         "description": "Discover agents via Agent Cards or local SOUL.md scan (RC v1.0). Probes .well-known/agent-card.json.",
         "category": "a2a",
-        "handler": openclaw_a2a_discovery,
+        "handler": firm_a2a_discovery,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "inputSchema": {

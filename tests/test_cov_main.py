@@ -70,13 +70,13 @@ class TestMcpCallTool:
 
     def test_known_tool_returns_content(self):
         # Use a basic tool that doesn't require external resources
-        r = _run(_mcp_call_tool("openclaw_prompt_injection_check", {"text": "Hello world safe text"}))
+        r = _run(_mcp_call_tool("firm_prompt_injection_check", {"text": "Hello world safe text"}))
         assert "content" in r
         assert "structuredContent" in r
 
     def test_pydantic_validation_error(self):
         # prompt_injection_check requires "text" — pass invalid args
-        r = _run(_mcp_call_tool("openclaw_prompt_injection_check", {}))
+        r = _run(_mcp_call_tool("firm_prompt_injection_check", {}))
         # Either it works with defaults or returns validation error
         assert "content" in r
 
@@ -175,19 +175,19 @@ class TestMcpCallTool:
 
 class TestReadResource:
     def test_config_resource(self):
-        r = _run(_read_resource("openclaw://config/main"))
+        r = _run(_read_resource("firm://config/main"))
         assert "contents" in r
-        assert r["contents"][0]["uri"] == "openclaw://config/main"
+        assert r["contents"][0]["uri"] == "firm://config/main"
 
     def test_health_resource(self):
-        r = _run(_read_resource("openclaw://health"))
+        r = _run(_read_resource("firm://health"))
         assert "contents" in r
         data = json.loads(r["contents"][0]["text"])
         assert data["status"] == "ok"
         assert "tools" in data
 
     def test_unknown_resource(self):
-        r = _run(_read_resource("openclaw://unknown"))
+        r = _run(_read_resource("firm://unknown"))
         assert "error" in r
 
 
@@ -222,7 +222,7 @@ class TestGetPrompt:
 
 class TestResourceLinks:
     def test_audit_tool_has_config_link(self):
-        result = _resource_links_for_tool("openclaw_security_scan")
+        result = _resource_links_for_tool("firm_security_scan")
         assert result is not None
         assert "_meta" in result
         assert any("config" in link["uri"] for link in result["_meta"]["resourceLinks"])
@@ -355,7 +355,7 @@ class TestHandleMcp:
     async def test_tools_call(self, mcp_client):
         resp = await mcp_client.post("/mcp", json=self._make_request(
             "tools/call",
-            {"name": "openclaw_prompt_injection_check", "arguments": {"text": "safe text"}},
+            {"name": "firm_prompt_injection_check", "arguments": {"text": "safe text"}},
         ))
         assert resp.status == 200
         data = await resp.json()
@@ -371,7 +371,7 @@ class TestHandleMcp:
     @pytest.mark.asyncio
     async def test_resources_read(self, mcp_client):
         resp = await mcp_client.post("/mcp", json=self._make_request(
-            "resources/read", {"uri": "openclaw://health"},
+            "resources/read", {"uri": "firm://health"},
         ))
         assert resp.status == 200
 
@@ -403,7 +403,7 @@ class TestHandleMcp:
     async def test_tasks_create(self, mcp_client):
         _MCP_TASKS.clear()
         resp = await mcp_client.post("/mcp", json=self._make_request(
-            "tasks/create", {"toolName": "openclaw_prompt_injection_check", "arguments": {"text": "safe"}},
+            "tasks/create", {"toolName": "firm_prompt_injection_check", "arguments": {"text": "safe"}},
         ))
         assert resp.status == 200
         data = await resp.json()

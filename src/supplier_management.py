@@ -9,11 +9,11 @@ Implements 5 tools for the Suppliers department:
   - Supplier risk monitoring (continuous tracking)
 
 Tools exposed (5):
-  openclaw_supplier_search            — market-wide supplier sourcing
-  openclaw_supplier_evaluate          — multi-criteria supplier evaluation
-  openclaw_supplier_tco_analyze       — total cost of ownership analysis
-  openclaw_supplier_contract_check    — contract clause analysis
-  openclaw_supplier_risk_monitor      — supplier risk monitoring CRUD
+  firm_supplier_search            — market-wide supplier sourcing
+  firm_supplier_evaluate          — multi-criteria supplier evaluation
+  firm_supplier_tco_analyze       — total cost of ownership analysis
+  firm_supplier_contract_check    — contract clause analysis
+  firm_supplier_risk_monitor      — supplier risk monitoring CRUD
 """
 
 from __future__ import annotations
@@ -128,7 +128,7 @@ async def handle_supplier_search(arguments: dict[str, Any]) -> list[dict[str, An
             "3. Présélectionner 5-8 candidats avec profil complet",
             "4. Shortlister 3-4 pour évaluation détaillée",
         ],
-        "next_step": "Utiliser openclaw_supplier_evaluate pour scorer les candidats shortlistés",
+        "next_step": "Utiliser firm_supplier_evaluate pour scorer les candidats shortlistés",
         "timestamp": datetime.now(UTC).isoformat(),
         "disclaimer": "⚠️ Sourcing par IA — devis et vérifications directes requis.",
     }
@@ -391,7 +391,7 @@ async def handle_supplier_risk_monitor(arguments: dict[str, Any]) -> list[dict[s
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_supplier_search",
+        "name": "firm_supplier_search",
         "title": "Suppliers — Supplier Search",
         "description": "Market-wide supplier sourcing — identifies potential suppliers by category, budget, geography. Provides recommended sources and methodology.",
         "category": "procurement",
@@ -411,7 +411,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_supplier_evaluate",
+        "name": "firm_supplier_evaluate",
         "title": "Suppliers — Evaluate & Score",
         "description": "Multi-criteria supplier evaluation with 15+ weighted criteria. Scores quality, price, delivery, support, security, and more. Outputs ranked matrix.",
         "category": "procurement",
@@ -429,7 +429,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_supplier_tco_analyze",
+        "name": "firm_supplier_tco_analyze",
         "title": "Suppliers — TCO Analysis",
         "description": "Total Cost of Ownership analysis over 3-5 years. Includes license, integration, training, support, migration, and exit costs.",
         "category": "procurement",
@@ -449,7 +449,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_supplier_contract_check",
+        "name": "firm_supplier_contract_check",
         "title": "Suppliers — Contract Check",
         "description": "Contract clause analysis — checks SLA, penalties, data protection (DPA), reversibility, IP, NDA, and more against best practices.",
         "category": "procurement",
@@ -467,7 +467,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_supplier_risk_monitor",
+        "name": "firm_supplier_risk_monitor",
         "title": "Suppliers — Risk Monitor",
         "description": "Continuous supplier risk monitoring — add/remove/update/status/export watchlist. Tracks financial, dependency, geopolitical, and service level risks.",
         "category": "procurement",

@@ -207,7 +207,7 @@ async def token_scope_check(config_path: str | None = None) -> dict[str, Any]:
 _CONFIG_PATH_SCHEMA = {
     "type": "object",
     "properties": {
-        "config_path": {"type": "string", "description": "Path to openclaw.json config file"},
+        "config_path": {"type": "string", "description": "Path to config.json config file"},
     },
 }
 
@@ -225,7 +225,7 @@ _AUDIT_OUTPUT_SCHEMA = {
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_oauth_oidc_audit",
+        "name": "firm_oauth_oidc_audit",
         "title": "OAuth/OIDC Compliance Audit",
         "description": (
             "Audit OAuth 2.1 / OIDC Discovery compliance (MCP 2025-06-18 / 2025-11-25). "
@@ -239,7 +239,7 @@ TOOLS: list[dict[str, Any]] = [
         "outputSchema": _AUDIT_OUTPUT_SCHEMA,
     },
     {
-        "name": "openclaw_token_scope_check",
+        "name": "firm_token_scope_check",
         "title": "Token Scope Enforcement Check",
         "description": (
             "Check if OAuth scopes properly restrict tool access. "

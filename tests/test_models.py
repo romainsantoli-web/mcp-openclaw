@@ -24,8 +24,8 @@ class TestToolModelsRegistry:
         assert len(TOOL_MODELS) >= 115, f"Expected at least 115, got {len(TOOL_MODELS)}"
 
     def test_new_a2a_tools_in_registry(self):
-        assert "openclaw_a2a_cancel_task" in TOOL_MODELS
-        assert "openclaw_a2a_subscribe_task" in TOOL_MODELS
+        assert "firm_a2a_cancel_task" in TOOL_MODELS
+        assert "firm_a2a_subscribe_task" in TOOL_MODELS
 
     def test_all_values_are_pydantic_models(self):
         from pydantic import BaseModel

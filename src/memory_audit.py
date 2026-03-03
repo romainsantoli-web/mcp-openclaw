@@ -1,9 +1,9 @@
 """
-memory_audit.py — OpenClaw memory backend & knowledge graph audit tools
+memory_audit.py — Firm memory backend & knowledge graph audit tools
 
 Tools:
-  openclaw_pgvector_memory_check    — validates pgvector configuration for semantic memory
-  openclaw_knowledge_graph_check    — audits knowledge graph integrity (orphans, cycles, TTL)
+  firm_pgvector_memory_check    — validates pgvector configuration for semantic memory
+  firm_knowledge_graph_check    — audits knowledge graph integrity (orphans, cycles, TTL)
 """
 
 from __future__ import annotations
@@ -30,15 +30,15 @@ _VALID_DISTANCE_METRICS = {"cosine", "l2", "inner_product", "ip"}
 _GRAPH_BACKENDS = {"neo4j", "memgraph", "neptune", "arangodb", "json", "sqlite"}
 
 
-# ── Tool: openclaw_pgvector_memory_check ─────────────────────────────────────
+# ── Tool: firm_pgvector_memory_check ─────────────────────────────────────
 
-async def openclaw_pgvector_memory_check(
+async def firm_pgvector_memory_check(
     config_path: str | None = None,
     connection_string: str | None = None,
     config_data: dict | None = None,
 ) -> dict[str, Any]:
     """
-    Validate pgvector configuration for OpenClaw semantic memory backend.
+    Validate pgvector configuration for the server semantic memory backend.
 
     Checks:
       - pgvector extension is referenced in config
@@ -49,7 +49,7 @@ async def openclaw_pgvector_memory_check(
       - Connection string doesn't embed credentials in plaintext
 
     Args:
-        config_path: Path to OpenClaw config JSON file.
+        config_path: Path to the server config JSON file.
         connection_string: Optional PostgreSQL connection string to validate.
         config_data: Optional inline config dict (for testing).
 
@@ -213,15 +213,15 @@ async def openclaw_pgvector_memory_check(
     }
 
 
-# ── Tool: openclaw_knowledge_graph_check ─────────────────────────────────────
+# ── Tool: firm_knowledge_graph_check ─────────────────────────────────────
 
-async def openclaw_knowledge_graph_check(
+async def firm_knowledge_graph_check(
     config_path: str | None = None,
     config_data: dict | None = None,
     graph_data_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    Audit knowledge graph integrity for OpenClaw persistent memory.
+    Audit knowledge graph integrity for the server persistent memory.
 
     Checks:
       - Graph backend is configured (neo4j, memgraph, json, sqlite, etc.)
@@ -232,7 +232,7 @@ async def openclaw_knowledge_graph_check(
       - Backup configuration
 
     Args:
-        config_path: Path to OpenClaw config JSON.
+        config_path: Path to the server config JSON.
         config_data: Optional inline config dict (for testing).
         graph_data_path: Optional path to a JSON graph export for deeper analysis.
 
@@ -458,7 +458,7 @@ def _detect_cycle(adj: dict[str, list[str]]) -> bool:
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_pgvector_memory_check",
+        "name": "firm_pgvector_memory_check",
         "title": "pgvector Memory Config Check",
         "description": (
             "Validates pgvector configuration for semantic memory: index type (HNSW recommended), "
@@ -466,7 +466,7 @@ TOOLS: list[dict[str, Any]] = [
             "credential exposure. Gap T3/issue #15093."
         ),
         "category": "memory",
-        "handler": openclaw_pgvector_memory_check,
+        "handler": firm_pgvector_memory_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -484,7 +484,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Path to OpenClaw config JSON.",
+                    "description": "Path to the server config JSON.",
                 },
                 "connection_string": {
                     "type": "string",
@@ -495,14 +495,14 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_knowledge_graph_check",
+        "name": "firm_knowledge_graph_check",
         "title": "Knowledge Graph Integrity",
         "description": (
             "Audits knowledge graph integrity: backend validation, TTL policy, orphan node detection, "
             "cycle detection, density metrics, and backup configuration. Gap T9/issue #7783."
         ),
         "category": "memory",
-        "handler": openclaw_knowledge_graph_check,
+        "handler": firm_knowledge_graph_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",
@@ -520,7 +520,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "config_path": {
                     "type": "string",
-                    "description": "Path to OpenClaw config JSON.",
+                    "description": "Path to the server config JSON.",
                 },
                 "graph_data_path": {
                     "type": "string",

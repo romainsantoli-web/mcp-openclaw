@@ -1,18 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.romainsantoli-web/mcp-openclaw",
-  "title": "MCP OpenClaw Extensions",
-  "description": "138-tool MCP server for AI agent firms: security, A2A, Hebbian memory, fleet mgmt",
+  "title": "Firm MCP Server",
+  "description": "138-tool generic MCP server for AI firms. Claude Code, Codex, VS Code, Cursor, Antigravity",
   "repository": {
     "url": "https://github.com/romainsantoli-web/mcp-openclaw",
     "source": "github"
   },
-  "version": "3.3.0",
+  "version": "4.0.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "mcp-openclaw-extensions",
-      "version": "3.3.0",
+      "version": "4.0.0",
       "transport": {
         "type": "stdio"
       }

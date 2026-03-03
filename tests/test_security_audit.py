@@ -1,5 +1,5 @@
 """
-Unit tests for src/security_audit.py — OpenClaw security scanning tools.
+Unit tests for src/security_audit.py — Firm security scanning tools.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ class TestToolsRegistry:
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
         expected = {
-            "openclaw_security_scan",
-            "openclaw_sandbox_audit",
-            "openclaw_session_config_check",
-            "openclaw_rate_limit_check",
+            "firm_security_scan",
+            "firm_sandbox_audit",
+            "firm_session_config_check",
+            "firm_rate_limit_check",
         }
         assert names == expected
 

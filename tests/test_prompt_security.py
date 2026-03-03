@@ -99,5 +99,5 @@ class TestToolsRegistry:
 
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
-        assert "openclaw_prompt_injection_check" in names
-        assert "openclaw_prompt_injection_batch" in names
+        assert "firm_prompt_injection_check" in names
+        assert "firm_prompt_injection_batch" in names

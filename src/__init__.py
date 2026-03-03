@@ -1,8 +1,12 @@
-"""mcp-openclaw-extensions — OpenClaw MCP server with 113+ tools across 22 categories."""
+"""firm-mcp-server — Generic MCP server for AI agent firms. 138 tools across 29 modules.
+
+Compatible with: Claude Code, Codex, VS Code, Cursor, Windsurf, Antigravity, etc.
+"""
 
 __all__ = [
     "config_helpers",
     "main",
+    "platform",
     "a2a_bridge",
     "acp_bridge",
     "advanced_security",

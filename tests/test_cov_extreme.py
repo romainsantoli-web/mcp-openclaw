@@ -31,199 +31,199 @@ def _write_config(tmp_path: Path, data: dict, name: str = "config.json") -> str:
 
 class TestAdvancedSecurityExtreme:
 
-    # --- openclaw_secrets_lifecycle_check ---
+    # --- firm_secrets_lifecycle_check ---
 
     def test_secrets_lifecycle_empty_config(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert r["status"] == "ok"
 
     def test_secrets_lifecycle_inline_creds(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "auth": {"profiles": {
                 "prod": {"apiKey": "sk-live-12345", "token": "real-token"},
                 "dev": {"apiKey": "$ENV_VAR"},  # not inline
             }}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert r["inline_credential_count"] >= 2
         assert any(f["severity"] == "CRITICAL" for f in r["findings"])
 
     def test_secrets_lifecycle_apply_traversal(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "secrets": {"apply": {"targetPath": "../../../etc/passwd"}}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert any("traversal" in f["message"].lower() for f in r["findings"])
 
     def test_secrets_lifecycle_snapshot_not_activated(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "secrets": {"managed": True, "snapshotActivated": False}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert any("snapshot" in f["message"].lower() for f in r["findings"])
 
     def test_secrets_lifecycle_no_workflow_with_inline(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write_config(tmp_path, {
             "auth": {"profiles": {"p1": {"apiKey": "real-key"}}}
         })
-        r = _run(openclaw_secrets_lifecycle_check(cfg))
+        r = _run(firm_secrets_lifecycle_check(cfg))
         assert any("no_secrets_workflow" == f["id"] for f in r["findings"])
 
-    # --- openclaw_channel_auth_canon_check ---
+    # --- firm_channel_auth_canon_check ---
 
     def test_channel_auth_canon_empty(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert r["status"] == "ok"
 
     def test_channel_auth_canon_auth_none_remote(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {
             "gateway": {"auth": {"mode": "none"}, "bind": "0.0.0.0"}
         })
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert any("auth_none_remote" == f["id"] for f in r["findings"])
 
     def test_channel_auth_canon_plugin_traversal(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {
             "plugins": {"entries": {
                 "bad": {"httpPath": "/api/%2e%2e/secret"}
             }}
         })
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert any("plugin_path_traversal" in f["id"] for f in r["findings"])
 
     def test_channel_auth_canon_basepath_traversal(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write_config(tmp_path, {
             "gateway": {"controlUi": {"basePath": "../../admin"}}
         })
-        r = _run(openclaw_channel_auth_canon_check(cfg))
+        r = _run(firm_channel_auth_canon_check(cfg))
         assert any("controlui_basepath" in f["id"] for f in r["findings"])
 
-    # --- openclaw_exec_approval_freeze_check ---
+    # --- firm_exec_approval_freeze_check ---
 
     def test_exec_approval_empty(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_exec_approval_freeze_check(cfg))
+        r = _run(firm_exec_approval_freeze_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_exec_approval_no_sandbox(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         cfg = _write_config(tmp_path, {
             "tools": {"exec": {"host": "local", "sandbox": "off"}}
         })
-        r = _run(openclaw_exec_approval_freeze_check(cfg))
+        r = _run(firm_exec_approval_freeze_check(cfg))
         assert any("exec_host_no_sandbox" == f.get("id") for f in r.get("findings", []))
 
-    # --- openclaw_hook_session_routing_check ---
+    # --- firm_hook_session_routing_check ---
 
     def test_hook_session_routing_empty(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_hook_session_routing_check(cfg))
+        r = _run(firm_hook_session_routing_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_hook_session_routing_with_hooks(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write_config(tmp_path, {
             "hooks": {
                 "onMessage": {"transformsDir": "../../../evil"},
                 "onSession": {"handler": "my-handler"}
             }
         })
-        r = _run(openclaw_hook_session_routing_check(cfg))
+        r = _run(firm_hook_session_routing_check(cfg))
         assert "findings" in r
 
-    # --- openclaw_config_include_check ---
+    # --- firm_config_include_check ---
 
     def test_config_include_empty(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_config_include_check(cfg))
+        r = _run(firm_config_include_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_config_include_with_includes(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         inc_file = tmp_path / "extra.json"
         inc_file.write_text("{}")
         cfg = _write_config(tmp_path, {
             "channels": {"$include": str(inc_file)},
             "plugins": {"$include": str(inc_file)},
         })
-        r = _run(openclaw_config_include_check(cfg))
+        r = _run(firm_config_include_check(cfg))
         assert "findings" in r
 
     def test_config_include_nonexistent(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = _write_config(tmp_path, {
             "extra": {"$include": "/nonexistent/path.json"}
         })
-        r = _run(openclaw_config_include_check(cfg))
+        r = _run(firm_config_include_check(cfg))
         assert "findings" in r
 
-    # --- openclaw_config_prototype_check ---
+    # --- firm_config_prototype_check ---
 
     def test_config_prototype_empty(self, tmp_path):
-        from src.advanced_security import openclaw_config_prototype_check
+        from src.advanced_security import firm_config_prototype_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_config_prototype_check(cfg))
+        r = _run(firm_config_prototype_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_config_prototype_with_proto(self, tmp_path):
-        from src.advanced_security import openclaw_config_prototype_check
+        from src.advanced_security import firm_config_prototype_check
         cfg = _write_config(tmp_path, {
             "channels": {"__proto__": {"polluted": True}},
             "nested": {"deep": {"constructor": {"prototype": {}}}}
         })
-        r = _run(openclaw_config_prototype_check(cfg))
+        r = _run(firm_config_prototype_check(cfg))
         assert len(r.get("findings", [])) > 0
 
-    # --- openclaw_safe_bins_profile_check ---
+    # --- firm_safe_bins_profile_check ---
 
     def test_safe_bins_empty(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_safe_bins_profile_check(cfg))
+        r = _run(firm_safe_bins_profile_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_safe_bins_with_interpreters(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {
             "tools": {"exec": {
                 "safeBins": ["python", "node", "curl"],
                 "safeBinProfiles": {"curl": {"args": "--max-time 10"}}
             }}
         })
-        r = _run(openclaw_safe_bins_profile_check(cfg))
+        r = _run(firm_safe_bins_profile_check(cfg))
         # python + node without profiles should be flagged
         assert any("python" in str(f) or "node" in str(f) for f in r.get("findings", []))
 
     def test_safe_bins_no_bins(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write_config(tmp_path, {"tools": {"exec": {}}})
-        r = _run(openclaw_safe_bins_profile_check(cfg))
+        r = _run(firm_safe_bins_profile_check(cfg))
         assert r["status"] == "ok"
 
-    # --- openclaw_group_policy_default_check ---
+    # --- firm_group_policy_default_check ---
 
     def test_group_policy_empty(self, tmp_path):
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_group_policy_default_check(cfg))
+        r = _run(firm_group_policy_default_check(cfg))
         assert "findings" in r or "status" in r
 
     def test_group_policy_not_allowlist(self, tmp_path):
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write_config(tmp_path, {
             "channels": {
                 "defaults": {"groupPolicy": "blocklist"},
@@ -231,19 +231,19 @@ class TestAdvancedSecurityExtreme:
                 "discord": {"enabled": True},
             }
         })
-        r = _run(openclaw_group_policy_default_check(cfg))
+        r = _run(firm_group_policy_default_check(cfg))
         findings = r.get("findings", [])
         assert any("defaults_group_policy" in f.get("id", "") for f in findings)
 
     def test_group_policy_missing_per_channel(self, tmp_path):
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write_config(tmp_path, {
             "channels": {
                 "defaults": {"groupPolicy": "allowlist"},
                 "telegram": {"enabled": True},
             }
         })
-        r = _run(openclaw_group_policy_default_check(cfg))
+        r = _run(firm_group_policy_default_check(cfg))
         findings = r.get("findings", [])
         assert any("channels_missing_group_policy" in f.get("id", "") for f in findings)
 
@@ -255,24 +255,24 @@ class TestAdvancedSecurityExtreme:
 class TestGatewayHardeningExtreme:
 
     def test_auth_check_traversal(self):
-        from src.gateway_hardening import openclaw_gateway_auth_check
-        r = _run(openclaw_gateway_auth_check("../../../etc/passwd"))
+        from src.gateway_hardening import firm_gateway_auth_check
+        r = _run(firm_gateway_auth_check("../../../etc/passwd"))
         assert "error" in r
 
     def test_auth_check_no_file(self, tmp_path):
-        from src.gateway_hardening import openclaw_gateway_auth_check
-        r = _run(openclaw_gateway_auth_check(str(tmp_path / "nope.json")))
+        from src.gateway_hardening import firm_gateway_auth_check
+        r = _run(firm_gateway_auth_check(str(tmp_path / "nope.json")))
         assert r.get("status") == "no_config" or "severity" in r
 
     def test_auth_check_bad_json(self, tmp_path):
-        from src.gateway_hardening import openclaw_gateway_auth_check
+        from src.gateway_hardening import firm_gateway_auth_check
         p = tmp_path / "bad.json"
         p.write_text("not json!")
-        r = _run(openclaw_gateway_auth_check(str(p)))
+        r = _run(firm_gateway_auth_check(str(p)))
         assert "error" in r
 
     def test_auth_check_funnel_no_password(self, tmp_path):
-        from src.gateway_hardening import openclaw_gateway_auth_check
+        from src.gateway_hardening import firm_gateway_auth_check
         cfg = _write_config(tmp_path, {
             "gateway": {
                 "tailscale": {"mode": "funnel"},
@@ -281,33 +281,33 @@ class TestGatewayHardeningExtreme:
                 "bind": "0.0.0.0",
             }
         })
-        r = _run(openclaw_gateway_auth_check(cfg))
+        r = _run(firm_gateway_auth_check(cfg))
         findings = r.get("findings", [])
         assert len(findings) >= 1
 
     def test_auth_check_non_loopback_no_auth(self, tmp_path):
-        from src.gateway_hardening import openclaw_gateway_auth_check
+        from src.gateway_hardening import firm_gateway_auth_check
         cfg = _write_config(tmp_path, {
             "gateway": {"bind": "0.0.0.0"}
         })
-        r = _run(openclaw_gateway_auth_check(cfg))
+        r = _run(firm_gateway_auth_check(cfg))
         findings = r.get("findings", [])
         assert len(findings) >= 1
 
     # --- credentials_check ---
 
     def test_credentials_traversal(self):
-        from src.gateway_hardening import openclaw_credentials_check
-        r = _run(openclaw_credentials_check("../../../etc"))
+        from src.gateway_hardening import firm_credentials_check
+        r = _run(firm_credentials_check("../../../etc"))
         assert "error" in r
 
     def test_credentials_no_dir(self, tmp_path):
-        from src.gateway_hardening import openclaw_credentials_check
-        r = _run(openclaw_credentials_check(str(tmp_path / "nope")))
+        from src.gateway_hardening import firm_credentials_check
+        r = _run(firm_credentials_check(str(tmp_path / "nope")))
         assert r.get("status") == "no_credentials_dir" or "severity" in r
 
     def test_credentials_with_channels(self, tmp_path):
-        from src.gateway_hardening import openclaw_credentials_check
+        from src.gateway_hardening import firm_credentials_check
         creds_dir = tmp_path / "creds"
         creds_dir.mkdir()
         # Channel with creds.json
@@ -325,30 +325,30 @@ class TestGatewayHardeningExtreme:
         ch3 = creds_dir / "slack"
         ch3.mkdir()
         (ch3 / "other.json").write_text("{}")
-        r = _run(openclaw_credentials_check(str(creds_dir)))
+        r = _run(firm_credentials_check(str(creds_dir)))
         assert "channels" in r or "findings" in r
 
     # --- webhook_sig_check ---
 
     def test_webhook_sig_traversal(self):
-        from src.gateway_hardening import openclaw_webhook_sig_check
-        r = _run(openclaw_webhook_sig_check("../../../etc/passwd"))
+        from src.gateway_hardening import firm_webhook_sig_check
+        r = _run(firm_webhook_sig_check("../../../etc/passwd"))
         assert "error" in r
 
     def test_webhook_sig_no_config(self, tmp_path):
-        from src.gateway_hardening import openclaw_webhook_sig_check
-        r = _run(openclaw_webhook_sig_check(str(tmp_path / "nope.json")))
+        from src.gateway_hardening import firm_webhook_sig_check
+        r = _run(firm_webhook_sig_check(str(tmp_path / "nope.json")))
         assert "status" in r
 
     def test_webhook_sig_bad_json(self, tmp_path):
-        from src.gateway_hardening import openclaw_webhook_sig_check
+        from src.gateway_hardening import firm_webhook_sig_check
         p = tmp_path / "cfg.json"
         p.write_text("bad!")
-        r = _run(openclaw_webhook_sig_check(str(p)))
+        r = _run(firm_webhook_sig_check(str(p)))
         assert "error" in r
 
     def test_webhook_sig_with_channels(self, tmp_path):
-        from src.gateway_hardening import openclaw_webhook_sig_check
+        from src.gateway_hardening import firm_webhook_sig_check
         cfg = _write_config(tmp_path, {
             "channels": {
                 "telegram": {"webhookSecret": "sec123"},
@@ -356,55 +356,55 @@ class TestGatewayHardeningExtreme:
                 "slack": {"signingSecret": "slack-sec"},
             }
         })
-        r = _run(openclaw_webhook_sig_check(cfg))
+        r = _run(firm_webhook_sig_check(cfg))
         assert "findings" in r or "checked" in r
 
     # --- log_config_check ---
 
     def test_log_config_traversal(self):
-        from src.gateway_hardening import openclaw_log_config_check
-        r = _run(openclaw_log_config_check("../../../etc/passwd"))
+        from src.gateway_hardening import firm_log_config_check
+        r = _run(firm_log_config_check("../../../etc/passwd"))
         assert "error" in r
 
     def test_log_config_no_file(self, tmp_path):
-        from src.gateway_hardening import openclaw_log_config_check
-        r = _run(openclaw_log_config_check(str(tmp_path / "nope.json")))
+        from src.gateway_hardening import firm_log_config_check
+        r = _run(firm_log_config_check(str(tmp_path / "nope.json")))
         assert "status" in r
 
     def test_log_config_debug_level(self, tmp_path):
-        from src.gateway_hardening import openclaw_log_config_check
+        from src.gateway_hardening import firm_log_config_check
         cfg = _write_config(tmp_path, {"logging": {"level": "debug"}})
-        r = _run(openclaw_log_config_check(cfg))
+        r = _run(firm_log_config_check(cfg))
         findings = r.get("findings", [])
         assert len(findings) >= 1
 
     def test_log_config_invalid_level(self, tmp_path):
-        from src.gateway_hardening import openclaw_log_config_check
+        from src.gateway_hardening import firm_log_config_check
         cfg = _write_config(tmp_path, {"logging": {"level": "superdebug"}})
-        r = _run(openclaw_log_config_check(cfg))
+        r = _run(firm_log_config_check(cfg))
         findings = r.get("findings", [])
         assert len(findings) >= 1
 
     def test_log_config_no_redact(self, tmp_path):
-        from src.gateway_hardening import openclaw_log_config_check
+        from src.gateway_hardening import firm_log_config_check
         cfg = _write_config(tmp_path, {"logging": {"level": "info"}})
-        r = _run(openclaw_log_config_check(cfg))
+        r = _run(firm_log_config_check(cfg))
         assert "findings" in r
 
     # --- workspace_integrity_check ---
 
     def test_workspace_integrity_traversal(self):
-        from src.gateway_hardening import openclaw_workspace_integrity_check
-        r = _run(openclaw_workspace_integrity_check("../../../etc"))
+        from src.gateway_hardening import firm_workspace_integrity_check
+        r = _run(firm_workspace_integrity_check("../../../etc"))
         assert "error" in r
 
     def test_workspace_integrity_missing(self, tmp_path):
-        from src.gateway_hardening import openclaw_workspace_integrity_check
-        r = _run(openclaw_workspace_integrity_check(str(tmp_path / "nope")))
+        from src.gateway_hardening import firm_workspace_integrity_check
+        r = _run(firm_workspace_integrity_check(str(tmp_path / "nope")))
         assert "status" in r
 
     def test_workspace_integrity_full(self, tmp_path):
-        from src.gateway_hardening import openclaw_workspace_integrity_check
+        from src.gateway_hardening import firm_workspace_integrity_check
         ws = tmp_path / "ws"
         ws.mkdir()
         (ws / "AGENTS.md").write_text("# Agents")
@@ -421,7 +421,7 @@ class TestGatewayHardeningExtreme:
         sk = ws / "skills" / "my-skill"
         sk.mkdir(parents=True)
         (sk / "SKILL.md").write_text("# Skill")
-        r = _run(openclaw_workspace_integrity_check(str(ws)))
+        r = _run(firm_workspace_integrity_check(str(ws)))
         assert "findings" in r
 
 
@@ -432,58 +432,58 @@ class TestGatewayHardeningExtreme:
 class TestSecurityAuditExtreme:
 
     def test_security_scan_with_vuln(self, tmp_path):
-        from src.security_audit import openclaw_security_scan
+        from src.security_audit import firm_security_scan
         bad_file = tmp_path / "app.js"
         bad_file.write_text('db.query("SELECT * FROM users WHERE id=" + req.params.id)')
-        r = _run(openclaw_security_scan(str(tmp_path), scan_depth=1))
+        r = _run(firm_security_scan(str(tmp_path), scan_depth=1))
         assert "vulnerabilities" in r or "findings" in r
 
     def test_security_scan_with_endpoint(self, tmp_path):
-        from src.security_audit import openclaw_security_scan
+        from src.security_audit import firm_security_scan
         bad_file = tmp_path / "handler.js"
         bad_file.write_text('connection.query("DELETE FROM " + table)')
-        r = _run(openclaw_security_scan(str(tmp_path), endpoint="handler", scan_depth=1))
+        r = _run(firm_security_scan(str(tmp_path), endpoint="handler", scan_depth=1))
         assert "vulnerabilities" in r or "findings" in r
 
     def test_sandbox_not_found(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
-        r = _run(openclaw_sandbox_audit(str(tmp_path / "nope.json")))
+        from src.security_audit import firm_sandbox_audit
+        r = _run(firm_sandbox_audit(str(tmp_path / "nope.json")))
         assert r["ok"] is False
 
     def test_sandbox_unknown_mode(self, tmp_path):
-        from src.security_audit import openclaw_sandbox_audit
+        from src.security_audit import firm_sandbox_audit
         cfg = _write_config(tmp_path, {"security": {"mode": "something-else"}})
-        r = _run(openclaw_sandbox_audit(cfg))
+        r = _run(firm_sandbox_audit(cfg))
         assert "findings" in r or "finding" in r
 
     def test_session_config_no_files(self):
-        from src.security_audit import openclaw_session_config_check
-        r = _run(openclaw_session_config_check())
+        from src.security_audit import firm_session_config_check
+        r = _run(firm_session_config_check())
         assert r["ok"] is True
         assert "session_secret_found" in r or "severity" in r
 
     def test_session_config_compose_not_found(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
-        r = _run(openclaw_session_config_check(compose_file_path=str(tmp_path / "nope.yml")))
+        from src.security_audit import firm_session_config_check
+        r = _run(firm_session_config_check(compose_file_path=str(tmp_path / "nope.yml")))
         assert r["ok"] is True
 
     def test_session_config_env_file(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         env = tmp_path / ".env"
         env.write_text("SESSION_SECRET=my-secret-value\nOTHER=val")
-        r = _run(openclaw_session_config_check(env_file_path=str(env)))
+        r = _run(firm_session_config_check(env_file_path=str(env)))
         assert r["session_secret_found"] is True
 
     def test_rate_limit_not_found(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
-        r = _run(openclaw_rate_limit_check(str(tmp_path / "nope.json")))
+        from src.security_audit import firm_rate_limit_check
+        r = _run(firm_rate_limit_check(str(tmp_path / "nope.json")))
         assert r["ok"] is False
 
     def test_rate_limit_funnel_no_limiter(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
+        from src.security_audit import firm_rate_limit_check
         cfg = tmp_path / "gw.json"
         cfg.write_text(json.dumps({"funnel": True, "tailscale": {}}))
-        r = _run(openclaw_rate_limit_check(str(cfg)))
+        r = _run(firm_rate_limit_check(str(cfg)))
         assert "severity" in r
 
 
@@ -494,34 +494,34 @@ class TestSecurityAuditExtreme:
 class TestReliabilityProbeExtreme:
 
     def test_gateway_probe_unreachable(self):
-        from src.reliability_probe import openclaw_gateway_probe
-        r = _run(openclaw_gateway_probe("ws://127.0.0.1:19999", max_retries=1, backoff_factor=0.01))
+        from src.reliability_probe import firm_gateway_probe
+        r = _run(firm_gateway_probe("ws://127.0.0.1:19999", max_retries=1, backoff_factor=0.01))
         assert r["ok"] is False
         assert "attempts" in r
 
     def test_doc_sync_no_package(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
-        r = _run(openclaw_doc_sync_check(str(tmp_path / "nope.json")))
+        from src.reliability_probe import firm_doc_sync_check
+        r = _run(firm_doc_sync_check(str(tmp_path / "nope.json")))
         assert r["ok"] is False or "error" in r
 
     def test_doc_sync_no_md_files(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"express": "^4"}}))
-        r = _run(openclaw_doc_sync_check(str(pkg), docs_glob="*.nonexistent"))
+        r = _run(firm_doc_sync_check(str(pkg), docs_glob="*.nonexistent"))
         assert "note" in r or r.get("total_checked", 0) == 0
 
     def test_doc_sync_with_docs(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"express": "^4", "baileys": "^6"}}))
         readme = tmp_path / "README.md"
         readme.write_text("# Project\nUses express for HTTP server and baileys for WhatsApp")
-        r = _run(openclaw_doc_sync_check(str(pkg)))
+        r = _run(firm_doc_sync_check(str(pkg)))
         assert r["ok"] is True or "findings" in r
 
     def test_channel_audit_with_deps(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({
             "dependencies": {"baileys": "^6", "@line/bot-sdk": "^2"},
@@ -529,7 +529,7 @@ class TestReliabilityProbeExtreme:
         }))
         readme = tmp_path / "README.md"
         readme.write_text("# Project\nWhatsApp integration with baileys")
-        r = _run(openclaw_channel_audit(str(pkg), str(readme)))
+        r = _run(firm_channel_audit(str(pkg), str(readme)))
         assert "code_channels" in r or "findings" in r
 
 
@@ -864,19 +864,19 @@ class TestN8nBridgeExtreme:
         assert any("not found" in i.lower() for i in issues)
 
     def test_export_with_depends(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
+        from src.n8n_bridge import firm_n8n_workflow_export
         steps = [
             {"name": "step1", "type": "http_request", "params": {}},
             {"name": "step2", "type": "agent", "params": {}, "depends_on": ["step1"]},
         ]
         out = str(tmp_path / "wf.json")
-        r = _run(openclaw_n8n_workflow_export("deps-pipeline", steps, output_path=out))
+        r = _run(firm_n8n_workflow_export("deps-pipeline", steps, output_path=out))
         assert r["ok"] is True
         wf = json.loads(Path(out).read_text())
         assert "step1" in wf.get("connections", {})
 
     def test_import_with_cred_refs(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf = {
             "name": "test-import",
             "nodes": [{"type": "t", "name": "n1", "position": [0, 0], "credentials": {"apiKey": "secret"}}],
@@ -885,7 +885,7 @@ class TestN8nBridgeExtreme:
         wf_path = tmp_path / "wf.json"
         wf_path.write_text(json.dumps(wf))
         target = tmp_path / "imported"
-        r = _run(openclaw_n8n_workflow_import(str(wf_path), target_dir=str(target)))
+        r = _run(firm_n8n_workflow_import(str(wf_path), target_dir=str(target)))
         assert r["ok"] is True
         assert (target / "wf.json").exists()
 
@@ -897,71 +897,71 @@ class TestN8nBridgeExtreme:
 class TestPlatformAuditExtreme:
 
     def test_secrets_v2_with_inline(self, tmp_path):
-        from src.platform_audit import openclaw_secrets_v2_audit
+        from src.platform_audit import firm_secrets_v2_audit
         cfg = _write_config(tmp_path, {
             "auth": {"profiles": {"main": {"apiKey": "plaintext-key"}}},
             "secrets": {"managed": True, "snapshotActivated": False}
         })
-        r = openclaw_secrets_v2_audit(cfg)
+        r = firm_secrets_v2_audit(cfg)
         assert len(r.get("findings", [])) >= 1
 
     def test_agent_routing_with_routes(self, tmp_path):
-        from src.platform_audit import openclaw_agent_routing_check
+        from src.platform_audit import firm_agent_routing_check
         cfg = _write_config(tmp_path, {
             "agents": {"routes": [
                 {"pattern": ".*", "target": "default"},
                 {"pattern": "urgent", "target": "fast"},
             ]}
         })
-        r = openclaw_agent_routing_check(cfg)
+        r = firm_agent_routing_check(cfg)
         assert "findings" in r
 
     def test_voice_security_with_config(self, tmp_path):
-        from src.platform_audit import openclaw_voice_security_check
+        from src.platform_audit import firm_voice_security_check
         cfg = _write_config(tmp_path, {
             "voice": {"enabled": True, "tls": False, "provider": "twilio"}
         })
-        r = openclaw_voice_security_check(cfg)
+        r = firm_voice_security_check(cfg)
         assert "findings" in r
 
     def test_trust_model_check(self, tmp_path):
-        from src.platform_audit import openclaw_trust_model_check
+        from src.platform_audit import firm_trust_model_check
         cfg = _write_config(tmp_path, {
             "trust": {"mode": "permissive", "allowedOrigins": ["*"]}
         })
-        r = openclaw_trust_model_check(cfg)
+        r = firm_trust_model_check(cfg)
         assert "findings" in r
 
     def test_autoupdate_check(self, tmp_path):
-        from src.platform_audit import openclaw_autoupdate_check
+        from src.platform_audit import firm_autoupdate_check
         cfg = _write_config(tmp_path, {
             "update": {"auto": True, "channel": "stable"}
         })
-        r = openclaw_autoupdate_check(cfg)
+        r = firm_autoupdate_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_plugin_sdk_check(self, tmp_path):
-        from src.platform_audit import openclaw_plugin_sdk_check
+        from src.platform_audit import firm_plugin_sdk_check
         cfg = _write_config(tmp_path, {
             "plugins": {"sdk": {"version": "0.1.0"}, "entries": {"p1": {"type": "external"}}}
         })
-        r = openclaw_plugin_sdk_check(cfg)
+        r = firm_plugin_sdk_check(cfg)
         assert "findings" in r
 
     def test_content_boundary_check(self, tmp_path):
-        from src.platform_audit import openclaw_content_boundary_check
+        from src.platform_audit import firm_content_boundary_check
         cfg = _write_config(tmp_path, {
             "content": {"boundaries": []}
         })
-        r = openclaw_content_boundary_check(cfg)
+        r = firm_content_boundary_check(cfg)
         assert "findings" in r or "ok" in r
 
     def test_sqlite_vec_check(self, tmp_path):
-        from src.platform_audit import openclaw_sqlite_vec_check
+        from src.platform_audit import firm_sqlite_vec_check
         cfg = _write_config(tmp_path, {
             "vector": {"backend": "sqlite-vec", "dimensions": 1536}
         })
-        r = openclaw_sqlite_vec_check(cfg)
+        r = firm_sqlite_vec_check(cfg)
         assert "findings" in r or "ok" in r
 
 
@@ -972,43 +972,43 @@ class TestPlatformAuditExtreme:
 class TestConfigMigrationExtreme:
 
     def test_shell_env_with_dangerous_vars(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
         cfg = _write_config(tmp_path, {
             "agents": {"defaults": {"env": {"LD_PRELOAD": "/evil.so", "NORMAL": "ok"}}},
             "tools": {"exec": {"env": {"DYLD_LIBRARY_PATH": "/bad"}}},
         })
-        r = _run(openclaw_shell_env_check(cfg))
+        r = _run(firm_shell_env_check(cfg))
         findings = r.get("findings", [])
         assert any("ld_preload" in str(f).lower() or "dyld" in str(f).lower() for f in findings)
 
     def test_plugin_integrity_no_plugins(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = _write_config(tmp_path, {})
-        r = _run(openclaw_plugin_integrity_check(cfg))
+        r = _run(firm_plugin_integrity_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_token_separation_same_tokens(self, tmp_path):
-        from src.config_migration import openclaw_token_separation_check
+        from src.config_migration import firm_token_separation_check
         cfg = _write_config(tmp_path, {
             "auth": {"tokens": {"api": "same-token", "session": "same-token"}}
         })
-        r = _run(openclaw_token_separation_check(cfg))
+        r = _run(firm_token_separation_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_otel_redaction_check(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = _write_config(tmp_path, {
             "telemetry": {"otel": {"enabled": True, "endpoint": "https://otel.example.com"}}
         })
-        r = _run(openclaw_otel_redaction_check(cfg))
+        r = _run(firm_otel_redaction_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_rpc_rate_limit_with_config(self, tmp_path):
-        from src.config_migration import openclaw_rpc_rate_limit_check
+        from src.config_migration import firm_rpc_rate_limit_check
         cfg = _write_config(tmp_path, {
             "rpc": {"rateLimit": {"enabled": True, "maxPerMinute": 1000}}
         })
-        r = _run(openclaw_rpc_rate_limit_check(cfg))
+        r = _run(firm_rpc_rate_limit_check(cfg))
         assert "findings" in r or "ok" in r
 
 
@@ -1019,52 +1019,52 @@ class TestConfigMigrationExtreme:
 class TestRuntimeAuditExtreme:
 
     def test_secrets_workflow_check(self, tmp_path):
-        from src.runtime_audit import openclaw_secrets_workflow_check
+        from src.runtime_audit import firm_secrets_workflow_check
         cfg = _write_config(tmp_path, {
             "secrets": {"providers": [{"type": "env", "prefix": "SECRET_"}]}
         })
-        r = _run(openclaw_secrets_workflow_check(cfg))
+        r = _run(firm_secrets_workflow_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_http_headers_check(self, tmp_path):
-        from src.runtime_audit import openclaw_http_headers_check
+        from src.runtime_audit import firm_http_headers_check
         cfg = _write_config(tmp_path, {
             "gateway": {"bind": "0.0.0.0", "headers": {}}
         })
-        r = _run(openclaw_http_headers_check(cfg))
+        r = _run(firm_http_headers_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_nodes_commands_check(self, tmp_path):
-        from src.runtime_audit import openclaw_nodes_commands_check
+        from src.runtime_audit import firm_nodes_commands_check
         cfg = _write_config(tmp_path, {
             "nodes": {"allowCommands": ["rm", "curl", "wget"]}
         })
-        r = _run(openclaw_nodes_commands_check(cfg))
+        r = _run(firm_nodes_commands_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_trusted_proxy_check(self, tmp_path):
-        from src.runtime_audit import openclaw_trusted_proxy_check
+        from src.runtime_audit import firm_trusted_proxy_check
         cfg = _write_config(tmp_path, {
             "gateway": {"trustedProxies": ["0.0.0.0/0"]}
         })
-        r = _run(openclaw_trusted_proxy_check(cfg))
+        r = _run(firm_trusted_proxy_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_session_disk_budget(self, tmp_path):
-        from src.runtime_audit import openclaw_session_disk_budget_check
+        from src.runtime_audit import firm_session_disk_budget_check
         cfg = _write_config(tmp_path, {
             "sessions": {"diskBudget": {"maxMb": 100, "path": str(tmp_path)}}
         })
-        r = _run(openclaw_session_disk_budget_check(cfg))
+        r = _run(firm_session_disk_budget_check(cfg))
         assert "findings" in r or "ok" in r
 
     def test_dm_allowlist_with_channels(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
         cfg = _write_config(tmp_path, {
             "channels": {
                 "whatsapp": {"dmPolicy": "allow"},
                 "telegram": {},
             }
         })
-        r = _run(openclaw_dm_allowlist_check(cfg))
+        r = _run(firm_dm_allowlist_check(cfg))
         assert "findings" in r or "ok" in r

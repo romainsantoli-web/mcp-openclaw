@@ -45,34 +45,34 @@ def _fc(r):
 # ===================================================================
 class TestReliabilityProbeEdge:
     def test_doc_sync_corrupt_package(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text("NOT JSON!!!")
-        r = _parse(_run(openclaw_doc_sync_check(str(pkg), docs_glob="*.md")))
+        r = _parse(_run(firm_doc_sync_check(str(pkg), docs_glob="*.md")))
         assert isinstance(r, dict)
 
     def test_doc_sync_unreadable_md(self, tmp_path):
-        from src.reliability_probe import openclaw_doc_sync_check
+        from src.reliability_probe import firm_doc_sync_check
         pkg = tmp_path / "package.json"
         pkg.write_text(json.dumps({"dependencies": {"express": "^4.0.0"}}))
         md = tmp_path / "broken.md"
         md.write_bytes(b"\x80\x81\x82\x83")  # non-utf8
-        r = _parse(_run(openclaw_doc_sync_check(str(pkg), docs_glob="*.md")))
+        r = _parse(_run(firm_doc_sync_check(str(pkg), docs_glob="*.md")))
         assert isinstance(r, dict)
 
     def test_channel_audit_corrupt_package(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
         pkg = tmp_path / "package.json"
         pkg.write_text("{{{bad json")
         readme = tmp_path / "README.md"
         readme.write_text("# Hello")
-        r = _parse(_run(openclaw_channel_audit(str(pkg), str(readme))))
+        r = _parse(_run(firm_channel_audit(str(pkg), str(readme))))
         assert isinstance(r, dict)
 
     def test_gateway_probe_all_retries_fail(self):
-        from src.reliability_probe import openclaw_gateway_probe
+        from src.reliability_probe import firm_gateway_probe
         # Use an address that will refuse connection
-        r = _parse(_run(openclaw_gateway_probe(
+        r = _parse(_run(firm_gateway_probe(
             gateway_url="ws://127.0.0.1:19999", max_retries=1, backoff_factor=0.01)))
         assert r.get("ok") is False or "error" in json.dumps(r).lower()
 
@@ -112,15 +112,15 @@ class TestGatewayFleetEdge:
 # ===================================================================
 class TestHebbianRuntimeEdge:
     def test_harvest_bad_extension(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         csv_file = tmp_path / "data.csv"
         csv_file.write_text("a,b,c\n1,2,3")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(csv_file))))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_harvest_record_no_summary(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jsonl = tmp_path / "sessions.jsonl"
         lines = [
             json.dumps({"session_id": "s1", "timestamp": "2025-01-01T00:00:00Z"}),
@@ -129,13 +129,13 @@ class TestHebbianRuntimeEdge:
         jsonl.write_text("\n".join(lines))
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Rules\n- rule_a [0.50]\n- rule_b [0.50]\n")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(jsonl), claude_md_path=str(claude_md),
             db_path=str(tmp_path / "hebb.db"))))
         assert isinstance(r, dict)
 
     def test_harvest_duplicate_session(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jsonl = tmp_path / "sessions.jsonl"
         lines = [
             json.dumps({"session_id": "dup1", "summary": "test", "timestamp": "2025-01-01T00:00:00Z"}),
@@ -144,13 +144,13 @@ class TestHebbianRuntimeEdge:
         jsonl.write_text("\n".join(lines))
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Rules\n- rule_a [0.50]\n")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        r = _parse(_run(firm_hebbian_harvest(
             session_jsonl_path=str(jsonl), claude_md_path=str(claude_md),
             db_path=str(tmp_path / "hebb.db"))))
         assert isinstance(r, dict)
 
     def test_weight_update_with_db(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Rules\n- rule_alpha [0.50]\n- rule_beta [0.30]\n")
         db = tmp_path / "hebb.db"
@@ -160,12 +160,12 @@ class TestHebbianRuntimeEdge:
                      ("s1", "Tested rule_alpha", json.dumps(["rule_alpha"]), "2025-01-01"))
         conn.commit()
         conn.close()
-        r = _parse(_run(openclaw_hebbian_weight_update(
+        r = _parse(_run(firm_hebbian_weight_update(
             claude_md_path=str(claude_md), db_path=str(db), dry_run=True)))
         assert isinstance(r, dict)
 
     def test_weight_update_write_mode(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Rules\n- rule_gamma [0.50]\n")
         db = tmp_path / "hebb.db"
@@ -175,7 +175,7 @@ class TestHebbianRuntimeEdge:
                      ("s1", "Applied rule_gamma", json.dumps(["rule_gamma"]), "2025-01-01"))
         conn.commit()
         conn.close()
-        r = _parse(_run(openclaw_hebbian_weight_update(
+        r = _parse(_run(firm_hebbian_weight_update(
             claude_md_path=str(claude_md), db_path=str(db), dry_run=False)))
         assert isinstance(r, dict)
 
@@ -378,42 +378,42 @@ class TestComplianceMediumDeep:
 # ===================================================================
 class TestAdvancedSecurityDeep:
     def test_secrets_lifecycle_empty(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_secrets_lifecycle_check(cfg)))
+        r = _parse(_run(firm_secrets_lifecycle_check(cfg)))
         assert isinstance(r, dict)
 
     def test_secrets_lifecycle_inline_creds(self, tmp_path):
-        from src.advanced_security import openclaw_secrets_lifecycle_check
+        from src.advanced_security import firm_secrets_lifecycle_check
         cfg = _write(tmp_path, {"auth": {"profiles": {
             "slack": {"token": "xoxb-real-token", "secret": "$ENV_VAR"},
             "github": {"apiKey": "ghp_realPatHere1234"},
         }}})
-        r = _parse(_run(openclaw_secrets_lifecycle_check(cfg)))
+        r = _parse(_run(firm_secrets_lifecycle_check(cfg)))
         assert _fc(r) >= 1
 
     def test_channel_auth_canon_empty(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_channel_auth_canon_check(cfg)))
+        r = _parse(_run(firm_channel_auth_canon_check(cfg)))
         assert isinstance(r, dict)
 
     def test_channel_auth_canon_traversal(self, tmp_path):
-        from src.advanced_security import openclaw_channel_auth_canon_check
+        from src.advanced_security import firm_channel_auth_canon_check
         cfg = _write(tmp_path, {"plugins": {
             "webhook": {"httpPath": "/api/../admin", "webhookPath": "/hook/%2e%2e/secret"},
         }, "gateway": {"controlUi": {"basePath": "/../../etc"}}})
-        r = _parse(_run(openclaw_channel_auth_canon_check(cfg)))
+        r = _parse(_run(firm_channel_auth_canon_check(cfg)))
         assert _fc(r) >= 1
 
     def test_exec_approval_empty(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_exec_approval_freeze_check(cfg)))
+        r = _parse(_run(firm_exec_approval_freeze_check(cfg)))
         assert isinstance(r, dict)
 
     def test_exec_approval_allow_always(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         # Create exec-approvals.json alongside config
         approvals = tmp_path / "exec-approvals.json"
         approvals.write_text(json.dumps({
@@ -421,58 +421,58 @@ class TestAdvancedSecurityDeep:
             "node": {"mode": "ask-every-time"},
         }))
         cfg = _write(tmp_path, {"exec": {"approval": {"storeDir": str(tmp_path)}}})
-        r = _parse(_run(openclaw_exec_approval_freeze_check(cfg)))
+        r = _parse(_run(firm_exec_approval_freeze_check(cfg)))
         assert isinstance(r, dict)
 
     def test_hook_session_routing_empty(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_hook_session_routing_check(cfg)))
+        r = _parse(_run(firm_hook_session_routing_check(cfg)))
         assert isinstance(r, dict)
 
     def test_hook_session_unrestricted(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = _write(tmp_path, {"hooks": {
             "allowRequestSessionKey": True,
             "allowedKeyPrefixes": [],
         }})
-        r = _parse(_run(openclaw_hook_session_routing_check(cfg)))
+        r = _parse(_run(firm_hook_session_routing_check(cfg)))
         assert _fc(r) >= 1
 
     def test_config_include_empty(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_config_include_check(cfg)))
+        r = _parse(_run(firm_config_include_check(cfg)))
         assert isinstance(r, dict)
 
     def test_config_include_large_file(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         large = tmp_path / "big.yaml"
         large.write_text("x" * (2 * 1024 * 1024))  # 2MB
         cfg = _write(tmp_path, {"$include": str(large)})
-        r = _parse(_run(openclaw_config_include_check(cfg)))
+        r = _parse(_run(firm_config_include_check(cfg)))
         assert _fc(r) >= 1
 
     def test_config_prototype_empty(self, tmp_path):
-        from src.advanced_security import openclaw_config_prototype_check
+        from src.advanced_security import firm_config_prototype_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_config_prototype_check(cfg)))
+        r = _parse(_run(firm_config_prototype_check(cfg)))
         assert isinstance(r, dict)
 
     def test_safe_bins_empty(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_safe_bins_profile_check(cfg)))
+        r = _parse(_run(firm_safe_bins_profile_check(cfg)))
         assert isinstance(r, dict)
 
     def test_safe_bins_not_dict(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write(tmp_path, {"exec": "not-a-dict"})
-        r = _parse(_run(openclaw_safe_bins_profile_check(cfg)))
+        r = _parse(_run(firm_safe_bins_profile_check(cfg)))
         assert isinstance(r, dict)
 
     def test_safe_bins_dict_entries(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = _write(tmp_path, {"exec": {
             "allowedBins": [
                 "python",
@@ -481,17 +481,17 @@ class TestAdvancedSecurityDeep:
             ],
             "safeBinProfiles": {"strict": {"sandbox": True}},
         }})
-        r = _parse(_run(openclaw_safe_bins_profile_check(cfg)))
+        r = _parse(_run(firm_safe_bins_profile_check(cfg)))
         assert isinstance(r, dict)
 
     def test_group_policy_empty(self, tmp_path):
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_group_policy_default_check(cfg)))
+        r = _parse(_run(firm_group_policy_default_check(cfg)))
         assert isinstance(r, dict)
 
     def test_group_policy_non_allowlist(self, tmp_path):
-        from src.advanced_security import openclaw_group_policy_default_check
+        from src.advanced_security import firm_group_policy_default_check
         cfg = _write(tmp_path, {
             "channels": {
                 "defaults": {"groupPolicy": "passthrough"},
@@ -499,7 +499,7 @@ class TestAdvancedSecurityDeep:
                 "whatsapp": {"groupPolicy": "allowlist"},
             },
         })
-        r = _parse(_run(openclaw_group_policy_default_check(cfg)))
+        r = _parse(_run(firm_group_policy_default_check(cfg)))
         assert _fc(r) >= 1
 
 
@@ -508,13 +508,13 @@ class TestAdvancedSecurityDeep:
 # ===================================================================
 class TestEcosystemAuditDeep:
     def test_mcp_firewall_empty(self, tmp_path):
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_mcp_firewall_check(cfg))
+        r = _parse(firm_mcp_firewall_check(cfg))
         assert isinstance(r, dict)
 
     def test_mcp_firewall_dangerous_allow(self, tmp_path):
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {"mcp": {"firewall": {
             "allowlist": ["shell_exec", "file_write", "safe_tool"],
             "argSanitization": {},
@@ -522,11 +522,11 @@ class TestEcosystemAuditDeep:
             "secretLeakPrevention": {"enabled": False},
             "maxRequestSizeBytes": 0,
         }}})
-        r = _parse(openclaw_mcp_firewall_check(cfg))
+        r = _parse(firm_mcp_firewall_check(cfg))
         assert _fc(r) >= 1
 
     def test_mcp_firewall_no_blocklist(self, tmp_path):
-        from src.ecosystem_audit import openclaw_mcp_firewall_check
+        from src.ecosystem_audit import firm_mcp_firewall_check
         cfg = _write(tmp_path, {"mcp": {"firewall": {
             "blocklist": ["some_tool"],
             "argSanitization": None,
@@ -534,55 +534,55 @@ class TestEcosystemAuditDeep:
             "secretLeakPrevention": {},
             "maxRequestSizeBytes": 999999999,
         }}})
-        r = _parse(openclaw_mcp_firewall_check(cfg))
+        r = _parse(firm_mcp_firewall_check(cfg))
         assert _fc(r) >= 1
 
     def test_rag_empty(self, tmp_path):
-        from src.ecosystem_audit import openclaw_rag_pipeline_check
+        from src.ecosystem_audit import firm_rag_pipeline_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_rag_pipeline_check(cfg))
+        r = _parse(firm_rag_pipeline_check(cfg))
         assert isinstance(r, dict)
 
     def test_rag_no_config(self, tmp_path):
-        from src.ecosystem_audit import openclaw_rag_pipeline_check
+        from src.ecosystem_audit import firm_rag_pipeline_check
         cfg = _write(tmp_path, {"mcp": {}})
-        r = _parse(openclaw_rag_pipeline_check(cfg))
+        r = _parse(firm_rag_pipeline_check(cfg))
         assert isinstance(r, dict)
 
     def test_rag_hardcoded_conn(self, tmp_path):
-        from src.ecosystem_audit import openclaw_rag_pipeline_check
+        from src.ecosystem_audit import firm_rag_pipeline_check
         cfg = _write(tmp_path, {"rag": {
             "vectorStore": {"connection": "postgresql://user:pass@host/db"},
             "retrieval": {"topK": 50},
         }})
-        r = _parse(openclaw_rag_pipeline_check(cfg))
+        r = _parse(firm_rag_pipeline_check(cfg))
         assert _fc(r) >= 1
 
     def test_sandbox_exec_empty(self, tmp_path):
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_sandbox_exec_check(cfg))
+        r = _parse(firm_sandbox_exec_check(cfg))
         assert isinstance(r, dict)
 
     def test_sandbox_exec_no_config(self, tmp_path):
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write(tmp_path, {"mcp": {}})
-        r = _parse(openclaw_sandbox_exec_check(cfg))
+        r = _parse(firm_sandbox_exec_check(cfg))
         assert isinstance(r, dict)
 
     def test_sandbox_exec_no_limits(self, tmp_path):
-        from src.ecosystem_audit import openclaw_sandbox_exec_check
+        from src.ecosystem_audit import firm_sandbox_exec_check
         cfg = _write(tmp_path, {"mcp": {"sandbox": {
             "mode": "all",
             "network": {"enabled": True},
         }}})
-        r = _parse(openclaw_sandbox_exec_check(cfg))
+        r = _parse(firm_sandbox_exec_check(cfg))
         assert _fc(r) >= 1
 
     def test_context_health_critical(self, tmp_path):
-        from src.ecosystem_audit import openclaw_context_health_check
+        from src.ecosystem_audit import firm_context_health_check
         cfg = _write(tmp_path, {"mcp": {}})
-        r = _parse(openclaw_context_health_check(
+        r = _parse(firm_context_health_check(
             session_data={
                 "tokensUsed": 95000,
                 "maxTokens": 100000,
@@ -593,31 +593,31 @@ class TestEcosystemAuditDeep:
         assert isinstance(r, dict)
 
     def test_provenance_bad_algo(self):
-        from src.ecosystem_audit import openclaw_provenance_tracker
-        r = _parse(openclaw_provenance_tracker(action="status", algorithm="md4"))
+        from src.ecosystem_audit import firm_provenance_tracker
+        r = _parse(firm_provenance_tracker(action="status", algorithm="md4"))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_provenance_append_no_entry(self):
-        from src.ecosystem_audit import openclaw_provenance_tracker
-        r = _parse(openclaw_provenance_tracker(action="append"))
+        from src.ecosystem_audit import firm_provenance_tracker
+        r = _parse(firm_provenance_tracker(action="append"))
         assert isinstance(r, dict)
 
     def test_provenance_append_then_export(self, tmp_path):
-        from src.ecosystem_audit import openclaw_provenance_tracker, _PROVENANCE_CHAIN
+        from src.ecosystem_audit import firm_provenance_tracker, _PROVENANCE_CHAIN
         _PROVENANCE_CHAIN.clear()
-        openclaw_provenance_tracker(action="append", entry={
+        firm_provenance_tracker(action="append", entry={
             "tool": "test_tool", "input": "x", "output": "y"})
-        openclaw_provenance_tracker(action="append", entry={
+        firm_provenance_tracker(action="append", entry={
             "tool": "test_tool_2", "input": "a", "output": "b"})
         out = tmp_path / "chain.json"
-        r = _parse(openclaw_provenance_tracker(
+        r = _parse(firm_provenance_tracker(
             action="export", chain_path=str(out)))
         assert isinstance(r, dict)
 
     def test_cost_over_budget(self, tmp_path):
-        from src.ecosystem_audit import openclaw_cost_analytics
+        from src.ecosystem_audit import firm_cost_analytics
         cfg = _write(tmp_path, {"mcp": {"budget": {"maxDailyUsd": 1.0}}})
-        r = _parse(openclaw_cost_analytics(
+        r = _parse(firm_cost_analytics(
             session_data={
                 "tokensUsed": 500000,
                 "model": "claude-3-opus",
@@ -627,9 +627,9 @@ class TestEcosystemAuditDeep:
         assert isinstance(r, dict)
 
     def test_token_budget_all_recs(self, tmp_path):
-        from src.ecosystem_audit import openclaw_token_budget_optimizer
+        from src.ecosystem_audit import firm_token_budget_optimizer
         cfg = _write(tmp_path, {"mcp": {}})
-        r = _parse(openclaw_token_budget_optimizer(
+        r = _parse(firm_token_budget_optimizer(
             session_data={
                 "tokensUsed": 100000,
                 "maxTokens": 200000,
@@ -651,34 +651,34 @@ class TestEcosystemAuditDeep:
 # ===================================================================
 class TestSkillLoaderDeep:
     def test_loader_nonexistent_in_cache(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
+        from src.skill_loader import firm_skill_lazy_loader
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: A\ntags: [test]\n---\n# A\nDesc")
         # Load first to populate cache
-        _run(openclaw_skill_lazy_loader(skills_dir=str(tmp_path)))
+        _run(firm_skill_lazy_loader(skills_dir=str(tmp_path)))
         # Now request a non-existent skill from cache
-        r = _parse(_run(openclaw_skill_lazy_loader(
+        r = _parse(_run(firm_skill_lazy_loader(
             skills_dir=str(tmp_path), skill_name="nonexistent")))
         assert "error" in json.dumps(r).lower() or isinstance(r, dict)
 
     def test_loader_skip_non_dirs(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader
+        from src.skill_loader import firm_skill_lazy_loader
         (tmp_path / "not-a-dir.txt").write_text("hello")
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: A\ntags: [x]\n---\n# A\nDesc")
-        r = _parse(_run(openclaw_skill_lazy_loader(
+        r = _parse(_run(firm_skill_lazy_loader(
             skills_dir=str(tmp_path), refresh=True)))
         assert isinstance(r, dict)
 
     def test_search_tag_no_match(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader, openclaw_skill_search
+        from src.skill_loader import firm_skill_lazy_loader, firm_skill_search
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: A\ntags: [security]\n---\n# A\nSecurity tool")
-        _run(openclaw_skill_lazy_loader(skills_dir=str(tmp_path), refresh=True))
-        r = _parse(_run(openclaw_skill_search(
+        _run(firm_skill_lazy_loader(skills_dir=str(tmp_path), refresh=True))
+        r = _parse(_run(firm_skill_search(
             skills_dir=str(tmp_path), query="security", tags=["finance"])))
         assert isinstance(r, dict)
 

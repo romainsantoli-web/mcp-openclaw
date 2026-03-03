@@ -1,11 +1,11 @@
 """
-vs_bridge.py — VS Code ↔ OpenClaw bidirectional context bridge
-Vide #4 : premier bridge VS Code ↔ OpenClaw de l'écosystème
+vs_bridge.py — VS Code ↔ Firm bidirectional context bridge
+Vide #4 : premier bridge VS Code ↔ Firm de l'écosystème
 
 Tools exposed:
-  vs_context_push  — envoie le contexte VS Code vers une session OpenClaw
-  vs_context_pull  — récupère le contexte d'une session OpenClaw dans VS Code
-  vs_session_link  — associe un workspace VS Code à une session OpenClaw
+  vs_context_push  — envoie le contexte VS Code vers une session the server
+  vs_context_pull  — récupère le contexte d'une session the server dans VS Code
+  vs_session_link  — associe un workspace VS Code à une session the server
   vs_session_status — statut de la liaison courante
 """
 
@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-GATEWAY_URL: str = os.getenv("OPENCLAW_GATEWAY_URL", "ws://127.0.0.1:18789")
-GATEWAY_HTTP: str = os.getenv("OPENCLAW_GATEWAY_HTTP", "http://127.0.0.1:18789")
-GATEWAY_TOKEN: str | None = os.getenv("OPENCLAW_GATEWAY_TOKEN")
-WS_TIMEOUT: float = float(os.getenv("OPENCLAW_TIMEOUT_SECONDS", "15"))
+GATEWAY_URL: str = os.getenv("FIRM_GATEWAY_URL", "ws://127.0.0.1:18789")
+GATEWAY_HTTP: str = os.getenv("FIRM_GATEWAY_HTTP", "http://127.0.0.1:18789")
+GATEWAY_TOKEN: str | None = os.getenv("FIRM_GATEWAY_TOKEN")
+WS_TIMEOUT: float = float(os.getenv("FIRM_TIMEOUT_SECONDS", "15"))
 MAX_CONTEXT_BYTES: int = int(os.getenv("VS_BRIDGE_MAX_CONTEXT_BYTES", str(32 * 1024)))  # 32 KB
 
 # In-memory session registry for this process (workspace_path → session_id)
@@ -84,7 +84,7 @@ def _build_ws_headers() -> dict[str, str]:
 
 
 async def _ws_rpc(method: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Send one JSON-RPC call to the OpenClaw Gateway and return the result."""
+    """Send one JSON-RPC call to the Gateway and return the result."""
     msg_id = int(time.time() * 1000)
     payload = json.dumps({"jsonrpc": "2.0", "id": msg_id, "method": method, "params": params})
 
@@ -127,10 +127,10 @@ async def vs_context_push(
     session_id: str | None = None,
 ) -> dict[str, Any]:
     """
-    Push current VS Code workspace context into an OpenClaw session.
+    Push current VS Code workspace context into a server session.
 
     The context is injected into the session via ``sessions.patch`` so the
-    OpenClaw agent can reference recent editor state in its next response.
+    Firm agent can reference recent editor state in its next response.
 
     Args:
         workspace_path: Absolute path of the VS Code workspace root.
@@ -139,7 +139,7 @@ async def vs_context_push(
         recent_changes: List of recent file change events (path + summary).
         agent_last_action: Description of the last Copilot agent action taken.
         agent_last_result: Result/output of the last Copilot agent action.
-        session_id: Target OpenClaw session. Defaults to the linked session for
+        session_id: Target Firm session. Defaults to the linked session for
                     this workspace, or "main" if not linked.
 
     Returns:
@@ -193,14 +193,14 @@ async def vs_context_pull(
     workspace_path: str | None = None,
 ) -> dict[str, Any]:
     """
-    Pull the latest OpenClaw session context back into VS Code.
+    Pull the latest Firm session context back into VS Code.
 
     Retrieves session metadata (model, tokens, last agent message, memory
     summary) from the Gateway so VS Code extensions / Copilot agents can
-    reference what OpenClaw has been doing.
+    reference what Firm has been doing.
 
     Args:
-        session_id: Source OpenClaw session (default: "main").
+        session_id: Source Firm session (default: "main").
         workspace_path: If provided, narrows the pull to the linked workspace.
 
     Returns:
@@ -231,7 +231,7 @@ async def vs_session_link(
     session_id: str,
 ) -> dict[str, Any]:
     """
-    Associate a VS Code workspace with a specific OpenClaw session.
+    Associate a VS Code workspace with a specific Firm session.
 
     Once linked, vs_context_push / vs_context_pull will use this session
     by default for the workspace, eliminating the need to pass session_id
@@ -239,7 +239,7 @@ async def vs_session_link(
 
     Args:
         workspace_path: Absolute path of the VS Code workspace root.
-        session_id: OpenClaw session ID to link (e.g. "main", "session-42").
+        session_id: Firm session ID to link (e.g. "main", "session-42").
 
     Returns:
         dict with keys: ok, workspace_path, session_id, previous_session.
@@ -269,7 +269,7 @@ async def vs_session_link(
 
 async def vs_session_status(workspace_path: str | None = None) -> dict[str, Any]:
     """
-    Return the current VS Code ↔ OpenClaw bridge status.
+    Return the current VS Code ↔ Firm bridge status.
 
     Args:
         workspace_path: Filter to a specific workspace. If None, returns all
@@ -308,9 +308,9 @@ TOOLS: list[dict[str, Any]] = [
         "title": "Push VS Code Context",
         "description": (
             "Push the current VS Code workspace context (open files, active file, "
-            "recent changes, last agent action) into an OpenClaw session so the "
-            "OpenClaw agent can reference it. "
-            "This is the first VS Code ↔ OpenClaw bridge in the ecosystem."
+            "recent changes, last agent action) into a server session so the "
+            "Firm agent can reference it. "
+            "This is the first VS Code ↔ Firm bridge in the ecosystem."
         ),
         "inputSchema": {
             "type": "object",
@@ -321,7 +321,7 @@ TOOLS: list[dict[str, Any]] = [
                 "recent_changes": {"type": "array", "description": "Recent file change events"},
                 "agent_last_action": {"type": "string", "description": "Last Copilot agent action"},
                 "agent_last_result": {"type": "string", "description": "Output of last agent action"},
-                "session_id": {"type": "string", "description": "Target OpenClaw session (default: main)"},
+                "session_id": {"type": "string", "description": "Target Firm session (default: main)"},
             },
             "required": ["workspace_path"],
         },
@@ -332,15 +332,15 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "vs_context_pull",
-        "title": "Pull OpenClaw Context",
+        "title": "Pull Firm Context",
         "description": (
-            "Pull the OpenClaw session context (model, tokens, last message, workspace) "
-            "back into VS Code. Enables Copilot agents to know what OpenClaw has been doing."
+            "Pull the session context (model, tokens, last message, workspace) "
+            "back into VS Code. Enables Copilot agents to know what Firm has been doing."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "session_id": {"type": "string", "description": "Source OpenClaw session (default: main)"},
+                "session_id": {"type": "string", "description": "Source Firm session (default: main)"},
                 "workspace_path": {"type": "string", "description": "Filter to linked workspace"},
             },
         },
@@ -353,7 +353,7 @@ TOOLS: list[dict[str, Any]] = [
         "name": "vs_session_link",
         "title": "Link VS Code Session",
         "description": (
-            "Associate a VS Code workspace with a specific OpenClaw session. "
+            "Associate a VS Code workspace with a specific Firm session. "
             "Once linked, push/pull calls use this session automatically."
         ),
         "inputSchema": {

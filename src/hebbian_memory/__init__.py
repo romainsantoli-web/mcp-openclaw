@@ -1,5 +1,5 @@
 """
-hebbian_memory — Adaptive Hebbian memory system for OpenClaw (package).
+hebbian_memory — Adaptive Hebbian memory system for the server (package).
 
 Split from a 1560-line monolith into 4 submodules:
   _helpers.py    — constants, PII patterns, utility functions
@@ -18,20 +18,20 @@ from typing import Any
 
 # Re-export all public tool functions
 from ._runtime import (  # noqa: F401
-    openclaw_hebbian_harvest,
-    openclaw_hebbian_weight_update,
+    firm_hebbian_harvest,
+    firm_hebbian_weight_update,
     _compute_hebbian_weights,
     _apply_weight_changes,
 )
 from ._analysis import (  # noqa: F401
-    openclaw_hebbian_analyze,
-    openclaw_hebbian_status,
+    firm_hebbian_analyze,
+    firm_hebbian_status,
 )
 from ._validation import (  # noqa: F401
-    openclaw_hebbian_layer_validate,
-    openclaw_hebbian_pii_check,
-    openclaw_hebbian_decay_config_check,
-    openclaw_hebbian_drift_check,
+    firm_hebbian_layer_validate,
+    firm_hebbian_pii_check,
+    firm_hebbian_decay_config_check,
+    firm_hebbian_drift_check,
 )
 from ._helpers import (  # noqa: F401
     _init_db,
@@ -44,7 +44,7 @@ from ._helpers import (  # noqa: F401
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_hebbian_harvest",
+        "name": "firm_hebbian_harvest",
         "title": "Hebbian Session Harvest",
         "description": (
             "Ingest JSONL session logs into the local Hebbian SQLite database. "
@@ -54,20 +54,20 @@ TOOLS: list[dict[str, Any]] = [
         "category": "hebbian_memory",
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-        "handler": openclaw_hebbian_harvest,
+        "handler": firm_hebbian_harvest,
         "inputSchema": {
             "type": "object",
             "properties": {
                 "session_jsonl_path": {"type": "string", "description": "Path to JSONL file with session data."},
                 "claude_md_path": {"type": "string", "description": "Optional Claude.md path for rule activation matching."},
-                "db_path": {"type": "string", "description": "SQLite database path. Default: ~/.openclaw/hebbian.db."},
+                "db_path": {"type": "string", "description": "SQLite database path. Default: ~/.firm/hebbian.db."},
                 "max_lines": {"type": "integer", "description": "Max lines to ingest. Default: 50000."},
             },
             "required": ["session_jsonl_path"],
         },
     },
     {
-        "name": "openclaw_hebbian_weight_update",
+        "name": "firm_hebbian_weight_update",
         "title": "Hebbian Weight Update",
         "description": (
             "Compute or apply Hebbian weight updates on Layer 2 rules in Claude.md. "
@@ -77,7 +77,7 @@ TOOLS: list[dict[str, Any]] = [
         "category": "hebbian_memory",
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-        "handler": openclaw_hebbian_weight_update,
+        "handler": firm_hebbian_weight_update,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -91,7 +91,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_hebbian_analyze",
+        "name": "firm_hebbian_analyze",
         "title": "Hebbian Co-Activation Analysis",
         "description": (
             "Analyze co-activation patterns from harvested sessions. "
@@ -101,7 +101,7 @@ TOOLS: list[dict[str, Any]] = [
         "category": "hebbian_memory",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-        "handler": openclaw_hebbian_analyze,
+        "handler": firm_hebbian_analyze,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -113,7 +113,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_hebbian_status",
+        "name": "firm_hebbian_status",
         "title": "Hebbian Memory Dashboard",
         "description": (
             "Dashboard: total sessions, Layer 2 rule weights, atrophy/promotion candidates, "
@@ -122,7 +122,7 @@ TOOLS: list[dict[str, Any]] = [
         "category": "hebbian_memory",
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-        "handler": openclaw_hebbian_status,
+        "handler": firm_hebbian_status,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -133,7 +133,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_hebbian_layer_validate",
+        "name": "firm_hebbian_layer_validate",
         "title": "Hebbian Layer Validation",
         "description": (
             "Validate the 4-layer structure of a Hebbian-augmented Claude.md: "
@@ -150,7 +150,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"],
         },
-        "handler": openclaw_hebbian_layer_validate,
+        "handler": firm_hebbian_layer_validate,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -160,7 +160,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_hebbian_pii_check",
+        "name": "firm_hebbian_pii_check",
         "title": "Hebbian PII Stripping Check",
         "description": (
             "Audit PII stripping configuration: regex patterns (email, phone, IP, API keys), "
@@ -177,18 +177,18 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"],
         },
-        "handler": openclaw_hebbian_pii_check,
+        "handler": firm_hebbian_pii_check,
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "Path to OpenClaw config JSON."},
+                "config_path": {"type": "string", "description": "Path to the server config JSON."},
                 "config_data": {"type": "object", "description": "Inline config dict (for testing)."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_hebbian_decay_config_check",
+        "name": "firm_hebbian_decay_config_check",
         "title": "Hebbian Decay Config Check",
         "description": (
             "Validate Hebbian parameters: learning_rate, decay, poids_min/max, "
@@ -205,18 +205,18 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"],
         },
-        "handler": openclaw_hebbian_decay_config_check,
+        "handler": firm_hebbian_decay_config_check,
         "inputSchema": {
             "type": "object",
             "properties": {
-                "config_path": {"type": "string", "description": "Path to OpenClaw config JSON."},
+                "config_path": {"type": "string", "description": "Path to the server config JSON."},
                 "config_data": {"type": "object", "description": "Inline config dict (for testing)."},
             },
             "required": [],
         },
     },
     {
-        "name": "openclaw_hebbian_drift_check",
+        "name": "firm_hebbian_drift_check",
         "title": "Hebbian Semantic Drift Check",
         "description": (
             "Detect Claude.md semantic drift vs a baseline using TF-IDF cosine similarity. "
@@ -233,7 +233,7 @@ TOOLS: list[dict[str, Any]] = [
             },
             "required": ["ok", "severity", "findings", "finding_count"],
         },
-        "handler": openclaw_hebbian_drift_check,
+        "handler": firm_hebbian_drift_check,
         "inputSchema": {
             "type": "object",
             "properties": {

@@ -33,7 +33,7 @@ JIRA_USER_EMAIL: str | None = os.getenv("JIRA_USER_EMAIL")
 LINEAR_API_KEY: str | None = os.getenv("LINEAR_API_KEY")
 SLACK_WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL")
 
-OUTPUT_DIR: str = os.getenv("FIRM_EXPORT_OUTPUT_DIR", os.path.expanduser("~/.openclaw/exports"))
+OUTPUT_DIR: str = os.getenv("FIRM_EXPORT_OUTPUT_DIR", os.path.expanduser("~/.firm/exports"))
 HTTP_TIMEOUT: float = float(os.getenv("EXPORT_HTTP_TIMEOUT_SECONDS", "20"))
 MAX_BODY_CHARS: int = int(os.getenv("EXPORT_MAX_BODY_CHARS", str(64_000)))
 

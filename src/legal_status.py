@@ -9,11 +9,11 @@ Implements 5 tools for the Legal Status department:
   - Creation compliance checklist
 
 Tools exposed (5):
-  openclaw_legal_status_compare       — multi-criteria legal form comparison
-  openclaw_legal_tax_simulate         — IS/IR simulation over 3-5 years
-  openclaw_legal_social_protection    — social protection analysis by status
-  openclaw_legal_governance_audit     — governance structure recommendations
-  openclaw_legal_creation_checklist   — post-creation compliance checklist
+  firm_legal_status_compare       — multi-criteria legal form comparison
+  firm_legal_tax_simulate         — IS/IR simulation over 3-5 years
+  firm_legal_social_protection    — social protection analysis by status
+  firm_legal_governance_audit     — governance structure recommendations
+  firm_legal_creation_checklist   — post-creation compliance checklist
 """
 
 from __future__ import annotations
@@ -612,7 +612,7 @@ async def handle_legal_creation_checklist(arguments: dict[str, Any]) -> list[dic
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_legal_status_compare",
+        "name": "firm_legal_status_compare",
         "title": "Legal Status — Compare Legal Forms",
         "description": "Compare legal forms (SAS, SARL, SASU, EURL, etc.) with multi-criteria scoring matrix. Analyzes liability, tax regime, social charges, fundraising flexibility, and governance.",
         "category": "legal_status",
@@ -632,7 +632,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_legal_tax_simulate",
+        "name": "firm_legal_tax_simulate",
         "title": "Legal Status — Tax Simulation",
         "description": "Tax simulation IS vs IR over 3-5 years. Includes salary/dividend optimization, holding structure benefits, and effective tax rate calculation.",
         "category": "legal_status",
@@ -653,7 +653,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_legal_social_protection",
+        "name": "firm_legal_social_protection",
         "title": "Legal Status — Social Protection Analysis",
         "description": "Social protection analysis by status — TNS vs assimilé salarié vs micro-entrepreneur. Compares charges, retirement, health, and unemployment coverage.",
         "category": "legal_status",
@@ -670,7 +670,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_legal_governance_audit",
+        "name": "firm_legal_governance_audit",
         "title": "Legal Status — Governance Audit",
         "description": "Governance structure audit — recommends statutory clauses, pactes d'associés, and governance organs based on legal form and investor involvement.",
         "category": "legal_status",
@@ -688,7 +688,7 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "openclaw_legal_creation_checklist",
+        "name": "firm_legal_creation_checklist",
         "title": "Legal Status — Creation Checklist",
         "description": "Post-creation compliance checklist — steps, costs, timeline, and annual obligations for the chosen legal form.",
         "category": "legal_status",

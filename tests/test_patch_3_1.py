@@ -1,5 +1,5 @@
 """
-Tests for OpenClaw 2026.3.1 patches — covers all new/modified tools.
+Tests for the server 2026.3.1 patches — covers all new/modified tools.
 
 Tests cover:
   - P0: systemRunPlan (advanced_security)
@@ -9,7 +9,7 @@ Tests cover:
   - P2: ACPX version pin (acp_bridge)
   - P2: Claude 4.6 adaptive thinking (platform_audit)
   - P3: Discord thread lifecycle (reliability_probe)
-  - P3: OPENCLAW_SHELL env marker (config_migration)
+  - P3: FIRM_SHELL env marker (config_migration)
 """
 
 import asyncio
@@ -26,7 +26,7 @@ class TestSystemRunPlan:
     """P0: tools.exec with host=node must have systemRunPlan when approval active."""
 
     def test_system_run_plan_required(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
 
         cfg = {
             "tools": {
@@ -36,14 +36,14 @@ class TestSystemRunPlan:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_exec_approval_freeze_check(config_path=str(p)))
+        r = _run(firm_exec_approval_freeze_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "system_run_plan_required" in findings_ids
 
     def test_system_run_plan_not_triggered_when_never(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
 
         cfg = {
             "tools": {
@@ -53,14 +53,14 @@ class TestSystemRunPlan:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_exec_approval_freeze_check(config_path=str(p)))
+        r = _run(firm_exec_approval_freeze_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "system_run_plan_required" not in findings_ids
 
     def test_system_run_plan_docker_host_skip(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
 
         cfg = {
             "tools": {
@@ -70,9 +70,9 @@ class TestSystemRunPlan:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_exec_approval_freeze_check(config_path=str(p)))
+        r = _run(firm_exec_approval_freeze_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "system_run_plan_required" not in findings_ids
 
@@ -83,7 +83,7 @@ class TestRealpathCanonical:
     """P0: allowCommands entries must be canonical (realpath) paths."""
 
     def test_non_canonical_path_detected(self, tmp_path):
-        from src.runtime_audit import openclaw_nodes_commands_check
+        from src.runtime_audit import firm_nodes_commands_check
 
         cfg = {
             "gateway": {
@@ -92,14 +92,14 @@ class TestRealpathCanonical:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_nodes_commands_check(config_path=str(p)))
+        r = _run(firm_nodes_commands_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "allow_commands_non_canonical_path" in findings_ids
 
     def test_canonical_path_ok(self, tmp_path):
-        from src.runtime_audit import openclaw_nodes_commands_check
+        from src.runtime_audit import firm_nodes_commands_check
 
         cfg = {
             "gateway": {
@@ -108,9 +108,9 @@ class TestRealpathCanonical:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_nodes_commands_check(config_path=str(p)))
+        r = _run(firm_nodes_commands_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "allow_commands_non_canonical_path" not in findings_ids
 
@@ -135,7 +135,7 @@ class TestRequireTopicTelegram:
     """P2: requireTopic check for Telegram DM channels (2026.3.1)."""
 
     def test_require_topic_missing(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
 
         cfg = {
             "channels": {
@@ -146,14 +146,14 @@ class TestRequireTopicTelegram:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_dm_allowlist_check(config_path=str(p)))
+        r = _run(firm_dm_allowlist_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "telegram_require_topic_missing" in findings_ids
 
     def test_require_topic_true_empty_allowlist(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
 
         cfg = {
             "channels": {
@@ -164,14 +164,14 @@ class TestRequireTopicTelegram:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_dm_allowlist_check(config_path=str(p)))
+        r = _run(firm_dm_allowlist_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "telegram_topic_allowlist_empty" in findings_ids
 
     def test_require_topic_set_with_allowlist(self, tmp_path):
-        from src.runtime_audit import openclaw_dm_allowlist_check
+        from src.runtime_audit import firm_dm_allowlist_check
 
         cfg = {
             "channels": {
@@ -181,9 +181,9 @@ class TestRequireTopicTelegram:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_dm_allowlist_check(config_path=str(p)))
+        r = _run(firm_dm_allowlist_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
         assert "telegram_require_topic_missing" not in findings_ids
         assert "telegram_topic_allowlist_empty" not in findings_ids
@@ -195,7 +195,7 @@ class TestAcpxVersionCheck:
     """P2: ACPX plugin version pin and streaming mode check."""
 
     def test_acpx_old_version_critical(self, tmp_path):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
         cfg = {
             "plugins": {
@@ -205,14 +205,14 @@ class TestAcpxVersionCheck:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_acpx_version_check(config_path=str(p)))
+        r = _run(firm_acpx_version_check(config_path=str(p)))
         assert r["severity"] == "CRITICAL"
         assert any("acpx_version_too_old" == f["id"] for f in r["findings"])
 
     def test_acpx_correct_version(self, tmp_path):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
         cfg = {
             "plugins": {
@@ -222,14 +222,14 @@ class TestAcpxVersionCheck:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_acpx_version_check(config_path=str(p)))
+        r = _run(firm_acpx_version_check(config_path=str(p)))
         assert r["ok"] is True
         assert r["severity"] == "OK"
 
     def test_acpx_unpinned_version(self, tmp_path):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
         cfg = {
             "plugins": {
@@ -238,13 +238,13 @@ class TestAcpxVersionCheck:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_acpx_version_check(config_path=str(p)))
+        r = _run(firm_acpx_version_check(config_path=str(p)))
         assert any("acpx_version_unpinned" == f["id"] for f in r["findings"])
 
     def test_acpx_wrong_streaming(self, tmp_path):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
         cfg = {
             "plugins": {
@@ -254,25 +254,25 @@ class TestAcpxVersionCheck:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_acpx_version_check(config_path=str(p)))
+        r = _run(firm_acpx_version_check(config_path=str(p)))
         assert any("acpx_streaming_not_final_only" == f["id"] for f in r["findings"])
 
     def test_acpx_not_configured(self, tmp_path):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
         cfg = {"plugins": {}}
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_acpx_version_check(config_path=str(p)))
+        r = _run(firm_acpx_version_check(config_path=str(p)))
         assert r["ok"] is True
         assert any("acpx_not_configured" == f["id"] for f in r["findings"])
 
     def test_acpx_config_not_found(self):
-        from src.acp_bridge import openclaw_acpx_version_check
+        from src.acp_bridge import firm_acpx_version_check
 
-        r = _run(openclaw_acpx_version_check(config_path="/nonexistent/path/openclaw.json"))
+        r = _run(firm_acpx_version_check(config_path="/nonexistent/path/config.json"))
         assert r["ok"] is True  # INFO severity only
 
 
@@ -282,7 +282,7 @@ class TestAdaptiveThinking:
     """P2: Claude 4.6 adaptive thinking configuration check."""
 
     def test_thinking_disabled_is_critical(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -292,14 +292,14 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         assert r["severity"] == "CRITICAL"
         assert any("claude46_thinking_disabled" == f["id"] for f in r["findings"])
 
     def test_thinking_low_is_high(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -309,13 +309,13 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         assert r["severity"] == "HIGH"
 
     def test_thinking_adaptive_ok(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -325,13 +325,13 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         assert r["ok"] is True
 
     def test_thinking_no_mode_default_ok(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -340,14 +340,14 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         # INFO severity only — default adaptive applies
         assert r["ok"] is True
 
     def test_per_agent_override_detected(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -358,14 +358,14 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         assert r["severity"] == "CRITICAL"
         assert any("claude46_agent_researcher_thinking_disabled" == f["id"] for f in r["findings"])
 
     def test_non_claude46_ignored(self, tmp_path):
-        from src.platform_audit import openclaw_adaptive_thinking_check
+        from src.platform_audit import firm_adaptive_thinking_check
 
         cfg = {
             "agents": {
@@ -375,9 +375,9 @@ class TestAdaptiveThinking:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = openclaw_adaptive_thinking_check(config_path=str(p))
+        r = firm_adaptive_thinking_check(config_path=str(p))
         assert r["ok"] is True
         assert r["severity"] == "OK"
 
@@ -388,11 +388,11 @@ class TestDiscordThreadLifecycle:
     """P3: Discord idle/maxAge hours check in channel_audit."""
 
     def test_discord_idle_hours_missing(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
 
         pkg = {
             "dependencies": {"discord.js": "14.0.0"},
-            "openclaw": {
+            "firm": {
                 "channels": {
                     "discord": {"threads": {}}
                 }
@@ -403,18 +403,18 @@ class TestDiscordThreadLifecycle:
         p.write_text(json.dumps(pkg))
         r = tmp_path / "README.md"
         r.write_text(readme)
-        result = _run(openclaw_channel_audit(str(p), str(r)))
+        result = _run(firm_channel_audit(str(p), str(r)))
         assert isinstance(result.get("discord_thread_lifecycle"), list)
         lifecycle = result["discord_thread_lifecycle"]
         findings_text = [f["finding"] for f in lifecycle]
         assert any("idleHours" in t for t in findings_text)
 
     def test_discord_max_age_missing(self, tmp_path):
-        from src.reliability_probe import openclaw_channel_audit
+        from src.reliability_probe import firm_channel_audit
 
         pkg = {
             "dependencies": {"discord.js": "14.0.0"},
-            "openclaw": {
+            "firm": {
                 "channels": {
                     "discord": {"threads": {"idleHours": 24}}
                 }
@@ -425,19 +425,19 @@ class TestDiscordThreadLifecycle:
         p.write_text(json.dumps(pkg))
         r = tmp_path / "README.md"
         r.write_text(readme)
-        result = _run(openclaw_channel_audit(str(p), str(r)))
+        result = _run(firm_channel_audit(str(p), str(r)))
         lifecycle = result.get("discord_thread_lifecycle", [])
         findings_text = [f["finding"] for f in lifecycle]
         assert any("maxAgeHours" in t for t in findings_text)
 
 
-# ── P3: OPENCLAW_SHELL env marker ───────────────────────────────────────────
+# ── P3: FIRM_SHELL env marker ───────────────────────────────────────────
 
 class TestOpenclawShellMarker:
-    """P3: OPENCLAW_SHELL env marker check in shell_env_check."""
+    """P3: FIRM_SHELL env marker check in shell_env_check."""
 
     def test_marker_missing(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
 
         cfg = {
             "agents": {
@@ -446,27 +446,27 @@ class TestOpenclawShellMarker:
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_shell_env_check(config_path=str(p)))
+        r = _run(firm_shell_env_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
-        assert "openclaw_shell_marker_missing" in findings_ids
+        assert "firm_shell_marker_missing" in findings_ids
 
     def test_marker_present(self, tmp_path):
-        from src.config_migration import openclaw_shell_env_check
+        from src.config_migration import firm_shell_env_check
 
         cfg = {
             "agents": {
                 "defaults": {
-                    "env": {"PATH": "/usr/bin", "OPENCLAW_SHELL": "1"}
+                    "env": {"PATH": "/usr/bin", "FIRM_SHELL": "1"}
                 }
             }
         }
-        p = tmp_path / "openclaw.json"
+        p = tmp_path / "config.json"
         p.write_text(json.dumps(cfg))
-        r = _run(openclaw_shell_env_check(config_path=str(p)))
+        r = _run(firm_shell_env_check(config_path=str(p)))
         findings_ids = [f["id"] for f in r.get("findings", [])]
-        assert "openclaw_shell_marker_missing" not in findings_ids
+        assert "firm_shell_marker_missing" not in findings_ids
 
 
 # ── Pydantic model tests ────────────────────────────────────────────────────
@@ -476,11 +476,11 @@ class TestPydanticModels:
 
     def test_acpx_model_registered(self):
         from src.models import TOOL_MODELS
-        assert "openclaw_acpx_version_check" in TOOL_MODELS
+        assert "firm_acpx_version_check" in TOOL_MODELS
 
     def test_adaptive_thinking_model_registered(self):
         from src.models import TOOL_MODELS
-        assert "openclaw_adaptive_thinking_check" in TOOL_MODELS
+        assert "firm_adaptive_thinking_check" in TOOL_MODELS
 
     def test_gateway_probe_has_health_field(self):
         from src.models import GatewayProbeInput

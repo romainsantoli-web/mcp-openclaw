@@ -1,8 +1,8 @@
 """
-i18n_audit.py — Internationalization audit tool for OpenClaw
+i18n_audit.py — Internationalization audit tool for the server
 
 Tools exposed:
-  openclaw_i18n_audit — verify translation files, detect missing keys, validate ICU format
+  firm_i18n_audit — verify translation files, detect missing keys, validate ICU format
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ _ICU_PATTERN = re.compile(r"\{[^}]+,\s*(plural|select|selectordinal)\s*,")
 _INTERPOLATION_PATTERN = re.compile(r"\{\{?\s*\w+\s*\}?\}")
 
 
-async def openclaw_i18n_audit(
+async def firm_i18n_audit(
     project_path: str,
     base_locale: str = "en",
     locale_dir: str | None = None,
@@ -249,7 +249,7 @@ def _parse_simple(raw: str) -> dict[str, str]:
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "openclaw_i18n_audit",
+        "name": "firm_i18n_audit",
         "title": "i18n Localization Audit",
         "description": (
             "Audits internationalization files for missing keys, empty values, "
@@ -257,7 +257,7 @@ TOOLS: list[dict[str, Any]] = [
             "Gap T5/issue #3460: i18n audit was most-requested feature (71 comments)."
         ),
         "category": "i18n",
-        "handler": openclaw_i18n_audit,
+        "handler": firm_i18n_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
             "type": "object",

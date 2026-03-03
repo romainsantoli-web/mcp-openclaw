@@ -15,15 +15,15 @@ class TestToolsRegistry:
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
         expected = {
-            "openclaw_secrets_v2_audit",
-            "openclaw_agent_routing_check",
-            "openclaw_voice_security_check",
-            "openclaw_trust_model_check",
-            "openclaw_autoupdate_check",
-            "openclaw_plugin_sdk_check",
-            "openclaw_content_boundary_check",
-            "openclaw_sqlite_vec_check",
-            "openclaw_adaptive_thinking_check",
+            "firm_secrets_v2_audit",
+            "firm_agent_routing_check",
+            "firm_voice_security_check",
+            "firm_trust_model_check",
+            "firm_autoupdate_check",
+            "firm_plugin_sdk_check",
+            "firm_content_boundary_check",
+            "firm_sqlite_vec_check",
+            "firm_adaptive_thinking_check",
         }
         assert names == expected
 

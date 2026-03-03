@@ -18,14 +18,14 @@ from src.a2a_bridge import (
     _file_part,
     _data_part,
     _validate_agent_card,
-    openclaw_a2a_card_generate,
-    openclaw_a2a_card_validate,
-    openclaw_a2a_task_send,
-    openclaw_a2a_task_status,
-    openclaw_a2a_cancel_task,
-    openclaw_a2a_subscribe_task,
-    openclaw_a2a_push_config,
-    openclaw_a2a_discovery,
+    firm_a2a_card_generate,
+    firm_a2a_card_validate,
+    firm_a2a_task_send,
+    firm_a2a_task_status,
+    firm_a2a_cancel_task,
+    firm_a2a_subscribe_task,
+    firm_a2a_push_config,
+    firm_a2a_discovery,
     TOOLS,
 )
 
@@ -138,19 +138,19 @@ class TestCardGenerateTool:
     def test_card_generate_ok(self, tmp_path):
         soul = tmp_path / "SOUL.md"
         soul.write_text("---\nname: ToolBot\n---\n# Skills\n## Default\n")
-        result = openclaw_a2a_card_generate(str(soul), "https://example.com")
+        result = firm_a2a_card_generate(str(soul), "https://example.com")
         assert result["ok"] is True
         assert result["a2a_spec_version"] == A2A_SPEC_VERSION
 
     def test_card_generate_with_sign(self, tmp_path):
         soul = tmp_path / "SOUL.md"
         soul.write_text("---\nname: SignBot\n---\n# Skills\n## Default\n")
-        result = openclaw_a2a_card_generate(str(soul), "https://example.com", sign=True, signing_key="sk-123")
+        result = firm_a2a_card_generate(str(soul), "https://example.com", sign=True, signing_key="sk-123")
         assert "signature" in result
         assert result["signature"]["signed"] is True
 
     def test_card_generate_missing_file(self):
-        result = openclaw_a2a_card_generate("/nonexistent/SOUL.md", "https://example.com")
+        result = firm_a2a_card_generate("/nonexistent/SOUL.md", "https://example.com")
         assert result["ok"] is False
         assert "error" in result
 
@@ -158,7 +158,7 @@ class TestCardGenerateTool:
         soul = tmp_path / "SOUL.md"
         soul.write_text("---\nname: OutBot\n---\n# Skills\n## Default\n")
         out = tmp_path / "card.json"
-        result = openclaw_a2a_card_generate(str(soul), "https://example.com", output_path=str(out))
+        result = firm_a2a_card_generate(str(soul), "https://example.com", output_path=str(out))
         assert result["ok"] is True
         assert out.exists()
         data = json.loads(out.read_text())
@@ -167,77 +167,77 @@ class TestCardGenerateTool:
 
 class TestCardValidateTool:
     def test_validate_valid_card(self, sample_agent_card):
-        result = openclaw_a2a_card_validate(card_json=sample_agent_card)
+        result = firm_a2a_card_validate(card_json=sample_agent_card)
         assert result["ok"] is True
         assert result["a2a_spec_version"] == A2A_SPEC_VERSION
 
     def test_validate_from_file(self, tmp_path, sample_agent_card):
         card_file = tmp_path / "card.json"
         card_file.write_text(json.dumps(sample_agent_card))
-        result = openclaw_a2a_card_validate(card_path=str(card_file))
+        result = firm_a2a_card_validate(card_path=str(card_file))
         assert result["ok"] is True
 
     def test_validate_missing_file(self):
-        result = openclaw_a2a_card_validate(card_path="/nonexistent.json")
+        result = firm_a2a_card_validate(card_path="/nonexistent.json")
         assert result["ok"] is False
 
     def test_validate_no_input(self):
-        result = openclaw_a2a_card_validate()
+        result = firm_a2a_card_validate()
         assert result["ok"] is False
 
 
 class TestTaskLifecycle:
     @pytest.mark.asyncio
     async def test_task_send_ok(self):
-        result = await openclaw_a2a_task_send("https://remote.example.com/agent", "Hello")
+        result = await firm_a2a_task_send("https://remote.example.com/agent", "Hello")
         assert result["ok"] is True
         assert result["a2a_method"] == "SendMessage"
         assert "task_id" in result
 
     @pytest.mark.asyncio
     async def test_task_send_ssrf_localhost(self):
-        result = await openclaw_a2a_task_send("http://localhost:8080/agent", "Evil")
+        result = await firm_a2a_task_send("http://localhost:8080/agent", "Evil")
         assert result["ok"] is False
         assert "ssrf" in result.get("error", "").lower() or "blocked" in result.get("error", "").lower()
 
     @pytest.mark.asyncio
     async def test_task_send_invalid_scheme(self):
-        result = await openclaw_a2a_task_send("ftp://bad.com/agent", "Test")
+        result = await firm_a2a_task_send("ftp://bad.com/agent", "Test")
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_task_send_blocking(self):
-        result = await openclaw_a2a_task_send("https://remote.example.com/agent", "Hello", blocking=True)
+        result = await firm_a2a_task_send("https://remote.example.com/agent", "Hello", blocking=True)
         assert result["ok"] is True
         assert result["status"]["state"] == "completed"
 
     @pytest.mark.asyncio
     async def test_task_status_get(self):
-        send_result = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
+        send_result = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
         task_id = send_result["task_id"]
-        status_result = await openclaw_a2a_task_status(task_id=task_id)
+        status_result = await firm_a2a_task_status(task_id=task_id)
         assert status_result["ok"] is True
         assert status_result["a2a_method"] == "GetTask"
         assert status_result["task_id"] == task_id
 
     @pytest.mark.asyncio
     async def test_task_status_not_found(self):
-        result = await openclaw_a2a_task_status(task_id="nonexistent-id")
+        result = await firm_a2a_task_status(task_id="nonexistent-id")
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_task_list(self):
-        await openclaw_a2a_task_send("https://remote.example.com/a", "T1")
-        await openclaw_a2a_task_send("https://remote.example.com/b", "T2")
-        result = await openclaw_a2a_task_status()
+        await firm_a2a_task_send("https://remote.example.com/a", "T1")
+        await firm_a2a_task_send("https://remote.example.com/b", "T2")
+        result = await firm_a2a_task_status()
         assert result["ok"] is True
         assert result["a2a_method"] == "ListTasks"
         assert result["total"] == 2
 
     @pytest.mark.asyncio
     async def test_task_status_with_history(self):
-        send_result = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
-        result = await openclaw_a2a_task_status(task_id=send_result["task_id"], include_history=True)
+        send_result = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
+        result = await firm_a2a_task_status(task_id=send_result["task_id"], include_history=True)
         assert "history" in result
         assert len(result["history"]) >= 1
 
@@ -245,30 +245,30 @@ class TestTaskLifecycle:
 class TestCancelTask:
     @pytest.mark.asyncio
     async def test_cancel_working_task(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Long task")
-        result = await openclaw_a2a_cancel_task(send["task_id"])
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Long task")
+        result = await firm_a2a_cancel_task(send["task_id"])
         assert result["ok"] is True
         assert result["a2a_method"] == "CancelTask"
         assert result["status"]["state"] == "canceled"
 
     @pytest.mark.asyncio
     async def test_cancel_completed_task_fails(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Quick", blocking=True)
-        result = await openclaw_a2a_cancel_task(send["task_id"])
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Quick", blocking=True)
+        result = await firm_a2a_cancel_task(send["task_id"])
         assert result["ok"] is False
         assert "terminal" in result.get("error", "").lower()
 
     @pytest.mark.asyncio
     async def test_cancel_nonexistent(self):
-        result = await openclaw_a2a_cancel_task("no-such-task")
+        result = await firm_a2a_cancel_task("no-such-task")
         assert result["ok"] is False
 
 
 class TestSubscribeTask:
     @pytest.mark.asyncio
     async def test_subscribe_ok(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
-        result = await openclaw_a2a_subscribe_task(send["task_id"])
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
+        result = await firm_a2a_subscribe_task(send["task_id"])
         assert result["ok"] is True
         assert result["a2a_method"] == "SubscribeToTask"
         assert result["streaming"] is True
@@ -276,55 +276,55 @@ class TestSubscribeTask:
 
     @pytest.mark.asyncio
     async def test_subscribe_completed_with_artifacts(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Done", blocking=True)
-        result = await openclaw_a2a_subscribe_task(send["task_id"])
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Done", blocking=True)
+        result = await firm_a2a_subscribe_task(send["task_id"])
         assert result["ok"] is True
         artifact_events = [e for e in result["initial_events"] if e["type"] == "TaskArtifactUpdateEvent"]
         assert len(artifact_events) >= 1
 
     @pytest.mark.asyncio
     async def test_subscribe_nonexistent(self):
-        result = await openclaw_a2a_subscribe_task("no-task")
+        result = await firm_a2a_subscribe_task("no-task")
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_subscribe_ssrf_callback(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
-        result = await openclaw_a2a_subscribe_task(send["task_id"], callback_url="http://127.0.0.1:9999/hook")
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
+        result = await firm_a2a_subscribe_task(send["task_id"], callback_url="http://127.0.0.1:9999/hook")
         assert result["ok"] is False
 
 
 class TestPushConfig:
     @pytest.mark.asyncio
     async def test_push_create_and_list(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
         tid = send["task_id"]
-        create = openclaw_a2a_push_config(tid, action="create", webhook_url="https://hooks.example.com/cb")
+        create = firm_a2a_push_config(tid, action="create", webhook_url="https://hooks.example.com/cb")
         assert create["ok"] is True
-        lst = openclaw_a2a_push_config(tid, action="list")
+        lst = firm_a2a_push_config(tid, action="list")
         assert lst["total"] == 1
 
     @pytest.mark.asyncio
     async def test_push_get_and_delete(self):
-        send = await openclaw_a2a_task_send("https://remote.example.com/agent", "Test")
+        send = await firm_a2a_task_send("https://remote.example.com/agent", "Test")
         tid = send["task_id"]
-        create = openclaw_a2a_push_config(tid, action="create", webhook_url="https://hooks.example.com/cb")
+        create = firm_a2a_push_config(tid, action="create", webhook_url="https://hooks.example.com/cb")
         cfg_id = create["config"]["id"]
-        get = openclaw_a2a_push_config(tid, action="get", config_id=cfg_id)
+        get = firm_a2a_push_config(tid, action="get", config_id=cfg_id)
         assert get["ok"] is True
-        delete = openclaw_a2a_push_config(tid, action="delete", config_id=cfg_id)
+        delete = firm_a2a_push_config(tid, action="delete", config_id=cfg_id)
         assert delete["ok"] is True
-        lst = openclaw_a2a_push_config(tid, action="list")
+        lst = firm_a2a_push_config(tid, action="list")
         assert lst["total"] == 0
 
     def test_push_ssrf_blocked(self):
         from src.a2a_bridge import _TASKS
         _TASKS["fake"] = {"id": "fake", "status": {"state": "working"}}
-        result = openclaw_a2a_push_config("fake", action="create", webhook_url="http://localhost/hook")
+        result = firm_a2a_push_config("fake", action="create", webhook_url="http://localhost/hook")
         assert result["ok"] is False
 
     def test_push_nonexistent_task(self):
-        result = openclaw_a2a_push_config("nope", action="list")
+        result = firm_a2a_push_config("nope", action="list")
         assert result["ok"] is False
 
 
@@ -332,21 +332,21 @@ class TestDiscovery:
     @pytest.mark.asyncio
     async def test_discovery_local_souls(self, soul_dir):
         d = soul_dir({"ceo": "---\nname: CEO\n---\n# Skills\n## Strategy\n## Leadership\n"})
-        result = await openclaw_a2a_discovery(souls_dir=d)
+        result = await firm_a2a_discovery(souls_dir=d)
         assert result["ok"] is True
         assert result["total"] == 1
         assert result["agents"][0]["name"] == "CEO"
 
     @pytest.mark.asyncio
     async def test_discovery_remote_urls(self):
-        result = await openclaw_a2a_discovery(urls=["https://agents.example.com/bot1"])
+        result = await firm_a2a_discovery(urls=["https://agents.example.com/bot1"])
         assert result["ok"] is True
         assert result["total"] == 1
         assert result["agents"][0]["source"] == "remote"
 
     @pytest.mark.asyncio
     async def test_discovery_invalid_dir(self):
-        result = await openclaw_a2a_discovery(souls_dir="/nonexistent")
+        result = await firm_a2a_discovery(souls_dir="/nonexistent")
         assert result["ok"] is False
 
 
@@ -359,7 +359,7 @@ class TestToolsRegistry:
             assert "name" in tool
             assert "handler" in tool
             assert "inputSchema" in tool
-            assert tool["name"].startswith("openclaw_a2a_")
+            assert tool["name"].startswith("firm_a2a_")
 
     def test_spec_version(self):
         assert A2A_SPEC_VERSION == "1.0.0-rc"

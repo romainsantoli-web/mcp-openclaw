@@ -225,63 +225,63 @@ class TestFleetCronSchedule:
 
 class TestWorkspaceLock:
     def test_path_traversal(self):
-        from src.acp_bridge import openclaw_workspace_lock
-        r = _run(openclaw_workspace_lock(path="../etc/passwd", action="acquire", owner="test"))
+        from src.acp_bridge import firm_workspace_lock
+        r = _run(firm_workspace_lock(path="../etc/passwd", action="acquire", owner="test"))
         assert r["ok"] is False
         assert ".." in r["error"]
 
     def test_invalid_action(self):
-        from src.acp_bridge import openclaw_workspace_lock
-        r = _run(openclaw_workspace_lock(path="test.json", action="delete", owner="test"))
+        from src.acp_bridge import firm_workspace_lock
+        r = _run(firm_workspace_lock(path="test.json", action="delete", owner="test"))
         assert r["ok"] is False
 
     def test_status_no_lock(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
-            r = _run(openclaw_workspace_lock(path="myfile.json", action="status", owner="test"))
+            from src.acp_bridge import firm_workspace_lock
+            r = _run(firm_workspace_lock(path="myfile.json", action="status", owner="test"))
             assert r["ok"] is True
             assert r["locked"] is False
 
     def test_acquire_and_status(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
-            r = _run(openclaw_workspace_lock(path="myfile.json", action="acquire", owner="agent-1"))
+            from src.acp_bridge import firm_workspace_lock
+            r = _run(firm_workspace_lock(path="myfile.json", action="acquire", owner="agent-1"))
             assert r["ok"] is True
             assert r["locked"] is True
 
-            r2 = _run(openclaw_workspace_lock(path="myfile.json", action="status", owner="anyone"))
+            r2 = _run(firm_workspace_lock(path="myfile.json", action="status", owner="anyone"))
             assert r2["locked"] is True
             assert r2["lock_owner"] == "agent-1"
 
     def test_release_no_lock(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
-            r = _run(openclaw_workspace_lock(path="myfile.json", action="release", owner="test"))
+            from src.acp_bridge import firm_workspace_lock
+            r = _run(firm_workspace_lock(path="myfile.json", action="release", owner="test"))
             assert r["ok"] is True
             assert "nothing to release" in r["note"].lower()
 
     def test_release_wrong_owner(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
-            _run(openclaw_workspace_lock(path="file.json", action="acquire", owner="agent-1"))
-            r = _run(openclaw_workspace_lock(path="file.json", action="release", owner="agent-2"))
+            from src.acp_bridge import firm_workspace_lock
+            _run(firm_workspace_lock(path="file.json", action="acquire", owner="agent-1"))
+            r = _run(firm_workspace_lock(path="file.json", action="release", owner="agent-2"))
             assert r["ok"] is False
             assert "owned by" in r["error"]
 
     def test_release_correct_owner(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
-            _run(openclaw_workspace_lock(path="file.json", action="acquire", owner="agent-1"))
-            r = _run(openclaw_workspace_lock(path="file.json", action="release", owner="agent-1"))
+            from src.acp_bridge import firm_workspace_lock
+            _run(firm_workspace_lock(path="file.json", action="acquire", owner="agent-1"))
+            r = _run(firm_workspace_lock(path="file.json", action="release", owner="agent-1"))
             assert r["ok"] is True
 
     def test_acquire_timeout(self, tmp_path):
         with patch("src.acp_bridge.WORKSPACE_LOCKS_DIR", str(tmp_path)):
-            from src.acp_bridge import openclaw_workspace_lock
+            from src.acp_bridge import firm_workspace_lock
             # Acquire first lock
-            _run(openclaw_workspace_lock(path="busy.json", action="acquire", owner="holder"))
+            _run(firm_workspace_lock(path="busy.json", action="acquire", owner="holder"))
             # Try to acquire same lock with short timeout
-            r = _run(openclaw_workspace_lock(path="busy.json", action="acquire", owner="waiter", timeout_s=0.2))
+            r = _run(firm_workspace_lock(path="busy.json", action="acquire", owner="waiter", timeout_s=0.2))
             assert r["ok"] is False
             assert "Timed out" in r["error"]
 

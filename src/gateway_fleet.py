@@ -1,5 +1,5 @@
 """
-gateway_fleet.py — Multi-instance OpenClaw Gateway fleet manager
+gateway_fleet.py — Multi-instance Firm Gateway fleet manager
 Vide #5 : gestion centralisée d'une flotte de Gateways pour équipes
 
 Tools exposed:
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 FLEET_CONFIG_PATH: str = os.getenv(
     "FLEET_CONFIG_PATH",
-    os.path.expanduser("~/.openclaw/fleet.json"),
+    os.path.expanduser("~/.firm/fleet.json"),
 )
 FLEET_HEALTH_TIMEOUT: float = float(os.getenv("FLEET_HEALTH_TIMEOUT_SECONDS", "8"))
 FLEET_MAX_INSTANCES: int = int(os.getenv("FLEET_MAX_INSTANCES", "50"))
@@ -474,7 +474,7 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "firm_gateway_fleet_status",
         "title": "Fleet Health Check",
-        "description": "Health check all registered OpenClaw Gateway instances. Runs parallel /health checks and returns latency, version and session counts.",
+        "description": "Health check all registered Firm Gateway instances. Runs parallel /health checks and returns latency, version and session counts.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -490,7 +490,7 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "firm_gateway_fleet_add",
         "title": "Add Fleet Instance",
-        "description": "Register a new OpenClaw Gateway instance in the fleet. Verifies connectivity before saving.",
+        "description": "Register a new Firm Gateway instance in the fleet. Verifies connectivity before saving.",
         "inputSchema": {
             "type": "object",
             "properties": {

@@ -88,7 +88,7 @@ def _apply_weight_changes(content: str, changes: list[dict[str, Any]]) -> str:
 # ── Tool 1: harvest ──────────────────────────────────────────────────────────
 
 
-async def openclaw_hebbian_harvest(
+async def firm_hebbian_harvest(
     session_jsonl_path: str,
     claude_md_path: str | None = None,
     db_path: str | None = None,
@@ -193,7 +193,7 @@ async def openclaw_hebbian_harvest(
 # ── Tool 2: weight_update ───────────────────────────────────────────────────
 
 
-async def openclaw_hebbian_weight_update(
+async def firm_hebbian_weight_update(
     claude_md_path: str,
     db_path: str | None = None,
     learning_rate: float = _DEFAULT_LEARNING_RATE,

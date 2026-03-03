@@ -89,7 +89,7 @@ class TestCheckSsrf:
 
 class TestNoPathTraversal:
     def test_clean_path(self):
-        result = no_path_traversal("/var/config/openclaw.json")
+        result = no_path_traversal("/var/config/config.json")
         assert result is None
 
     def test_dotdot_blocked(self):

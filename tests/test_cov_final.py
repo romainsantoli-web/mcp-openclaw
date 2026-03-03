@@ -35,7 +35,7 @@ def _run(coro):
 
 
 def _write_config(tmp_path: Path, data: dict) -> str:
-    p = tmp_path / "openclaw.json"
+    p = tmp_path / "config.json"
     p.write_text(json.dumps(data), encoding="utf-8")
     return str(p)
 
@@ -525,44 +525,44 @@ class TestSupplierRiskMonitor:
 
 class TestConfigMigrationDeeper:
     def test_plugin_no_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"my-plugin": {"source": "npm"}}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert r["status"] == "high"
         ids = [f["id"] for f in r["findings"]]
         assert "plugin_no_version_my-plugin" in ids
         assert "plugin_no_integrity_my-plugin" in ids
 
     def test_plugin_loose_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": {"version": "^1.0.0", "source": "npm"}}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert any("loose_version" in f["id"] for f in r["findings"])
 
     def test_plugin_latest_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": {"version": "latest", "source": "npm"}}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert any("loose_version" in f["id"] for f in r["findings"])
 
     def test_plugin_tilde_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": {"version": "~2.0.0", "source": "git"}}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert any("loose_version" in f["id"] for f in r["findings"])
 
     def test_plugin_star_version(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": {"version": "*", "source": "url"}}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert any("loose_version" in f["id"] for f in r["findings"])
 
     def test_plugin_with_integrity(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": {
             "version": "1.2.3", "integrity": "sha256-abc123", "source": "npm",
         }}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         # Should be clean — no version or integrity findings
         ids = [f["id"] for f in r["findings"]]
         assert not any("no_version" in i for i in ids)
@@ -570,7 +570,7 @@ class TestConfigMigrationDeeper:
 
     def test_plugin_drift_detection(self, tmp_path):
         """Test manifest drift detection (lines 256-279)."""
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
 
         cfg = {"plugins": {"entries": {"test-plugin": {"version": "1.0.0", "source": "npm"}}}}
         cfg_path = _write_config(tmp_path, cfg)
@@ -588,51 +588,51 @@ class TestConfigMigrationDeeper:
 
         with patch("src.config_migration._PLUGIN_MANIFEST", manifest_path), \
              patch("src.config_migration._PLUGINS_DIR", plugins_dir):
-            r = _run(openclaw_plugin_integrity_check(cfg_path))
+            r = _run(firm_plugin_integrity_check(cfg_path))
         # Drift finding should be present
         assert any("drift" in f["id"] for f in r.get("findings", []))
 
     def test_plugin_non_dict_entry(self, tmp_path):
-        from src.config_migration import openclaw_plugin_integrity_check
+        from src.config_migration import firm_plugin_integrity_check
         cfg = {"plugins": {"entries": {"p1": "not-a-dict"}}}
-        r = _run(openclaw_plugin_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_plugin_integrity_check(_write_config(tmp_path, cfg)))
         assert r["status"] == "ok"
 
     def test_otel_inline_auth(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = {"otel": {"endpoint": "https://user:pass@otel.example.com/v1/traces"}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         assert any("inline_auth" in f["id"] for f in r.get("findings", []))
 
     def test_otel_sensitive_header(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = {"otel": {"headers": {"Authorization": "Bearer sk-1234"}}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         assert any("header_inline" in f["id"] for f in r.get("findings", []))
 
     def test_otel_sensitive_span_attr(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = {"otel": {"spanAttributes": {"api_key": "secret123"}}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         assert any("span_attr" in f["id"] for f in r.get("findings", []))
 
     def test_otel_redaction_disabled(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = {"otel": {"endpoint": "https://otel.example.com", "redaction": {"enabled": False}}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         assert any("redaction_disabled" in f["id"] for f in r.get("findings", []))
 
     def test_otel_no_redaction_config(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         # redaction must be non-dict (e.g., null) to reach the elif branch
         cfg = {"otel": {"enabled": True, "endpoint": "https://otel.example.com", "redaction": None}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         assert any("no_redaction_config" in f["id"] for f in r.get("findings", []))
 
     def test_otel_header_env_ref_ok(self, tmp_path):
-        from src.config_migration import openclaw_otel_redaction_check
+        from src.config_migration import firm_otel_redaction_check
         cfg = {"otel": {"headers": {"Authorization": "$OTEL_AUTH_TOKEN"}}}
-        r = _run(openclaw_otel_redaction_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_otel_redaction_check(_write_config(tmp_path, cfg)))
         # env var ref should not trigger inline warning
         assert not any("header_inline" in f["id"] for f in r.get("findings", []))
 
@@ -751,49 +751,49 @@ class TestSpecComplianceDeeper:
 
 class TestSecurityAuditDeeper:
     def test_vuln_scan_with_files(self, tmp_path):
-        from src.security_audit import openclaw_security_scan
+        from src.security_audit import firm_security_scan
         # Create a file with a SQL injection pattern
         vuln_file = tmp_path / "app.py"
         vuln_file.write_text("cursor.execute(f\"SELECT * FROM users WHERE id={user_id}\")")
-        r = _run(openclaw_security_scan(str(tmp_path)))
+        r = _run(firm_security_scan(str(tmp_path)))
         assert r["ok"] is True
         assert r["total_files_scanned"] >= 1
 
     def test_session_config_with_env_file(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         env = tmp_path / ".env"
         env.write_text("SESSION_SECRET=mysecret123\n")
-        r = _run(openclaw_session_config_check(env_file_path=str(env)))
+        r = _run(firm_session_config_check(env_file_path=str(env)))
         assert r["ok"] is True
         assert r["severity"] == "OK"
 
     def test_session_config_compose_no_secret(self, tmp_path):
-        from src.security_audit import openclaw_session_config_check
+        from src.security_audit import firm_session_config_check
         compose = tmp_path / "docker-compose.yml"
-        compose.write_text("services:\n  openclaw:\n    image: openclaw:latest\n")
-        r = _run(openclaw_session_config_check(compose_file_path=str(compose)))
+        compose.write_text("services:\n  firm:\n    image: firm:latest\n")
+        r = _run(firm_session_config_check(compose_file_path=str(compose)))
         assert r["ok"] is True
-        # openclaw reference without SESSION_SECRET
+        # firm reference without SESSION_SECRET
         assert any("regenerate" in f or "break" in f for f in r["findings"])
 
     def test_session_config_no_files(self):
-        from src.security_audit import openclaw_session_config_check
-        r = _run(openclaw_session_config_check())
+        from src.security_audit import firm_session_config_check
+        r = _run(firm_session_config_check())
         assert r["ok"] is True
 
     def test_rate_limit_funnel_no_limiter(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
+        from src.security_audit import firm_rate_limit_check
         cfg = tmp_path / "gateway.yml"
         cfg.write_text("funnel: true\nport: 8080\n")
-        r = _run(openclaw_rate_limit_check(str(cfg), check_funnel=True))
+        r = _run(firm_rate_limit_check(str(cfg), check_funnel=True))
         assert r["ok"] is True
         assert r["severity"] == "CRITICAL"
 
     def test_rate_limit_with_nginx(self, tmp_path):
-        from src.security_audit import openclaw_rate_limit_check
+        from src.security_audit import firm_rate_limit_check
         cfg = tmp_path / "gateway.yml"
         cfg.write_text("port: 8080\nnginx: true\nlimit_req zone=one\n")
-        r = _run(openclaw_rate_limit_check(str(cfg)))
+        r = _run(firm_rate_limit_check(str(cfg)))
         assert r["rate_limiter_detected"] is True
 
 
@@ -803,71 +803,71 @@ class TestSecurityAuditDeeper:
 
 class TestAdvancedSecurityDeeper:
     def test_exec_approval_apply_patch(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         cfg = {"tools": {"exec": {
             "applyPatch": {"workspaceOnly": False},
         }}}
-        r = _run(openclaw_exec_approval_freeze_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_exec_approval_freeze_check(_write_config(tmp_path, cfg)))
         assert any("apply_patch" in str(f.get("id", "")).lower()
                     for f in r.get("findings", []))
 
     def test_exec_approval_shell_wrapper(self, tmp_path):
-        from src.advanced_security import openclaw_exec_approval_freeze_check
+        from src.advanced_security import firm_exec_approval_freeze_check
         # Create exec-approvals.json with shell wrapper
         cfg = {"tools": {"exec": {}}}
         cfg_path = _write_config(tmp_path, cfg)
 
-        approvals_dir = tmp_path / ".openclaw"
+        approvals_dir = tmp_path / ".firm"
         approvals_dir.mkdir(exist_ok=True)
         approvals_file = approvals_dir / "exec-approvals.json"
         approvals_file.write_text(json.dumps({
             "cmd1": {"executable": "/bin/bash"},
         }))
 
-        with patch("src.advanced_security._OPENCLAW_DIR", approvals_dir):
-            r = _run(openclaw_exec_approval_freeze_check(cfg_path))
+        with patch("src.advanced_security._FIRM_DIR", approvals_dir):
+            r = _run(firm_exec_approval_freeze_check(cfg_path))
         assert any("shell_wrapper" in str(f.get("id", ""))
                     for f in r.get("findings", []))
 
     def test_hook_session_routing(self, tmp_path):
-        from src.advanced_security import openclaw_hook_session_routing_check
+        from src.advanced_security import firm_hook_session_routing_check
         cfg = {"hooks": {
             "onMessage": {"session": "shared"},
             "routes": [{"path": "/api", "session": "*"}],
         }}
-        r = _run(openclaw_hook_session_routing_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_hook_session_routing_check(_write_config(tmp_path, cfg)))
         json.dumps(r.get("findings", []))
         assert len(r.get("findings", [])) >= 0  # just make sure it runs
 
     def test_config_include_valid_file(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         sub = tmp_path / "sub.json"
         sub.write_text('{"key": "value"}')
         # $include must be a string value, not a list
         cfg = {"nested": {"$include": str(sub)}}
-        r = _run(openclaw_config_include_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_config_include_check(_write_config(tmp_path, cfg)))
         assert r["status"] == "ok"
         assert r["include_count"] >= 1
 
     def test_config_include_traversal(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = {"nested": {"$include": "../../../etc/passwd"}}
-        r = _run(openclaw_config_include_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_config_include_check(_write_config(tmp_path, cfg)))
         assert any("traversal" in f.get("id", "") for f in r.get("findings", []))
 
     def test_config_include_missing(self, tmp_path):
-        from src.advanced_security import openclaw_config_include_check
+        from src.advanced_security import firm_config_include_check
         cfg = {"nested": {"$include": str(tmp_path / "nonexistent.json")}}
-        r = _run(openclaw_config_include_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_config_include_check(_write_config(tmp_path, cfg)))
         assert any("missing" in f.get("id", "") for f in r.get("findings", []))
 
     def test_safe_bins_profile(self, tmp_path):
-        from src.advanced_security import openclaw_safe_bins_profile_check
+        from src.advanced_security import firm_safe_bins_profile_check
         cfg = {"tools": {"exec": {
             "safeBins": ["python", "node"],
             "safeBinProfiles": {"python": {"allowed": True}},
         }}}
-        r = _run(openclaw_safe_bins_profile_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_safe_bins_profile_check(_write_config(tmp_path, cfg)))
         # node has no profile
         assert any("node" in str(f) for f in r.get("findings", []))
 
@@ -916,25 +916,25 @@ class TestComplianceMediumDeeper:
 
 class TestGatewayHardeningDeeper:
     def test_webhook_sig_missing_secret(self, tmp_path):
-        from src.gateway_hardening import openclaw_webhook_sig_check
+        from src.gateway_hardening import firm_webhook_sig_check
         cfg = {"channels": {"telegram": {
             "webhookPath": "/webhook/telegram",
         }}}
-        r = _run(openclaw_webhook_sig_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_webhook_sig_check(_write_config(tmp_path, cfg)))
         assert any("signing" in str(f).lower() or "secret" in str(f).lower()
                     for f in r.get("findings", []))
 
     def test_log_config_no_rotation(self, tmp_path):
-        from src.gateway_hardening import openclaw_log_config_check
+        from src.gateway_hardening import firm_log_config_check
         cfg = {"logging": {"level": "debug"}}
-        r = _run(openclaw_log_config_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_log_config_check(_write_config(tmp_path, cfg)))
         json.dumps(r.get("findings", []))
         assert len(r.get("findings", [])) >= 0
 
     def test_workspace_integrity(self, tmp_path):
-        from src.gateway_hardening import openclaw_workspace_integrity_check
+        from src.gateway_hardening import firm_workspace_integrity_check
         cfg = {"workspace": {"path": str(tmp_path)}}
-        r = _run(openclaw_workspace_integrity_check(_write_config(tmp_path, cfg)))
+        r = _run(firm_workspace_integrity_check(_write_config(tmp_path, cfg)))
         assert "findings" in r or "status" in r or "error" in r
 
 
@@ -944,77 +944,77 @@ class TestGatewayHardeningDeeper:
 
 class TestN8nBridgeDeeper:
     def test_export_with_pipeline(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
+        from src.n8n_bridge import firm_n8n_workflow_export
         steps = [
             {"type": "http_request", "name": "fetch"},
             {"type": "agent", "name": "process"},
         ]
-        r = _run(openclaw_n8n_workflow_export("test-pipeline", steps))
+        r = _run(firm_n8n_workflow_export("test-pipeline", steps))
         assert r["ok"] is True
         assert r["node_count"] >= 2
 
     def test_export_empty_steps(self):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
-        r = _run(openclaw_n8n_workflow_export("empty", []))
+        from src.n8n_bridge import firm_n8n_workflow_export
+        r = _run(firm_n8n_workflow_export("empty", []))
         assert r["ok"] is False
 
     def test_export_step_no_name(self):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
-        r = _run(openclaw_n8n_workflow_export("bad", [{"type": "http_request"}]))
+        from src.n8n_bridge import firm_n8n_workflow_export
+        r = _run(firm_n8n_workflow_export("bad", [{"type": "http_request"}]))
         assert r["ok"] is False
 
     def test_export_step_not_dict(self):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
-        r = _run(openclaw_n8n_workflow_export("bad", ["not_a_dict"]))
+        from src.n8n_bridge import firm_n8n_workflow_export
+        r = _run(firm_n8n_workflow_export("bad", ["not_a_dict"]))
         assert r["ok"] is False
 
     def test_export_to_file(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_export
+        from src.n8n_bridge import firm_n8n_workflow_export
         out = str(tmp_path / "workflow.json")
         steps = [{"type": "http_request", "name": "step1"}]
-        r = _run(openclaw_n8n_workflow_export("test", steps, output_path=out))
+        r = _run(firm_n8n_workflow_export("test", steps, output_path=out))
         assert r["ok"] is True
         assert Path(out).exists()
 
     def test_import_valid(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         workflow = {"nodes": [
             {"type": "n8n-nodes-base.httpRequest", "name": "fetch",
              "parameters": {}, "position": [0, 0]},
         ], "connections": {}, "name": "test"}
         wf_path = tmp_path / "workflow.json"
         wf_path.write_text(json.dumps(workflow))
-        r = _run(openclaw_n8n_workflow_import(str(wf_path)))
+        r = _run(firm_n8n_workflow_import(str(wf_path)))
         assert r["ok"] is True
 
     def test_import_invalid_json(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf_path = tmp_path / "bad.json"
         wf_path.write_text("not json!")
-        r = _run(openclaw_n8n_workflow_import(str(wf_path)))
+        r = _run(firm_n8n_workflow_import(str(wf_path)))
         assert r["ok"] is False
 
     def test_import_not_json_ext(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf_path = tmp_path / "workflow.txt"
         wf_path.write_text('{"nodes": []}')
-        r = _run(openclaw_n8n_workflow_import(str(wf_path)))
+        r = _run(firm_n8n_workflow_import(str(wf_path)))
         assert r["ok"] is False
 
     def test_import_missing_file(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
-        r = _run(openclaw_n8n_workflow_import(str(tmp_path / "nope.json")))
+        from src.n8n_bridge import firm_n8n_workflow_import
+        r = _run(firm_n8n_workflow_import(str(tmp_path / "nope.json")))
         assert r["ok"] is False
 
     def test_import_not_object(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         wf_path = tmp_path / "array.json"
         wf_path.write_text("[1,2,3]")
-        r = _run(openclaw_n8n_workflow_import(str(wf_path)))
+        r = _run(firm_n8n_workflow_import(str(wf_path)))
         assert r["ok"] is False
 
     def test_import_with_target_dir(self, tmp_path):
-        from src.n8n_bridge import openclaw_n8n_workflow_import
+        from src.n8n_bridge import firm_n8n_workflow_import
         workflow = {"nodes": [{"type": "n8n-nodes-base.httpRequest", "name": "f",
                               "parameters": {}, "position": [0, 0]}],
                    "connections": {}, "name": "test"}
@@ -1022,7 +1022,7 @@ class TestN8nBridgeDeeper:
         wf_path.write_text(json.dumps(workflow))
         target = tmp_path / "imported"
         target.mkdir()
-        r = _run(openclaw_n8n_workflow_import(str(wf_path), target_dir=str(target)))
+        r = _run(firm_n8n_workflow_import(str(wf_path), target_dir=str(target)))
         assert r["ok"] is True
 
 
@@ -1032,17 +1032,17 @@ class TestN8nBridgeDeeper:
 
 class TestObservabilityDeeper:
     def test_ci_pipeline_with_workflow(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
+        from src.observability import firm_ci_pipeline_check
         ci_dir = tmp_path / ".github" / "workflows"
         ci_dir.mkdir(parents=True)
         wf = ci_dir / "ci.yml"
         wf.write_text("name: CI\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n")
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True
 
     def test_ci_pipeline_no_dir(self, tmp_path):
-        from src.observability import openclaw_ci_pipeline_check
-        r = _run(openclaw_ci_pipeline_check(str(tmp_path)))
+        from src.observability import firm_ci_pipeline_check
+        r = _run(firm_ci_pipeline_check(str(tmp_path)))
         assert r["ok"] is True  # ok even if missing, just reports
 
 
@@ -1052,20 +1052,20 @@ class TestObservabilityDeeper:
 
 class TestHebbianRuntimeDeeper:
     def test_harvest_empty_file(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_harvest
+        from src.hebbian_memory._runtime import firm_hebbian_harvest
         jsonl = tmp_path / "empty.jsonl"
         jsonl.write_text("")
-        r = _run(openclaw_hebbian_harvest(str(jsonl)))
+        r = _run(firm_hebbian_harvest(str(jsonl)))
         assert r["ok"] is True
 
     def test_weight_update_no_file(self, tmp_path):
-        from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
-        r = _run(openclaw_hebbian_weight_update(str(tmp_path / "missing.jsonl")))
+        from src.hebbian_memory._runtime import firm_hebbian_weight_update
+        r = _run(firm_hebbian_weight_update(str(tmp_path / "missing.jsonl")))
         # Should handle missing file
         if isinstance(r, dict):
             assert "ok" in r or "error" in r
 
     def test_status(self, tmp_path):
-        from src.hebbian_memory._analysis import openclaw_hebbian_status
-        r = _run(openclaw_hebbian_status(str(tmp_path)))
+        from src.hebbian_memory._analysis import firm_hebbian_status
+        r = _run(firm_hebbian_status(str(tmp_path)))
         assert isinstance(r, dict)

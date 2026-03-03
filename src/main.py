@@ -23,9 +23,10 @@ import os
 import signal
 import sys
 import time
+import uuid
 from typing import Any
 
-__version__ = "4.0.0"
+__version__ = "4.1.0"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -632,6 +633,10 @@ async def _handle_metrics(request: web.Request) -> web.Response:
 # M-H6: SSE event queue for streaming
 _SSE_EVENTS: list[dict[str, Any]] = []
 
+# ── Legacy SSE transport (MCP protocol) ──────────────────────────────────────
+# VS Code Copilot, Cursor, etc. connect via GET /sse + POST /messages?session_id=xxx
+_SSE_SESSIONS: dict[str, asyncio.Queue] = {}
+
 
 async def _handle_sse(request: web.Request) -> web.StreamResponse:
     """SSE endpoint for MCP event streaming (M-H6)."""
@@ -672,10 +677,69 @@ async def _handle_sse(request: web.Request) -> web.StreamResponse:
         pass
     return response
 
+async def _handle_sse_transport(request: web.Request) -> web.StreamResponse:
+    """Legacy SSE transport — GET /sse.
+    Sends an 'endpoint' event with the POST URL for this session,
+    then keeps the connection open for server-to-client messages.
+    """
+    session_id = uuid.uuid4().hex
+    queue: asyncio.Queue = asyncio.Queue()
+    _SSE_SESSIONS[session_id] = queue
+
+    response = web.StreamResponse(
+        status=200,
+        reason="OK",
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+    await response.prepare(request)
+
+    # Tell the client where to POST JSON-RPC messages
+    await response.write(f"event: endpoint\ndata: /messages/?session_id={session_id}\n\n".encode())
+
+    try:
+        while True:
+            try:
+                # Wait for outgoing messages (responses are sent inline via POST,
+                # but server-initiated notifications go through here)
+                msg = await asyncio.wait_for(queue.get(), timeout=15)
+                await response.write(f"event: message\ndata: {json.dumps(msg)}\n\n".encode())
+            except asyncio.TimeoutError:
+                # Keep-alive ping
+                await response.write(f": ping {time.time()}\n\n".encode())
+    except (ConnectionResetError, asyncio.CancelledError):
+        pass
+    finally:
+        _SSE_SESSIONS.pop(session_id, None)
+    return response
+
+
+async def _handle_messages(request: web.Request) -> web.Response:
+    """Legacy SSE transport — POST /messages/?session_id=xxx.
+    Receives JSON-RPC requests from the client, dispatches them
+    through the same handler as /mcp, returns the JSON-RPC response.
+    """
+    session_id = request.query.get("session_id", "")
+    if session_id not in _SSE_SESSIONS:
+        return web.Response(status=404, text="Session not found")
+
+    # Reuse the existing HTTP streamable handler
+    return await _handle_mcp(request)
+
+
 async def _build_app() -> web.Application:
     app = web.Application(client_max_size=2 * 1024 * 1024)  # 2 MB request limit
+    # HTTP Streamable transport (MCP 2025-11-25)
     app.router.add_post("/mcp", _handle_mcp)
     app.router.add_get("/mcp/sse", _handle_sse)  # M-H6: SSE streaming
+    # Legacy SSE transport (VS Code Copilot, Cursor, etc.)
+    app.router.add_get("/sse", _handle_sse_transport)
+    app.router.add_post("/messages/", _handle_messages)
+    app.router.add_post("/messages", _handle_messages)  # without trailing slash
+    # Health / metrics
     app.router.add_get("/health", _handle_health)
     app.router.add_get("/healthz", _handle_health)
     app.router.add_get("/metrics", _handle_metrics)
@@ -691,6 +755,7 @@ async def _main() -> None:
 
     logger.info("Firm MCP Server started")
     logger.info("  MCP endpoint : http://%s:%d/mcp", MCP_HOST, MCP_PORT)
+    logger.info("  SSE endpoint : http://%s:%d/sse", MCP_HOST, MCP_PORT)
     logger.info("  Health check : http://%s:%d/health", MCP_HOST, MCP_PORT)
     logger.info("  Tools registered: %d", len(TOOL_REGISTRY))
 

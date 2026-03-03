@@ -833,18 +833,6 @@ TOOLS: list[dict[str, Any]] = [
             "prevention, request size limits. Gap G21."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_mcp_firewall_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -874,18 +862,6 @@ TOOLS: list[dict[str, Any]] = [
             "vector store, chunk settings, retrieval top-K, index freshness. Gap G22."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_rag_pipeline_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -916,18 +892,6 @@ TOOLS: list[dict[str, Any]] = [
             "timeout enforcement. Gap G26."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_sandbox_exec_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -957,8 +921,6 @@ TOOLS: list[dict[str, Any]] = [
             "session age, turn count, compression ratio, recovery recommendations. Gap G23."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_context_health_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -983,8 +945,6 @@ TOOLS: list[dict[str, Any]] = [
             "status, export. Gap G24."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_provenance_tracker,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -1018,8 +978,6 @@ TOOLS: list[dict[str, Any]] = [
             "checks budget thresholds, analyzes tool call patterns. Gap G27."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_cost_analytics,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -1043,8 +1001,6 @@ TOOLS: list[dict[str, Any]] = [
             "prompt deduplication, caching improvements, tool result savings. Gap G25."
         ),
         "category": "ecosystem",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_token_budget_optimizer,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},

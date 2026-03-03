@@ -323,8 +323,6 @@ TOOLS: list[dict[str, Any]] = [
             "field extraction. Gap T1: no observability pipeline existed."
         ),
         "category": "observability",
-        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_observability_pipeline,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -364,18 +362,6 @@ TOOLS: list[dict[str, Any]] = [
             "Gap T6: no CI validation tool existed."
         ),
         "category": "observability",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_ci_pipeline_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {

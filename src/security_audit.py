@@ -495,18 +495,6 @@ TOOLS: list[dict[str, Any]] = [
             "and ready-to-apply remediation snippets."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_security_scan,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -551,18 +539,6 @@ TOOLS: list[dict[str, Any]] = [
             "A prompt injection → RCE with mode:off. Returns: severity, current mode, fix snippet."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_sandbox_audit,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -597,18 +573,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: severity, secret found?, Docker and .env fix snippets."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_session_config_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {
@@ -646,18 +610,6 @@ TOOLS: list[dict[str, Any]] = [
             "Returns: funnel status, rate limiter detected?, Nginx/Caddy fix snippets."
         ),
         "category": "security",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {"type": "boolean", "description": "Whether the check passed"},
-                "severity": {"type": "string", "enum": ["OK", "INFO", "MEDIUM", "HIGH", "CRITICAL"]},
-                "findings": {"type": "array", "items": {"type": "string"}, "description": "List of findings"},
-                "finding_count": {"type": "integer", "description": "Number of findings"},
-                "config_path": {"type": "string", "description": "Path to config file analyzed"}
-            },
-            "required": ["ok", "severity", "findings", "finding_count"]
-        },
         "handler": openclaw_rate_limit_check,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {

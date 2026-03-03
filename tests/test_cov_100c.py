@@ -182,7 +182,7 @@ class TestA2ASubscribeDeep:
 
     def test_push_config_ssrf(self):
         from src.a2a_bridge import openclaw_a2a_push_config
-        r = _parse(openclaw_a2a_push_config(
+        _parse(openclaw_a2a_push_config(
             task_id="t1", action="create",
             webhook_url="http://127.0.0.1/hook"))
         assert True  # Just exercise the code path
@@ -201,7 +201,7 @@ class TestA2ADiscoveryDeep:
         from src.a2a_bridge import openclaw_a2a_discovery
         f = tmp_path / "not_a_dir.txt"
         f.write_text("x")
-        r = _parse(_run(openclaw_a2a_discovery(souls_dir=str(f))))
+        _parse(_run(openclaw_a2a_discovery(souls_dir=str(f))))
         assert True  # Exercise the code path
 
 
@@ -700,7 +700,7 @@ class TestDeliveryExportDeep:
         from src.delivery_export import firm_export_github_pr
         with patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_test123456789"}), \
              patch("httpx.Client") as MockClient:
-            client = MockClient.return_value.__enter__ = MagicMock()
+            MockClient.return_value.__enter__ = MagicMock()
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = {"object": {"sha": "abc123"}}

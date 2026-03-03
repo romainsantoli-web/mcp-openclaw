@@ -109,12 +109,11 @@ async def openclaw_hebbian_harvest(
     if jsonl.suffix.lower() not in (".jsonl", ".ndjson", ".log", ".json"):
         return {"ok": False, "error": f"Unexpected extension '{jsonl.suffix}'. Expected .jsonl/.ndjson/.log/.json."}
 
-    known_rules: list[dict] = []
     if claude_md_path:
         md_path = Path(claude_md_path)
         if md_path.exists():
             md_content = md_path.read_text(encoding="utf-8")
-            known_rules = _extract_layer2_rules(md_content)
+            _extract_layer2_rules(md_content)
 
     ingested = 0
     skipped = 0

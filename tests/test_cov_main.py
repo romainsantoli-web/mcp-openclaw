@@ -225,13 +225,13 @@ class TestResourceLinks:
         result = _resource_links_for_tool("openclaw_security_scan")
         assert result is not None
         assert "_meta" in result
-        assert any("config" in l["uri"] for l in result["_meta"]["resourceLinks"])
+        assert any("config" in link["uri"] for link in result["_meta"]["resourceLinks"])
 
     def test_all_tools_have_health_link(self):
         result = _resource_links_for_tool("firm_gateway_fleet_status")
         assert result is not None
         links = result["_meta"]["resourceLinks"]
-        assert any("health" in l["uri"] for l in links)
+        assert any("health" in link["uri"] for link in links)
 
 
 # ── _check_auth ──────────────────────────────────────────────────────────────

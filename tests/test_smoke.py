@@ -28,7 +28,7 @@ pytestmark = pytest.mark.integration
 HOST = os.getenv("MCP_EXT_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_EXT_PORT", "8012"))
 BASE_URL = f"http://{HOST}:{PORT}/mcp"
-EXPECTED_TOOLS = 115  # 4 vs_bridge + 6 fleet + 6 delivery + 4 security_audit + 6 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 8 a2a_bridge + 8 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance + 6 compliance_medium
+EXPECTED_TOOLS = 138  # 4 vs_bridge + 6 fleet + 6 delivery + 4+5 security_audit + 6+1 acp_bridge + 4 reliability_probe + 5 gateway_hardening + 7+2 runtime_audit + 8 advanced_security + 5 config_migration + 2 observability + 2 memory_audit + 8 hebbian_memory + 2 agent_orchestration + 1 i18n_audit + 2 skill_loader + 2 n8n_bridge + 1 browser_audit + 8 a2a_bridge + 8+1 platform_audit + 7 ecosystem_audit + 7 spec_compliance + 2 prompt_security + 2 auth_compliance + 6 compliance_medium + 6 market_research + 5 legal_status + 5 location_strategy + 5 supplier_management
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -1121,11 +1121,14 @@ class TestRuntimeAudit:
     # ── openclaw_dm_allowlist_check (M16) ─────────────────────────────────────
 
     def test_dm_allowlist_check_clean(self, mcp_server, tmp_path):
-        """dmPolicy=pairing → no HIGH findings."""
+        """dmPolicy=pairing with requireTopic → no HIGH findings."""
         cfg = tmp_path / "openclaw.json"
         cfg.write_text(json.dumps({
             "channels": {
-                "telegram": {"dmPolicy": "pairing"},
+                "telegram": {
+                    "dmPolicy": "pairing",
+                    "direct": {"requireTopic": True, "topicAllowlist": ["1"]},
+                },
             }
         }))
         result = _rpc("tools/call", {
@@ -1516,7 +1519,6 @@ class TestExportMockedSuccess:
         pr_resp = _make_resp(201, {"number": 42, "html_url": "https://github.com/o/r/pull/42"})
         labels_resp = _make_resp(200, {})
 
-        call_count = {"n": 0}
         responses = {
             "get": [ref_resp],
             "post": [branch_resp, pr_resp, labels_resp],
@@ -1528,11 +1530,17 @@ class TestExportMockedSuccess:
             async def __aenter__(self): return self
             async def __aexit__(self, *a): pass
             async def get(self, *a, **kw):
-                r = responses["get"][idx["get"]]; idx["get"] += 1; return r
+                r = responses["get"][idx["get"]]
+                idx["get"] += 1
+                return r
             async def post(self, *a, **kw):
-                r = responses["post"][idx["post"]]; idx["post"] += 1; return r
+                r = responses["post"][idx["post"]]
+                idx["post"] += 1
+                return r
             async def put(self, *a, **kw):
-                r = responses["put"][idx["put"]]; idx["put"] += 1; return r
+                r = responses["put"][idx["put"]]
+                idx["put"] += 1
+                return r
 
         monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **kw: FakeClient())
 
@@ -2435,12 +2443,12 @@ class TestConfigMigration:
         assert any("LD_PRELOAD" in f["message"] for f in data["findings"])
 
     def test_shell_env_clean(self, mcp_server, tmp_path):
-        """No dangerous env vars → ok."""
+        """No dangerous env vars → ok or medium (OPENCLAW_SHELL marker advisory)."""
         cfg = tmp_path / "openclaw.json"
         cfg.write_text(json.dumps({
             "agents": {
                 "defaults": {
-                    "env": {"PATH": "/usr/bin:/usr/local/bin"},
+                    "env": {"PATH": "/usr/bin:/usr/local/bin", "OPENCLAW_SHELL": "1"},
                 }
             }
         }))
@@ -2772,11 +2780,11 @@ class TestVersionEndpoint:
             "clientInfo": {"name": "test", "version": "0.0.1"},
         })
         version = result["result"]["serverInfo"]["version"]
-        assert version == "3.0.0"
+        assert version == "3.3.0"
 
     def test_health_returns_version(self, mcp_server):
         resp = httpx.get(f"http://{HOST}:{PORT}/health", timeout=5)
-        assert resp.json()["version"] == "3.0.0"
+        assert resp.json()["version"] == "3.3.0"
 
 
 # ════════════════════════════════════════════════════════════════════════════════

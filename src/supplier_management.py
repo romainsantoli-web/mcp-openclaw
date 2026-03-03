@@ -270,7 +270,7 @@ async def handle_supplier_contract_check(arguments: dict[str, Any]) -> list[dict
     """Contract clause analysis."""
     supplier = arguments.get("supplier", "")
     contract_type = arguments.get("contract_type", "SaaS")
-    requirements = arguments.get("requirements", [])
+    arguments.get("requirements", [])
     existing_clauses = arguments.get("existing_clauses", [])
 
     clause_analysis: list[dict[str, Any]] = []

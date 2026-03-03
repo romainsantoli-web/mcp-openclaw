@@ -612,13 +612,13 @@ class TestI18nAuditHandlers:
         assert "ok" in r
         # fr.json is missing menu.title — check any indication of findings
         findings = r.get("findings", r.get("missing", r.get("issues", [])))
-        count = r.get("missing_keys", r.get("finding_count", 0))
+        r.get("missing_keys", r.get("finding_count", 0))
         if isinstance(findings, dict):
-            has_findings = len(findings) > 0
+            len(findings) > 0
         elif isinstance(findings, list):
-            has_findings = len(findings) > 0
+            len(findings) > 0
         else:
-            has_findings = count > 0
+            pass
         # If the handler found zero findings, still accept ok=True as valid
         # (the locale setup varies between handler implementations)
 

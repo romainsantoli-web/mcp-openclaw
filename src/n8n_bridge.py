@@ -356,8 +356,6 @@ TOOLS: list[dict[str, Any]] = [
             "with proper node layout and connections. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_n8n_workflow_export,
         "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
@@ -390,8 +388,6 @@ TOOLS: list[dict[str, Any]] = [
             "copies to workspace. Gap T8: workflow automation bridge."
         ),
         "category": "workflow_automation",
-        "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
         "handler": openclaw_n8n_workflow_import,
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},

@@ -103,7 +103,7 @@ class TestAdvancedSecurityE:
         ]))
         cfg = _write(tmp_path, {"tools": {"exec": {"enabled": True}}})
         with patch("src.advanced_security._OPENCLAW_DIR", approvals_dir):
-            r = _parse(_run(openclaw_exec_approval_freeze_check(config_path=cfg)))
+            _parse(_run(openclaw_exec_approval_freeze_check(config_path=cfg)))
         # May or may not find the shell wrapper depending on exact implementation
 
     def test_hook_session_routing_empty(self, tmp_path):
@@ -143,7 +143,7 @@ class TestAdvancedSecurityE:
         """tools.exec is a non-dict."""
         from src.advanced_security import openclaw_safe_bins_profile_check
         cfg = _write(tmp_path, {"tools": {"exec": "string-value"}})
-        r = _parse(_run(openclaw_safe_bins_profile_check(config_path=cfg)))
+        _parse(_run(openclaw_safe_bins_profile_check(config_path=cfg)))
         # Should return early
 
     def test_safe_bins_no_safebins(self, tmp_path):
@@ -164,7 +164,7 @@ class TestAdvancedSecurityE:
         """channels is a non-dict."""
         from src.advanced_security import openclaw_group_policy_default_check
         cfg = _write(tmp_path, {"channels": "not-a-dict"})
-        r = _parse(_run(openclaw_group_policy_default_check(config_path=cfg)))
+        _parse(_run(openclaw_group_policy_default_check(config_path=cfg)))
 
     def test_group_policy_chan_no_policy(self, tmp_path):
         """Channel exists but has no groupPolicy."""
@@ -224,7 +224,7 @@ class TestAgentOrchestrationE:
                 await asyncio.sleep(10)
                 return {"status": "completed"}
             mock_exec.side_effect = slow_task
-            r = _parse(_run(openclaw_agent_team_orchestrate(
+            _parse(_run(openclaw_agent_team_orchestrate(
                 tasks=tasks, timeout_s=0.01
             )))
             # Should have timeout error or partial results
@@ -286,7 +286,7 @@ class TestAuthComplianceE:
         cfg = _write(tmp_path, {
             "mcp": {"tools": "not-a-list", "auth": {"toolScopes": {}}}
         })
-        r = _parse(_run(token_scope_check(config_path=cfg)))
+        _parse(_run(token_scope_check(config_path=cfg)))
 
     def test_token_scope_wildcard(self, tmp_path):
         from src.auth_compliance import token_scope_check
@@ -316,7 +316,7 @@ class TestBrowserAuditE:
     def test_bad_package_json(self, tmp_path):
         (tmp_path / "package.json").write_text("{invalid json!!!")
         from src.browser_audit import openclaw_browser_context_check
-        r = _parse(_run(openclaw_browser_context_check(
+        _parse(_run(openclaw_browser_context_check(
             workspace_path=str(tmp_path), check_deps=True
         )))
 
@@ -366,7 +366,7 @@ class TestBrowserAuditE:
             "headless": False,
             "launch": {"args": ["--no-sandbox"]}
         }))
-        r = _parse(_run(openclaw_browser_context_check(
+        _parse(_run(openclaw_browser_context_check(
             workspace_path=str(tmp_path), check_deps=False
         )))
 
@@ -375,7 +375,7 @@ class TestBrowserAuditE:
         from src.browser_audit import openclaw_browser_context_check
         config_file = tmp_path / "playwright.config.ts"
         config_file.write_text("export default { headless: false, launch: { args: ['--no-sandbox'] } }")
-        r = _parse(_run(openclaw_browser_context_check(
+        _parse(_run(openclaw_browser_context_check(
             workspace_path=str(tmp_path), check_deps=False
         )))
 
@@ -391,7 +391,7 @@ class TestComplianceMediumE:
         cfg = _write(tmp_path, {"mcp": {"tools": [
             {"name": "old_tool", "annotations": {"deprecated": False, "sunset": "2026-12-01"}}
         ]}})
-        r = _parse(_run(tool_deprecation_audit(config_path=cfg)))
+        _parse(_run(tool_deprecation_audit(config_path=cfg)))
 
     def test_deprecation_no_sunset(self, tmp_path):
         """Tool deprecated=true but no sunset."""
@@ -430,17 +430,17 @@ class TestComplianceMediumE:
             "resilience": {"circuitBreaker": {"failureThreshold": 5, "resetTimeoutMs": 30000}},
             "tools": [{"name": "fetch_data", "description": "HTTP fetch from external API"}]
         }})
-        r = _parse(_run(circuit_breaker_audit(config_path=cfg)))
+        _parse(_run(circuit_breaker_audit(config_path=cfg)))
 
     def test_gdpr_privacy_not_dict(self, tmp_path):
         from src.compliance_medium import gdpr_residency_audit
         cfg = _write(tmp_path, {"mcp": {"privacy": "string", "gdpr": {}}})
-        r = _parse(_run(gdpr_residency_audit(config_path=cfg)))
+        _parse(_run(gdpr_residency_audit(config_path=cfg)))
 
     def test_gdpr_not_dict(self, tmp_path):
         from src.compliance_medium import gdpr_residency_audit
         cfg = _write(tmp_path, {"mcp": {"gdpr": []}})
-        r = _parse(_run(gdpr_residency_audit(config_path=cfg)))
+        _parse(_run(gdpr_residency_audit(config_path=cfg)))
 
     def test_gdpr_erasure_empty(self, tmp_path):
         from src.compliance_medium import gdpr_residency_audit
@@ -470,7 +470,7 @@ class TestComplianceMediumE:
             "identity": {"did": "did:web:example.com", "signing": {"algorithm": "EdDSA"}},
             "agents": {"bot1": {"did": "did:web:bot1.example.com"}}
         }})
-        r = _parse(_run(agent_identity_audit(config_path=cfg)))
+        _parse(_run(agent_identity_audit(config_path=cfg)))
 
     def test_identity_invalid_did(self, tmp_path):
         from src.compliance_medium import agent_identity_audit
@@ -516,7 +516,7 @@ class TestComplianceMediumE:
                 {"name": "claude", "provider": "anthropic"}
             ]
         }}})
-        r = _parse(_run(model_routing_audit(config_path=cfg)))
+        _parse(_run(model_routing_audit(config_path=cfg)))
 
     def test_routing_single_provider(self, tmp_path):
         from src.compliance_medium import model_routing_audit
@@ -534,12 +534,12 @@ class TestComplianceMediumE:
     def test_resource_links_templates_not_list(self, tmp_path):
         from src.compliance_medium import resource_links_audit
         cfg = _write(tmp_path, {"mcp": {"resources": {"templates": "not-a-list"}}})
-        r = _parse(_run(resource_links_audit(config_path=cfg)))
+        _parse(_run(resource_links_audit(config_path=cfg)))
 
     def test_resource_links_static_not_list(self, tmp_path):
         from src.compliance_medium import resource_links_audit
         cfg = _write(tmp_path, {"mcp": {"resources": {"static": 42}}})
-        r = _parse(_run(resource_links_audit(config_path=cfg)))
+        _parse(_run(resource_links_audit(config_path=cfg)))
 
     def test_resource_links_no_uri(self, tmp_path):
         from src.compliance_medium import resource_links_audit
@@ -568,7 +568,7 @@ class TestComplianceMediumE:
         cfg = _write(tmp_path, {"mcp": {"resources": {"templates": [
             {"uriTemplate": "config://test/{id}"}
         ]}}})
-        r = _parse(_run(resource_links_audit(config_path=cfg)))
+        _parse(_run(resource_links_audit(config_path=cfg)))
 
     def test_resource_links_tool_output_resource_link(self, tmp_path):
         from src.compliance_medium import resource_links_audit
@@ -576,7 +576,7 @@ class TestComplianceMediumE:
             "resources": {"static": [{"name": "t", "uri": "config://test"}]},
             "tools": [{"name": "get_config", "outputSchema": {"type": "object", "properties": {"resource_link": {"type": "string"}}}}]
         }})
-        r = _parse(_run(resource_links_audit(config_path=cfg)))
+        _parse(_run(resource_links_audit(config_path=cfg)))
 
 
 # ============================================================================
@@ -603,7 +603,7 @@ class TestConfigMigrationE:
         cfg = _write(tmp_path, {
             "agents": {"defaults": {"fork": {"env": {"SHELL": "/bin/zsh"}}}}
         })
-        r = _parse(_run(openclaw_shell_env_check(config_path=cfg)))
+        _parse(_run(openclaw_shell_env_check(config_path=cfg)))
 
     def test_plugin_integrity_empty(self, tmp_path):
         from src.config_migration import openclaw_plugin_integrity_check
@@ -617,7 +617,7 @@ class TestConfigMigrationE:
         manifest = tmp_path / "plugin-manifest.json"
         manifest.write_text("{invalid json!!")
         with patch("src.config_migration._PLUGIN_MANIFEST", manifest):
-            r = _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
+            _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
 
     def test_plugin_integrity_drift(self, tmp_path):
         """Manifest hash doesn't match actual file."""
@@ -632,12 +632,12 @@ class TestConfigMigrationE:
         }))
         cfg = _write(tmp_path, {"plugins": {"entries": [{"id": "myplugin"}]}})
         with patch("src.config_migration._PLUGIN_MANIFEST", manifest):
-            r = _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
+            _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
 
     def test_token_separation_empty(self, tmp_path):
         from src.config_migration import openclaw_token_separation_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_token_separation_check(config_path=cfg)))
+        _parse(_run(openclaw_token_separation_check(config_path=cfg)))
 
     def test_token_separation_reuse(self, tmp_path):
         from src.config_migration import openclaw_token_separation_check
@@ -651,17 +651,17 @@ class TestConfigMigrationE:
     def test_otel_redaction_empty(self, tmp_path):
         from src.config_migration import openclaw_otel_redaction_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
 
     def test_otel_redaction_not_dict(self, tmp_path):
         from src.config_migration import openclaw_otel_redaction_check
         cfg = _write(tmp_path, {"otel": "string"})
-        r = _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
+        _parse(_run(openclaw_otel_redaction_check(config_path=cfg)))
 
     def test_rpc_rate_limit_empty(self, tmp_path):
         from src.config_migration import openclaw_rpc_rate_limit_check
         cfg = _write(tmp_path, {})
-        r = _parse(_run(openclaw_rpc_rate_limit_check(config_path=cfg)))
+        _parse(_run(openclaw_rpc_rate_limit_check(config_path=cfg)))
 
     def test_rpc_rate_limit_remote_no_limit(self, tmp_path):
         from src.config_migration import openclaw_rpc_rate_limit_check
@@ -853,7 +853,7 @@ class TestGatewayFleetE:
         cfg = tmp_path / "fleet.json"
         cfg.write_text(json.dumps([]))
         with patch("src.gateway_fleet.FLEET_CONFIG_PATH", str(cfg)):
-            r = _parse(_run(firm_gateway_fleet_status()))
+            _parse(_run(firm_gateway_fleet_status()))
             # Empty fleet → early return
 
     def test_save_fleet_write_error(self, tmp_path):
@@ -876,7 +876,7 @@ class TestGatewayFleetE:
         with patch("src.gateway_fleet.FLEET_CONFIG_PATH", str(cfg)), \
              patch("src.gateway_fleet._ws_rpc_instance", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = {"ok": True}
-            r = _parse(_run(firm_gateway_fleet_sync(
+            _parse(_run(firm_gateway_fleet_sync(
                 filter_department="engineering"
             )))
 
@@ -891,7 +891,7 @@ class TestGatewayFleetE:
         with patch("src.gateway_fleet.FLEET_CONFIG_PATH", str(cfg)), \
              patch("src.gateway_fleet._ws_rpc_instance", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = {"ok": True}
-            r = _parse(_run(firm_gateway_fleet_sync(
+            _parse(_run(firm_gateway_fleet_sync(
                 filter_tag="prod"
             )))
 
@@ -917,7 +917,7 @@ class TestHebbianRuntimeE:
         jsonl.write_text('{"summary": "good"}\n{invalid json}\n{"summary": "also good"}\n')
         claude = tmp_path / "CLAUDE.md"
         claude.write_text("# CLAUDE\nLAYER 2 — CONSOLIDATED\n- [0.80] Rule one\n")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        _parse(_run(openclaw_hebbian_harvest(
             session_jsonl_path=str(jsonl),
             claude_md_path=str(claude)
         )))
@@ -929,7 +929,7 @@ class TestHebbianRuntimeE:
         jsonl.write_text('{"tags": ["test"]}\n')
         claude = tmp_path / "CLAUDE.md"
         claude.write_text("# CLAUDE\nLAYER 2 — CONSOLIDATED\n- [0.80] Rule one\n")
-        r = _parse(_run(openclaw_hebbian_harvest(
+        _parse(_run(openclaw_hebbian_harvest(
             session_jsonl_path=str(jsonl),
             claude_md_path=str(claude)
         )))
@@ -949,7 +949,7 @@ class TestHebbianRuntimeE:
 
         claude = tmp_path / "CLAUDE.md"
         claude.write_text("# CLAUDE\nLAYER 2 — CONSOLIDATED\n- [0.80] Overweight rule\n- [0.50] Normal rule two\n")
-        r = _parse(_run(openclaw_hebbian_weight_update(
+        _parse(_run(openclaw_hebbian_weight_update(
             claude_md_path=str(claude),
             db_path=str(db),
             dry_run=True
@@ -996,7 +996,7 @@ class TestHebbianValidationE:
     def test_pii_check_no_ner_model(self, tmp_path):
         from src.hebbian_memory._validation import openclaw_hebbian_pii_check
         cfg = _write(tmp_path, {"hebbian": {"pii": {"enabled": True}}})
-        r = _parse(_run(openclaw_hebbian_pii_check(config_path=cfg)))
+        _parse(_run(openclaw_hebbian_pii_check(config_path=cfg)))
 
     def test_decay_negative_poids_min(self, tmp_path):
         from src.hebbian_memory._validation import openclaw_hebbian_decay_config_check
@@ -1028,22 +1028,22 @@ class TestPlatformAuditE:
             "agents": {"routing": {"strategy": "round_robin"}},
             "gateway": {"bind": "127.0.0.1"}
         })
-        r = _parse(openclaw_agent_routing_check(config_path=cfg))
+        _parse(openclaw_agent_routing_check(config_path=cfg))
 
     def test_voice_no_config(self, tmp_path):
         from src.platform_audit import openclaw_voice_security_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_voice_security_check(config_path=cfg))
+        _parse(openclaw_voice_security_check(config_path=cfg))
 
     def test_voice_dangerous_provider(self, tmp_path):
         from src.platform_audit import openclaw_voice_security_check
         cfg = _write(tmp_path, {"talk": {"provider": "test-unsafe", "enabled": True}})
-        r = _parse(openclaw_voice_security_check(config_path=cfg))
+        _parse(openclaw_voice_security_check(config_path=cfg))
 
     def test_trust_model_empty(self, tmp_path):
         from src.platform_audit import openclaw_trust_model_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_trust_model_check(config_path=cfg))
+        _parse(openclaw_trust_model_check(config_path=cfg))
 
     def test_trust_model_timeout_zero(self, tmp_path):
         from src.platform_audit import openclaw_trust_model_check
@@ -1060,29 +1060,29 @@ class TestPlatformAuditE:
     def test_autoupdate_no_config(self, tmp_path):
         from src.platform_audit import openclaw_autoupdate_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_autoupdate_check(config_path=cfg))
+        _parse(openclaw_autoupdate_check(config_path=cfg))
 
     def test_plugin_sdk_no_config(self, tmp_path):
         from src.platform_audit import openclaw_plugin_sdk_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_plugin_sdk_check(config_path=cfg))
+        _parse(openclaw_plugin_sdk_check(config_path=cfg))
 
     def test_plugin_sdk_dangerous_hook(self, tmp_path):
         from src.platform_audit import openclaw_plugin_sdk_check
         cfg = _write(tmp_path, {"plugins": {"registered": [
             {"name": "evil-plugin", "hooks": [{"name": "onMessage"}]}
         ]}})
-        r = _parse(openclaw_plugin_sdk_check(config_path=cfg))
+        _parse(openclaw_plugin_sdk_check(config_path=cfg))
 
     def test_content_boundary_severity(self, tmp_path):
         from src.platform_audit import openclaw_content_boundary_check
         cfg = _write(tmp_path, {"content": {"boundaries": {"maxTokens": 999999}}})
-        r = _parse(openclaw_content_boundary_check(config_path=cfg))
+        _parse(openclaw_content_boundary_check(config_path=cfg))
 
     def test_sqlite_vec_empty(self, tmp_path):
         from src.platform_audit import openclaw_sqlite_vec_check
         cfg = _write(tmp_path, {})
-        r = _parse(openclaw_sqlite_vec_check(config_path=cfg))
+        _parse(openclaw_sqlite_vec_check(config_path=cfg))
 
 
 # ============================================================================
@@ -1139,7 +1139,7 @@ class TestReliabilityProbeE:
         bad_md.write_text("content")
         bad_md.chmod(0o000)
         try:
-            r = _parse(_run(openclaw_doc_sync_check(
+            _parse(_run(openclaw_doc_sync_check(
                 package_json_path=str(pkg), docs_glob="*.md"
             )))
         finally:
@@ -1162,7 +1162,7 @@ class TestSkillLoaderE:
 
     def test_search_invalid_dir(self, tmp_path):
         from src.skill_loader import openclaw_skill_search
-        r = _parse(_run(openclaw_skill_search(
+        _parse(_run(openclaw_skill_search(
             query="test", skills_dir=str(tmp_path / "nonexistent")
         )))
 
@@ -1175,7 +1175,7 @@ class TestSkillLoaderE:
         skill2 = skills_dir / "skill-two"
         skill2.mkdir()
         (skill2 / "SKILL.md").write_text("---\ntags: [delivery]\n---\n# Skill Two\nDelivery skill")
-        r = _parse(_run(openclaw_skill_search(
+        _parse(_run(openclaw_skill_search(
             query="skill", skills_dir=str(skills_dir), tags=["security"]
         )))
 
@@ -1207,7 +1207,7 @@ class TestSkillLoaderE:
         skill_dir.mkdir()
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text("---\n{{{invalid yaml\n---\n# Test Skill")
-        meta = _extract_metadata(skill_file, "test-skill")
+        _extract_metadata(skill_file, "test-skill")
         # Should not crash — graceful fallback
 
 
@@ -1222,12 +1222,12 @@ class TestSpecComplianceE:
             "enabled": True,
             "schemas": ["not-a-dict", {"type": "object"}]
         }}})
-        r = _parse(_run(elicitation_audit(config_path=cfg)))
+        _parse(_run(elicitation_audit(config_path=cfg)))
 
     def test_elicitation_no_url_mode(self, tmp_path):
         from src.spec_compliance import elicitation_audit
         cfg = _write(tmp_path, {"mcp": {"elicitation": {"enabled": True}}})
-        r = _parse(_run(elicitation_audit(config_path=cfg)))
+        _parse(_run(elicitation_audit(config_path=cfg)))
 
     def test_tasks_no_max_concurrent(self, tmp_path):
         from src.spec_compliance import tasks_audit
@@ -1235,14 +1235,14 @@ class TestSpecComplianceE:
             "capabilities": {"tasks": {}},
             "tasks": {}
         }})
-        r = _parse(_run(tasks_audit(config_path=cfg)))
+        _parse(_run(tasks_audit(config_path=cfg)))
 
     def test_resources_no_list_changed(self, tmp_path):
         from src.spec_compliance import resources_prompts_audit
         cfg = _write(tmp_path, {"mcp": {
             "capabilities": {"resources": {"subscribe": True}}
         }})
-        r = _parse(_run(resources_prompts_audit(config_path=cfg)))
+        _parse(_run(resources_prompts_audit(config_path=cfg)))
 
     def test_resources_no_uri(self, tmp_path):
         from src.spec_compliance import resources_prompts_audit
@@ -1256,21 +1256,21 @@ class TestSpecComplianceE:
     def test_audio_no_max_duration(self, tmp_path):
         from src.spec_compliance import audio_content_audit
         cfg = _write(tmp_path, {"mcp": {"audio": {"enabled": True}}})
-        r = _parse(_run(audio_content_audit(config_path=cfg)))
+        _parse(_run(audio_content_audit(config_path=cfg)))
 
     def test_json_schema_definitions_keyword(self, tmp_path):
         from src.spec_compliance import json_schema_dialect_check
         cfg = _write(tmp_path, {"mcp": {
             "tools": [{"name": "t", "inputSchema": {"definitions": {"X": {}}}}]
         }})
-        r = _parse(_run(json_schema_dialect_check(config_path=cfg)))
+        _parse(_run(json_schema_dialect_check(config_path=cfg)))
 
     def test_json_schema_additional_items(self, tmp_path):
         from src.spec_compliance import json_schema_dialect_check
         cfg = _write(tmp_path, {"mcp": {
             "tools": [{"name": "t", "inputSchema": {"additionalItems": True}}]
         }})
-        r = _parse(_run(json_schema_dialect_check(config_path=cfg)))
+        _parse(_run(json_schema_dialect_check(config_path=cfg)))
 
     def test_sse_no_protocol_version_header(self, tmp_path):
         from src.spec_compliance import sse_transport_audit
@@ -1382,7 +1382,7 @@ class TestHebbianRuntimeDeepE:
 
         claude = tmp_path / "CLAUDE.md"
         claude.write_text("# CLAUDE\nLAYER 2 — CONSOLIDATED\n- [0.80] Overweight rule\n- [0.50] Normal rule two\n")
-        r = _parse(_run(openclaw_hebbian_weight_update(
+        _parse(_run(openclaw_hebbian_weight_update(
             claude_md_path=str(claude),
             db_path=str(db),
             dry_run=False
@@ -1409,7 +1409,7 @@ class TestHebbianRuntimeDeepE:
         import stat
         db.chmod(stat.S_IRUSR)
         try:
-            r = _parse(_run(openclaw_hebbian_weight_update(
+            _parse(_run(openclaw_hebbian_weight_update(
                 claude_md_path=str(claude),
                 db_path=str(db),
                 dry_run=False
@@ -1488,7 +1488,7 @@ class TestConfigMigrationDeepE:
         }))
         cfg = _write(tmp_path, {"plugins": {"entries": [{"id": "myplugin"}]}})
         with patch("src.config_migration._PLUGIN_MANIFEST", manifest):
-            r = _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
+            _parse(_run(openclaw_plugin_integrity_check(config_path=cfg)))
 
     def test_token_separation_hooks_token(self, tmp_path):
         """hooks.token set but different from gateway password."""
@@ -1497,7 +1497,7 @@ class TestConfigMigrationDeepE:
             "hooks": {"token": "hook-secret-123"},
             "gateway": {"auth": {"password": "different-password"}}
         })
-        r = _parse(_run(openclaw_token_separation_check(config_path=cfg)))
+        _parse(_run(openclaw_token_separation_check(config_path=cfg)))
 
 
 class TestSpecComplianceDeepE:
@@ -1510,7 +1510,7 @@ class TestSpecComplianceDeepE:
             "capabilities": {"resources": {"subscribe": True}},
             "resources": [{"name": "test"}]
         }})
-        r = _parse(_run(resources_prompts_audit(config_path=cfg)))
+        _parse(_run(resources_prompts_audit(config_path=cfg)))
 
     def test_tasks_high_finding(self, tmp_path):
         """Trigger HIGH severity in tasks_audit."""
@@ -1519,7 +1519,7 @@ class TestSpecComplianceDeepE:
             "capabilities": {"tasks": True},
             "tasks": {"durableRequests": False}
         }})
-        r = _parse(_run(tasks_audit(config_path=cfg)))
+        _parse(_run(tasks_audit(config_path=cfg)))
 
     def test_elicitation_high_severity(self, tmp_path):
         """Trigger HIGH severity in elicitation_audit."""
@@ -1530,7 +1530,7 @@ class TestSpecComplianceDeepE:
                 "urlMode": "unsafe"
             }
         }})
-        r = _parse(_run(elicitation_audit(config_path=cfg)))
+        _parse(_run(elicitation_audit(config_path=cfg)))
 
 
 class TestSkillLoaderDeepE:

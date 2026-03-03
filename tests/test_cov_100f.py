@@ -760,7 +760,7 @@ class TestConfigMigrationDeepF:
         plugins_dir.mkdir(parents=True)
         main_file = plugins_dir / "index.js"
         main_file.write_text("console.log('hello')")
-        real_hash = hashlib.sha256(main_file.read_bytes()).hexdigest()
+        hashlib.sha256(main_file.read_bytes()).hexdigest()
         # Create manifest with wrong hash
         manifest = tmp_path / "plugin-manifest.json"
         manifest.write_text(json.dumps({

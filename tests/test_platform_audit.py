@@ -4,7 +4,6 @@ Unit tests for src/platform_audit.py — platform alignment 2026.2.
 
 from __future__ import annotations
 
-import pytest
 
 from src.platform_audit import TOOLS
 

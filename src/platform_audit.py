@@ -27,10 +27,9 @@ from __future__ import annotations
 import json
 import logging
 import re
-from pathlib import Path
 from typing import Any
 
-from src.config_helpers import load_config, get_nested, mask_secret
+from src.config_helpers import load_config, get_nested
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,6 @@ Unit tests for src/config_migration.py — config migration tools.
 
 from __future__ import annotations
 
-import pytest
 
 from src.config_migration import TOOLS
 

@@ -4,7 +4,6 @@ Unit tests for src/ecosystem_audit.py — ecosystem differentiation.
 
 from __future__ import annotations
 
-import pytest
 
 from src.ecosystem_audit import TOOLS
 

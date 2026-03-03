@@ -5,7 +5,6 @@ Unit tests for src/hebbian_memory.py — Hebbian adaptive memory.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 

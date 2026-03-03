@@ -15,7 +15,6 @@ from src.legal_status import (
     handle_legal_social_protection,
     handle_legal_governance_audit,
     handle_legal_creation_checklist,
-    _LEGAL_FORMS,
     TOOLS,
 )
 

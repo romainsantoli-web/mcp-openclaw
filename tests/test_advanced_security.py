@@ -4,7 +4,6 @@ Unit tests for src/advanced_security.py — advanced security scanning.
 
 from __future__ import annotations
 
-import pytest
 
 from src.advanced_security import TOOLS
 

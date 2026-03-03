@@ -7,12 +7,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import sqlite3
 import textwrap
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
-import pytest
 
 
 def _run(coro):

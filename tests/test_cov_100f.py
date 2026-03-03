@@ -12,11 +12,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import os
 import time
 from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import patch
 
 import pytest
 

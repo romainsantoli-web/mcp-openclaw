@@ -5,7 +5,6 @@ Unit tests for src/config_helpers.py — shared DRY helpers.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 

@@ -3,11 +3,13 @@ Targets uncovered branches in 8 modules: reliability_probe, gateway_fleet,
 hebbian_memory/_runtime, main, compliance_medium, advanced_security,
 ecosystem_audit, skill_loader.
 """
-import asyncio, json, os, sqlite3, time
-from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+import asyncio
+import json
+import os
+import sqlite3
+import time
+from unittest.mock import patch, MagicMock
 
-import pytest
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -649,7 +651,7 @@ class TestEcosystemAuditDeep:
 # ===================================================================
 class TestSkillLoaderDeep:
     def test_loader_nonexistent_in_cache(self, tmp_path):
-        from src.skill_loader import openclaw_skill_lazy_loader, _SKILL_CACHE
+        from src.skill_loader import openclaw_skill_lazy_loader
         s1 = tmp_path / "skill-a"
         s1.mkdir()
         (s1 / "SKILL.md").write_text("---\nname: A\ntags: [test]\n---\n# A\nDesc")

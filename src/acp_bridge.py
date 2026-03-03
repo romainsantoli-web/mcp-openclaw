@@ -535,7 +535,7 @@ async def openclaw_acpx_version_check(
     Returns:
         {ok, severity, findings, config_path}
     """
-    from src.config_helpers import load_config as _load_config_fn, no_path_traversal
+    from src.config_helpers import no_path_traversal
 
     if config_path:
         no_path_traversal(config_path)

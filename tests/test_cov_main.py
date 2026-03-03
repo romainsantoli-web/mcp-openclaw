@@ -6,13 +6,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, TestClient, TestServer
 
 # We import the module-level objects directly to test them
 from src.main import (
@@ -21,12 +17,9 @@ from src.main import (
     _MCP_RESOURCES,
     _MCP_TASKS,
     _PENDING_ELICITATIONS,
-    _SSE_EVENTS,
     _build_app,
     _check_auth,
     _get_prompt,
-    _handle_health,
-    _handle_mcp,
     _mcp_call_tool,
     _mcp_tools_list,
     _read_resource,

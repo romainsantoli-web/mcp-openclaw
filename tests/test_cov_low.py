@@ -7,11 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 
 def _run(coro):
@@ -898,7 +896,6 @@ class TestExportAuto:
 
 class TestGatewayProbe:
     def test_no_websockets(self):
-        from src.reliability_probe import openclaw_gateway_probe
         with patch.dict("sys.modules", {"websockets": None, "websockets.exceptions": None}):
             import importlib
             from src import reliability_probe

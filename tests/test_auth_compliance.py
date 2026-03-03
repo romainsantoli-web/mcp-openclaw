@@ -4,7 +4,6 @@ Unit tests for src/auth_compliance.py — OAuth/OIDC compliance.
 
 from __future__ import annotations
 
-import pytest
 
 from src.auth_compliance import TOOLS
 

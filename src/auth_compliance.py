@@ -9,9 +9,6 @@ OIDC provider discovery, token validation, and scope enforcement.
 
 from __future__ import annotations
 
-import json
-import os
-import re
 from typing import Any
 
 from src.config_helpers import load_config as _load_config_shared, get_nested as _get_nested_shared  # noqa: E402

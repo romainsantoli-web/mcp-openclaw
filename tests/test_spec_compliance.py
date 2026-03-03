@@ -4,7 +4,6 @@ Unit tests for src/spec_compliance.py — MCP 2025-11-25 spec compliance.
 
 from __future__ import annotations
 
-import pytest
 
 from src.spec_compliance import TOOLS
 

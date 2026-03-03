@@ -8,9 +8,7 @@ import json
 import os
 import time
 from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
 
-import pytest
 
 
 def _run(coro):

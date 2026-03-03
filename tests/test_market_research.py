@@ -4,10 +4,7 @@ Tests for market_research module — 6 tools, positive + negative cases.
 
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 

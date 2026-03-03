@@ -10,10 +10,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import time
 from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -940,7 +938,6 @@ class TestHebbianRuntimeE:
         """Pre-populated DB with hebbian_sessions row to trigger DB read path."""
         from src.hebbian_memory._runtime import openclaw_hebbian_weight_update
         from src.hebbian_memory._helpers import _init_db
-        import sqlite3
         db = tmp_path / "hebbian.db"
         conn = _init_db(str(db))
         conn.execute(

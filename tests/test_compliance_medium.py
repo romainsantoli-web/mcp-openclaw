@@ -4,7 +4,6 @@ Unit tests for src/compliance_medium.py — medium-priority compliance tools.
 
 from __future__ import annotations
 
-import pytest
 
 from src.compliance_medium import TOOLS
 

@@ -6,15 +6,12 @@ Tests: card generation, validation, task lifecycle, cancel, subscribe, push conf
 
 from __future__ import annotations
 
-import asyncio
 import json
-from pathlib import Path
 
 import pytest
 
 from src.a2a_bridge import (
     A2A_SPEC_VERSION,
-    _create_task,
     _generate_card_from_soul,
     _sign_agent_card,
     _text_part,

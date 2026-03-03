@@ -11,7 +11,6 @@ Tests run without a live OpenClaw Gateway:
 Run:  python -m pytest tests/test_smoke.py -v
 """
 
-import asyncio
 import json
 import pathlib
 import subprocess
@@ -21,7 +20,6 @@ import os
 
 import httpx
 import pytest
-import pytest_asyncio
 
 # All tests in this file are integration tests (require a running server)
 pytestmark = pytest.mark.integration
@@ -1497,7 +1495,7 @@ class TestExportMockedSuccess:
     @pytest.mark.asyncio
     async def test_github_pr_success(self, monkeypatch):
         """Mock all GitHub API steps and verify PR result."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import MagicMock
         from src.delivery_export import firm_export_github_pr
         import src.delivery_export as mod
 

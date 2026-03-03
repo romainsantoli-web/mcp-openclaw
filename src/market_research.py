@@ -20,8 +20,6 @@ Tools exposed (6):
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import os
 import re
@@ -568,9 +566,9 @@ def openclaw_market_report_generate(
     lines.append("> ⚠️ Contenu généré par IA — validation humaine requise avant utilisation.")
     lines.append("")
     lines.append(f"**Date :** {datetime.now(UTC).strftime('%Y-%m-%d')}")
-    lines.append(f"**Département :** Market Research")
-    lines.append(f"**Analyste :** Élise Montblanc (Market Research Director, IA)")
-    lines.append(f"**Confiance globale :** 🟡 MEDIUM — à affiner avec données primaires")
+    lines.append("**Département :** Market Research")
+    lines.append("**Analyste :** Élise Montblanc (Market Research Director, IA)")
+    lines.append("**Confiance globale :** 🟡 MEDIUM — à affiner avec données primaires")
     lines.append(f"**Langue :** {'Français' if language == 'fr' else 'English'}")
     lines.append("")
     lines.append("---")

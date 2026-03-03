@@ -4,7 +4,6 @@ Unit tests for src/gateway_hardening.py — Gateway auth and credentials.
 
 from __future__ import annotations
 
-import pytest
 
 from src.gateway_hardening import TOOLS
 

@@ -814,7 +814,7 @@ async def openclaw_safe_bins_profile_check(config_path: str | None = None) -> di
         # Check 2: interpreter without restriction
         if base_name in _INTERPRETER_BINS and has_profile:
             profile = safe_bin_profiles.get(bin_name) or safe_bin_profiles.get(base_name, {})
-            if isinstance(profile, dict) and not profile.get("stdinSafe", True) is False:
+            if isinstance(profile, dict) and profile.get("stdinSafe", True) is not False:
                 findings.append({
                     "id": f"safe_bin_interpreter_stdin_{base_name}",
                     "severity": "HIGH",

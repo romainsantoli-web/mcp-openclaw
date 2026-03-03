@@ -4,7 +4,6 @@ Unit tests for src/security_audit.py — OpenClaw security scanning tools.
 
 from __future__ import annotations
 
-import pytest
 
 from src.security_audit import TOOLS
 

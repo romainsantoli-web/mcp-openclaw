@@ -11,7 +11,6 @@ Each tool audits config for a specific compliance domain.
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any
 

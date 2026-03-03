@@ -69,7 +69,7 @@ async def openclaw_observability_pipeline(
     if not jsonl.exists():
         return {"ok": False, "error": f"JSONL file not found: {jsonl_path}"}
 
-    if not jsonl.suffix.lower() in (".jsonl", ".ndjson", ".log", ".json"):
+    if jsonl.suffix.lower() not in (".jsonl", ".ndjson", ".log", ".json"):
         return {
             "ok": False,
             "error": f"Unexpected extension '{jsonl.suffix}'. Expected .jsonl, .ndjson, .log, or .json.",

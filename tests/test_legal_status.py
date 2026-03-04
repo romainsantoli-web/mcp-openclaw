@@ -48,7 +48,7 @@ def test_all_tools_category_is_legal_status():
 class TestLegalStatusCompare:
     @pytest.mark.asyncio
     async def test_basic_compare_single_founder(self):
-        result = _parse(await handle_legal_status_compare({
+        result = _parse(await handle_legal_status_compare(**{
             "founders": 1,
         }))
         assert result["ok"] is True
@@ -57,7 +57,7 @@ class TestLegalStatusCompare:
 
     @pytest.mark.asyncio
     async def test_multi_founder_filters(self):
-        result = _parse(await handle_legal_status_compare({
+        result = _parse(await handle_legal_status_compare(**{
             "founders": 3,
         }))
         assert result["ok"] is True
@@ -67,7 +67,7 @@ class TestLegalStatusCompare:
 
     @pytest.mark.asyncio
     async def test_fundraising_flag_boosts_sas(self):
-        result = _parse(await handle_legal_status_compare({
+        result = _parse(await handle_legal_status_compare(**{
             "founders": 2,
             "fundraising": True,
         }))
@@ -79,7 +79,7 @@ class TestLegalStatusCompare:
 
     @pytest.mark.asyncio
     async def test_micro_warning_on_high_revenue(self):
-        result = _parse(await handle_legal_status_compare({
+        result = _parse(await handle_legal_status_compare(**{
             "founders": 1,
             "revenue_y1": 100000,
         }))
@@ -90,7 +90,7 @@ class TestLegalStatusCompare:
 
     @pytest.mark.asyncio
     async def test_returns_timestamp_and_disclaimer(self):
-        result = _parse(await handle_legal_status_compare({}))
+        result = _parse(await handle_legal_status_compare(**{}))
         assert "timestamp" in result
         assert "disclaimer" in result
 
@@ -100,7 +100,7 @@ class TestLegalStatusCompare:
 class TestLegalTaxSimulate:
     @pytest.mark.asyncio
     async def test_basic_simulation(self):
-        result = _parse(await handle_legal_tax_simulate({
+        result = _parse(await handle_legal_tax_simulate(**{
             "legal_form": "SAS",
             "revenue": 150000,
             "salary": 40000,
@@ -111,7 +111,7 @@ class TestLegalTaxSimulate:
 
     @pytest.mark.asyncio
     async def test_custom_horizon(self):
-        result = _parse(await handle_legal_tax_simulate({
+        result = _parse(await handle_legal_tax_simulate(**{
             "legal_form": "SARL",
             "revenue": 100000,
             "horizon_years": 5,
@@ -121,7 +121,7 @@ class TestLegalTaxSimulate:
 
     @pytest.mark.asyncio
     async def test_holding_benefit(self):
-        result = _parse(await handle_legal_tax_simulate({
+        result = _parse(await handle_legal_tax_simulate(**{
             "legal_form": "SAS",
             "revenue": 200000,
             "salary": 50000,
@@ -135,7 +135,7 @@ class TestLegalTaxSimulate:
 
     @pytest.mark.asyncio
     async def test_unknown_legal_form(self):
-        result = _parse(await handle_legal_tax_simulate({
+        result = _parse(await handle_legal_tax_simulate(**{
             "legal_form": "XYZ",
         }))
         assert result["ok"] is False
@@ -143,7 +143,7 @@ class TestLegalTaxSimulate:
 
     @pytest.mark.asyncio
     async def test_zero_revenue(self):
-        result = _parse(await handle_legal_tax_simulate({
+        result = _parse(await handle_legal_tax_simulate(**{
             "legal_form": "SAS",
             "revenue": 0,
         }))
@@ -155,7 +155,7 @@ class TestLegalTaxSimulate:
 class TestLegalSocialProtection:
     @pytest.mark.asyncio
     async def test_assimile_salarie(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "assimile_salarie",
             "salary": 60000,
         }))
@@ -165,7 +165,7 @@ class TestLegalSocialProtection:
 
     @pytest.mark.asyncio
     async def test_tns(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "TNS",
             "salary": 60000,
         }))
@@ -174,7 +174,7 @@ class TestLegalSocialProtection:
 
     @pytest.mark.asyncio
     async def test_unknown_status(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "invalid_status",
         }))
         assert result["ok"] is False
@@ -182,7 +182,7 @@ class TestLegalSocialProtection:
 
     @pytest.mark.asyncio
     async def test_comparison_included(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "assimile_salarie",
             "include_options": True,
         }))
@@ -191,7 +191,7 @@ class TestLegalSocialProtection:
 
     @pytest.mark.asyncio
     async def test_comparison_excluded(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "assimile_salarie",
             "include_options": False,
         }))
@@ -200,7 +200,7 @@ class TestLegalSocialProtection:
 
     @pytest.mark.asyncio
     async def test_recommendations_present(self):
-        result = _parse(await handle_legal_social_protection({
+        result = _parse(await handle_legal_social_protection(**{
             "status": "TNS",
         }))
         assert result["ok"] is True
@@ -212,7 +212,7 @@ class TestLegalSocialProtection:
 class TestLegalGovernanceAudit:
     @pytest.mark.asyncio
     async def test_basic_audit_sas(self):
-        result = _parse(await handle_legal_governance_audit({
+        result = _parse(await handle_legal_governance_audit(**{
             "legal_form": "SAS",
             "founders": 2,
         }))
@@ -222,12 +222,12 @@ class TestLegalGovernanceAudit:
 
     @pytest.mark.asyncio
     async def test_with_investors_more_critical(self):
-        without = _parse(await handle_legal_governance_audit({
+        without = _parse(await handle_legal_governance_audit(**{
             "legal_form": "SAS",
             "founders": 2,
             "has_investors": False,
         }))
-        with_inv = _parse(await handle_legal_governance_audit({
+        with_inv = _parse(await handle_legal_governance_audit(**{
             "legal_form": "SAS",
             "founders": 2,
             "has_investors": True,
@@ -236,14 +236,14 @@ class TestLegalGovernanceAudit:
 
     @pytest.mark.asyncio
     async def test_unknown_legal_form(self):
-        result = _parse(await handle_legal_governance_audit({
+        result = _parse(await handle_legal_governance_audit(**{
             "legal_form": "INVALID",
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_specific_clauses_filter(self):
-        result = _parse(await handle_legal_governance_audit({
+        result = _parse(await handle_legal_governance_audit(**{
             "legal_form": "SAS",
             "specific_clauses": ["agrement_cession", "drag_along"],
         }))
@@ -253,7 +253,7 @@ class TestLegalGovernanceAudit:
 
     @pytest.mark.asyncio
     async def test_governance_structure_fields(self):
-        result = _parse(await handle_legal_governance_audit({
+        result = _parse(await handle_legal_governance_audit(**{
             "legal_form": "SAS",
             "founders": 3,
         }))
@@ -267,7 +267,7 @@ class TestLegalGovernanceAudit:
 class TestLegalCreationChecklist:
     @pytest.mark.asyncio
     async def test_basic_checklist(self):
-        result = _parse(await handle_legal_creation_checklist({
+        result = _parse(await handle_legal_creation_checklist(**{
             "legal_form": "SAS",
         }))
         assert result["ok"] is True
@@ -276,7 +276,7 @@ class TestLegalCreationChecklist:
 
     @pytest.mark.asyncio
     async def test_cost_range(self):
-        result = _parse(await handle_legal_creation_checklist({
+        result = _parse(await handle_legal_creation_checklist(**{
             "legal_form": "SAS",
         }))
         assert "€" in result["estimated_cost"]["min"]
@@ -284,21 +284,21 @@ class TestLegalCreationChecklist:
 
     @pytest.mark.asyncio
     async def test_annual_obligations(self):
-        result = _parse(await handle_legal_creation_checklist({
+        result = _parse(await handle_legal_creation_checklist(**{
             "legal_form": "SAS",
         }))
         assert len(result["annual_obligations"]) > 0
 
     @pytest.mark.asyncio
     async def test_unknown_legal_form(self):
-        result = _parse(await handle_legal_creation_checklist({
+        result = _parse(await handle_legal_creation_checklist(**{
             "legal_form": "WRONG",
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_micro_no_annual_accounts(self):
-        result = _parse(await handle_legal_creation_checklist({
+        result = _parse(await handle_legal_creation_checklist(**{
             "legal_form": "MICRO",
         }))
         assert result["ok"] is True

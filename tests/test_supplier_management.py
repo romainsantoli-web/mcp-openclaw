@@ -59,7 +59,7 @@ def test_all_tools_category_is_procurement():
 class TestSupplierSearch:
     @pytest.mark.asyncio
     async def test_basic_search(self):
-        result = _parse(await handle_supplier_search({
+        result = _parse(await handle_supplier_search(**{
             "category": "saas",
             "query": "CRM software",
         }))
@@ -70,7 +70,7 @@ class TestSupplierSearch:
 
     @pytest.mark.asyncio
     async def test_unknown_category(self):
-        result = _parse(await handle_supplier_search({
+        result = _parse(await handle_supplier_search(**{
             "category": "unknown_xyz",
         }))
         assert result["ok"] is False
@@ -78,14 +78,14 @@ class TestSupplierSearch:
 
     @pytest.mark.asyncio
     async def test_methodology_present(self):
-        result = _parse(await handle_supplier_search({
+        result = _parse(await handle_supplier_search(**{
             "category": "saas",
         }))
         assert len(result["methodology"]) > 0
 
     @pytest.mark.asyncio
     async def test_search_criteria_captured(self):
-        result = _parse(await handle_supplier_search({
+        result = _parse(await handle_supplier_search(**{
             "category": "saas",
             "budget_max": 5000,
             "users": 50,
@@ -101,7 +101,7 @@ class TestSupplierSearch:
 class TestSupplierEvaluate:
     @pytest.mark.asyncio
     async def test_basic_evaluation(self):
-        result = _parse(await handle_supplier_evaluate({
+        result = _parse(await handle_supplier_evaluate(**{
             "suppliers": ["SupplierA", "SupplierB"],
         }))
         assert result["ok"] is True
@@ -110,14 +110,14 @@ class TestSupplierEvaluate:
 
     @pytest.mark.asyncio
     async def test_empty_suppliers_error(self):
-        result = _parse(await handle_supplier_evaluate({
+        result = _parse(await handle_supplier_evaluate(**{
             "suppliers": [],
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_custom_scores_affect_ranking(self):
-        result = _parse(await handle_supplier_evaluate({
+        result = _parse(await handle_supplier_evaluate(**{
             "suppliers": ["Good", "Bad"],
             "scores": {
                 "Good": {"price": 9, "quality": 9, "reliability": 9},
@@ -129,14 +129,14 @@ class TestSupplierEvaluate:
 
     @pytest.mark.asyncio
     async def test_runner_up_present(self):
-        result = _parse(await handle_supplier_evaluate({
+        result = _parse(await handle_supplier_evaluate(**{
             "suppliers": ["A", "B", "C"],
         }))
         assert result["runner_up"] is not None
 
     @pytest.mark.asyncio
     async def test_sorted_by_score(self):
-        result = _parse(await handle_supplier_evaluate({
+        result = _parse(await handle_supplier_evaluate(**{
             "suppliers": ["X", "Y", "Z"],
         }))
         scores = [r["total_score"] for r in result["results"]]
@@ -148,7 +148,7 @@ class TestSupplierEvaluate:
 class TestSupplierTcoAnalyze:
     @pytest.mark.asyncio
     async def test_basic_tco(self):
-        result = _parse(await handle_supplier_tco_analyze({
+        result = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["VendorA"],
             "volume": 10,
         }))
@@ -158,18 +158,18 @@ class TestSupplierTcoAnalyze:
 
     @pytest.mark.asyncio
     async def test_empty_suppliers_error(self):
-        result = _parse(await handle_supplier_tco_analyze({
+        result = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": [],
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_hidden_costs_included(self):
-        with_hidden = _parse(await handle_supplier_tco_analyze({
+        with_hidden = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["V"],
             "include_hidden_costs": True,
         }))
-        without_hidden = _parse(await handle_supplier_tco_analyze({
+        without_hidden = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["V"],
             "include_hidden_costs": False,
         }))
@@ -177,7 +177,7 @@ class TestSupplierTcoAnalyze:
 
     @pytest.mark.asyncio
     async def test_custom_unit_prices(self):
-        result = _parse(await handle_supplier_tco_analyze({
+        result = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["Cheap", "Expensive"],
             "unit_prices": {"Cheap": 10, "Expensive": 200},
         }))
@@ -185,7 +185,7 @@ class TestSupplierTcoAnalyze:
 
     @pytest.mark.asyncio
     async def test_multi_year_projection(self):
-        result = _parse(await handle_supplier_tco_analyze({
+        result = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["V"],
             "horizon_years": 5,
         }))
@@ -193,7 +193,7 @@ class TestSupplierTcoAnalyze:
 
     @pytest.mark.asyncio
     async def test_sorted_by_tco(self):
-        result = _parse(await handle_supplier_tco_analyze({
+        result = _parse(await handle_supplier_tco_analyze(**{
             "suppliers": ["A", "B", "C"],
         }))
         tcos = [a["total_tco"] for a in result["analyses"]]
@@ -205,7 +205,7 @@ class TestSupplierTcoAnalyze:
 class TestSupplierContractCheck:
     @pytest.mark.asyncio
     async def test_basic_check(self):
-        result = _parse(await handle_supplier_contract_check({
+        result = _parse(await handle_supplier_contract_check(**{
             "supplier": "TestVendor",
         }))
         assert result["ok"] is True
@@ -213,7 +213,7 @@ class TestSupplierContractCheck:
 
     @pytest.mark.asyncio
     async def test_all_missing_is_critical(self):
-        result = _parse(await handle_supplier_contract_check({
+        result = _parse(await handle_supplier_contract_check(**{
             "supplier": "V",
             "existing_clauses": [],
         }))
@@ -230,7 +230,7 @@ class TestSupplierContractCheck:
             "price_revision", "force_majeure", "audit_right",
             "subcontracting", "jurisdiction",
         ]
-        result = _parse(await handle_supplier_contract_check({
+        result = _parse(await handle_supplier_contract_check(**{
             "supplier": "V",
             "existing_clauses": all_clauses,
         }))
@@ -240,7 +240,7 @@ class TestSupplierContractCheck:
 
     @pytest.mark.asyncio
     async def test_sorted_by_priority(self):
-        result = _parse(await handle_supplier_contract_check({
+        result = _parse(await handle_supplier_contract_check(**{
             "supplier": "V",
         }))
         priorities = [c["priority"] for c in result["clauses"]]
@@ -256,7 +256,7 @@ class TestSupplierContractCheck:
 class TestSupplierRiskMonitor:
     @pytest.mark.asyncio
     async def test_add_supplier(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "add",
             "supplier": "RiskyVendor",
         }))
@@ -266,7 +266,7 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_add_without_supplier_error(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "add",
             "supplier": "",
         }))
@@ -275,8 +275,8 @@ class TestSupplierRiskMonitor:
     @pytest.mark.asyncio
     async def test_remove_supplier(self):
         # First add
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "ToRemove"})
-        result = _parse(await handle_supplier_risk_monitor({
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "ToRemove"})
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "remove",
             "supplier": "ToRemove",
         }))
@@ -285,7 +285,7 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_remove_nonexistent_error(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "remove",
             "supplier": "Ghost",
         }))
@@ -293,8 +293,8 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_update_supplier(self):
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "UpdVendor"})
-        result = _parse(await handle_supplier_risk_monitor({
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "UpdVendor"})
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "update",
             "supplier": "UpdVendor",
             "notes": "Reviewed Q1",
@@ -304,7 +304,7 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_update_nonexistent_error(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "update",
             "supplier": "Nobody",
         }))
@@ -312,9 +312,9 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_status_all(self):
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "V1"})
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "V2"})
-        result = _parse(await handle_supplier_risk_monitor({
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "V1"})
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "V2"})
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "status",
         }))
         assert result["ok"] is True
@@ -322,8 +322,8 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_status_specific(self):
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "SpecV"})
-        result = _parse(await handle_supplier_risk_monitor({
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "SpecV"})
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "status",
             "supplier": "SpecV",
         }))
@@ -332,7 +332,7 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_status_nonexistent_error(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "status",
             "supplier": "Ghost",
         }))
@@ -340,8 +340,8 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_export(self):
-        await handle_supplier_risk_monitor({"action": "add", "supplier": "E1"})
-        result = _parse(await handle_supplier_risk_monitor({
+        await handle_supplier_risk_monitor(**{"action": "add", "supplier": "E1"})
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "export",
         }))
         assert result["ok"] is True
@@ -349,7 +349,7 @@ class TestSupplierRiskMonitor:
 
     @pytest.mark.asyncio
     async def test_unknown_action(self):
-        result = _parse(await handle_supplier_risk_monitor({
+        result = _parse(await handle_supplier_risk_monitor(**{
             "action": "invalid_action",
         }))
         assert result["ok"] is False

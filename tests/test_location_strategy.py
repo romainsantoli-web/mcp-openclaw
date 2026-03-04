@@ -48,7 +48,7 @@ def test_all_tools_category_is_location_strategy():
 class TestGeoAnalysis:
     @pytest.mark.asyncio
     async def test_basic_analysis(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": ["Paris", "Lyon"],
         }))
         assert result["ok"] is True
@@ -57,7 +57,7 @@ class TestGeoAnalysis:
 
     @pytest.mark.asyncio
     async def test_empty_cities_returns_error(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": [],
         }))
         assert result["ok"] is False
@@ -65,7 +65,7 @@ class TestGeoAnalysis:
 
     @pytest.mark.asyncio
     async def test_paris_has_metro(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": ["Paris"],
         }))
         paris = result["analyses"][0]
@@ -74,7 +74,7 @@ class TestGeoAnalysis:
 
     @pytest.mark.asyncio
     async def test_paris_salary_index_higher(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": ["Paris", "Rennes"],
         }))
         paris = next(a for a in result["analyses"] if a["city"] == "Paris")
@@ -83,7 +83,7 @@ class TestGeoAnalysis:
 
     @pytest.mark.asyncio
     async def test_tech_sector_high_fit(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": ["Lyon"],
             "sector": "tech",
         }))
@@ -91,7 +91,7 @@ class TestGeoAnalysis:
 
     @pytest.mark.asyncio
     async def test_non_tech_sector_medium_fit(self):
-        result = _parse(await handle_location_geo_analysis({
+        result = _parse(await handle_location_geo_analysis(**{
             "cities": ["Lyon"],
             "sector": "manufacturing",
         }))
@@ -103,7 +103,7 @@ class TestGeoAnalysis:
 class TestRealEstate:
     @pytest.mark.asyncio
     async def test_basic_search(self):
-        result = _parse(await handle_location_real_estate({
+        result = _parse(await handle_location_real_estate(**{
             "zone": "Île-de-France",
         }))
         assert result["ok"] is True
@@ -111,7 +111,7 @@ class TestRealEstate:
 
     @pytest.mark.asyncio
     async def test_budget_filter(self):
-        result = _parse(await handle_location_real_estate({
+        result = _parse(await handle_location_real_estate(**{
             "zone": "Île-de-France",
             "budget_max": 100,  # very low
         }))
@@ -122,7 +122,7 @@ class TestRealEstate:
 
     @pytest.mark.asyncio
     async def test_sorted_by_price(self):
-        result = _parse(await handle_location_real_estate({
+        result = _parse(await handle_location_real_estate(**{
             "zone": "Île-de-France",
         }))
         prices = [z["price_sqm_year"]["min"] for z in result["results"]]
@@ -130,7 +130,7 @@ class TestRealEstate:
 
     @pytest.mark.asyncio
     async def test_surface_in_criteria(self):
-        result = _parse(await handle_location_real_estate({
+        result = _parse(await handle_location_real_estate(**{
             "zone": "Paris",
             "surface_min": 300,
         }))
@@ -142,7 +142,7 @@ class TestRealEstate:
 class TestSiteScore:
     @pytest.mark.asyncio
     async def test_basic_scoring(self):
-        result = _parse(await handle_location_site_score({
+        result = _parse(await handle_location_site_score(**{
             "sites": ["Site A", "Site B"],
         }))
         assert result["ok"] is True
@@ -151,14 +151,14 @@ class TestSiteScore:
 
     @pytest.mark.asyncio
     async def test_empty_sites_error(self):
-        result = _parse(await handle_location_site_score({
+        result = _parse(await handle_location_site_score(**{
             "sites": [],
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_custom_scores_affect_ranking(self):
-        result = _parse(await handle_location_site_score({
+        result = _parse(await handle_location_site_score(**{
             "sites": ["Site A", "Site B"],
             "scores": {
                 "Site A": {"transport_access": 10, "fiber_connectivity": 10},
@@ -170,7 +170,7 @@ class TestSiteScore:
 
     @pytest.mark.asyncio
     async def test_sorted_by_score_desc(self):
-        result = _parse(await handle_location_site_score({
+        result = _parse(await handle_location_site_score(**{
             "sites": ["X", "Y", "Z"],
         }))
         scores = [s["total_score"] for s in result["results"]]
@@ -182,7 +182,7 @@ class TestSiteScore:
 class TestIncentives:
     @pytest.mark.asyncio
     async def test_basic_incentives(self):
-        result = _parse(await handle_location_incentives({
+        result = _parse(await handle_location_incentives(**{
             "zone": "Paris",
         }))
         assert result["ok"] is True
@@ -190,14 +190,14 @@ class TestIncentives:
 
     @pytest.mark.asyncio
     async def test_tax_zones_present(self):
-        result = _parse(await handle_location_incentives({
+        result = _parse(await handle_location_incentives(**{
             "zone": "Lyon",
         }))
         assert len(result["tax_zones"]) > 0
 
     @pytest.mark.asyncio
     async def test_national_aids_present(self):
-        result = _parse(await handle_location_incentives({
+        result = _parse(await handle_location_incentives(**{
             "zone": "Nantes",
             "company_type": "startup",
         }))
@@ -205,10 +205,10 @@ class TestIncentives:
 
     @pytest.mark.asyncio
     async def test_large_company_filters_jei(self):
-        small = _parse(await handle_location_incentives({
+        small = _parse(await handle_location_incentives(**{
             "headcount": 10,
         }))
-        large = _parse(await handle_location_incentives({
+        large = _parse(await handle_location_incentives(**{
             "headcount": 300,
         }))
         # Large company should have fewer aids (JEI filtered)
@@ -220,7 +220,7 @@ class TestIncentives:
 class TestTcoSimulate:
     @pytest.mark.asyncio
     async def test_basic_tco(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": ["Paris QCA"],
         }))
         assert result["ok"] is True
@@ -228,14 +228,14 @@ class TestTcoSimulate:
 
     @pytest.mark.asyncio
     async def test_empty_sites_error(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": [],
         }))
         assert result["ok"] is False
 
     @pytest.mark.asyncio
     async def test_multi_year_projections(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": ["Paris QCA"],
             "horizon_years": 5,
         }))
@@ -244,7 +244,7 @@ class TestTcoSimulate:
 
     @pytest.mark.asyncio
     async def test_sorted_by_tco(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": ["Paris QCA", "La Défense", "Saint-Denis"],
         }))
         tcos = [s["total_tco"] for s in result["simulations"]]
@@ -252,7 +252,7 @@ class TestTcoSimulate:
 
     @pytest.mark.asyncio
     async def test_savings_computed(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": ["Paris QCA", "Saint-Denis"],
         }))
         if result["sites_compared"] > 1:
@@ -260,7 +260,7 @@ class TestTcoSimulate:
 
     @pytest.mark.asyncio
     async def test_cost_per_employee(self):
-        result = _parse(await handle_location_tco_simulate({
+        result = _parse(await handle_location_tco_simulate(**{
             "sites": ["Paris QCA"],
             "headcount": 20,
         }))

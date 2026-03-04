@@ -15,7 +15,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 # Default config location — centralized in platform.py
-from src.platform import FIRM_CONFIG
+from src.platform_compat import FIRM_CONFIG
 DEFAULT_CONFIG_PATH = FIRM_CONFIG
 
 # ── I-H3: Centralized SSRF guard ────────────────────────────────────────────

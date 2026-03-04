@@ -56,7 +56,7 @@ def _parse(result) -> dict:
 class TestLegalStatusCompare:
     def test_basic_startup_sas(self):
         from src.legal_status import handle_legal_status_compare
-        r = _parse(_run(handle_legal_status_compare({
+        r = _parse(_run(handle_legal_status_compare(**{
             "project_type": "startup", "founders": 2, "revenue_y1": 200000,
             "fundraising": True, "sector": "tech",
         })))
@@ -66,7 +66,7 @@ class TestLegalStatusCompare:
 
     def test_single_founder_filters_multi(self):
         from src.legal_status import handle_legal_status_compare
-        r = _parse(_run(handle_legal_status_compare({
+        r = _parse(_run(handle_legal_status_compare(**{
             "founders": 1, "fundraising": False,
         })))
         assert r["ok"] is True
@@ -76,7 +76,7 @@ class TestLegalStatusCompare:
 
     def test_micro_over_threshold(self):
         from src.legal_status import handle_legal_status_compare
-        r = _parse(_run(handle_legal_status_compare({
+        r = _parse(_run(handle_legal_status_compare(**{
             "founders": 1, "revenue_y1": 100000,  # > 77700 threshold
         })))
         assert r["ok"] is True
@@ -89,7 +89,7 @@ class TestLegalStatusCompare:
 class TestLegalTaxSimulate:
     def test_basic_sas_simulation(self):
         from src.legal_status import handle_legal_tax_simulate
-        r = _parse(_run(handle_legal_tax_simulate({
+        r = _parse(_run(handle_legal_tax_simulate(**{
             "legal_form": "SAS", "revenue": 150000, "salary": 40000,
             "dividends": 20000, "horizon_years": 3, "growth_rate": 0.1,
         })))
@@ -98,7 +98,7 @@ class TestLegalTaxSimulate:
 
     def test_holding_benefit(self):
         from src.legal_status import handle_legal_tax_simulate
-        r = _parse(_run(handle_legal_tax_simulate({
+        r = _parse(_run(handle_legal_tax_simulate(**{
             "legal_form": "SAS", "revenue": 200000, "salary": 50000,
             "dividends": 30000, "holding": True, "horizon_years": 2,
         })))
@@ -109,13 +109,13 @@ class TestLegalTaxSimulate:
 
     def test_unknown_form(self):
         from src.legal_status import handle_legal_tax_simulate
-        r = _parse(_run(handle_legal_tax_simulate({"legal_form": "XYZ"})))
+        r = _parse(_run(handle_legal_tax_simulate(**{"legal_form": "XYZ"})))
         assert r["ok"] is False
         assert "XYZ" in r.get("error", "")
 
     def test_zero_profit(self):
         from src.legal_status import handle_legal_tax_simulate
-        r = _parse(_run(handle_legal_tax_simulate({
+        r = _parse(_run(handle_legal_tax_simulate(**{
             "legal_form": "SARL", "revenue": 10000, "salary": 50000,
             "dividends": 0, "horizon_years": 1,
         })))
@@ -125,7 +125,7 @@ class TestLegalTaxSimulate:
 
     def test_reduced_is_rate(self):
         from src.legal_status import handle_legal_tax_simulate
-        r = _parse(_run(handle_legal_tax_simulate({
+        r = _parse(_run(handle_legal_tax_simulate(**{
             "legal_form": "SAS", "revenue": 30000, "salary": 0,
             "dividends": 0, "horizon_years": 1,
         })))
@@ -136,7 +136,7 @@ class TestLegalTaxSimulate:
 class TestLegalSocialProtection:
     def test_assimile_salarie(self):
         from src.legal_status import handle_legal_social_protection
-        r = _parse(_run(handle_legal_social_protection({
+        r = _parse(_run(handle_legal_social_protection(**{
             "status": "assimile_salarie", "salary": 60000, "include_options": True,
         })))
         assert r["ok"] is True
@@ -144,7 +144,7 @@ class TestLegalSocialProtection:
 
     def test_tns_status(self):
         from src.legal_status import handle_legal_social_protection
-        r = _parse(_run(handle_legal_social_protection({
+        r = _parse(_run(handle_legal_social_protection(**{
             "status": "TNS", "salary": 40000,
         })))
         assert r["ok"] is True
@@ -152,12 +152,12 @@ class TestLegalSocialProtection:
 
     def test_unknown_status(self):
         from src.legal_status import handle_legal_social_protection
-        r = _parse(_run(handle_legal_social_protection({"status": "UNKNOWN_STATUS"})))
+        r = _parse(_run(handle_legal_social_protection(**{"status": "UNKNOWN_STATUS"})))
         assert r["ok"] is False
 
     def test_no_options(self):
         from src.legal_status import handle_legal_social_protection
-        r = _parse(_run(handle_legal_social_protection({
+        r = _parse(_run(handle_legal_social_protection(**{
             "status": "assimile_salarie", "include_options": False,
         })))
         assert r["ok"] is True
@@ -167,7 +167,7 @@ class TestLegalSocialProtection:
 class TestLegalGovernanceAudit:
     def test_sas_with_investors(self):
         from src.legal_status import handle_legal_governance_audit
-        r = _parse(_run(handle_legal_governance_audit({
+        r = _parse(_run(handle_legal_governance_audit(**{
             "legal_form": "SAS", "founders": 3, "has_investors": True,
         })))
         assert r["ok"] is True
@@ -175,12 +175,12 @@ class TestLegalGovernanceAudit:
 
     def test_unknown_form(self):
         from src.legal_status import handle_legal_governance_audit
-        r = _parse(_run(handle_legal_governance_audit({"legal_form": "BADFORM"})))
+        r = _parse(_run(handle_legal_governance_audit(**{"legal_form": "BADFORM"})))
         assert r["ok"] is False
 
     def test_specific_clauses_filter(self):
         from src.legal_status import handle_legal_governance_audit
-        r = _parse(_run(handle_legal_governance_audit({
+        r = _parse(_run(handle_legal_governance_audit(**{
             "legal_form": "SAS", "founders": 2,
             "specific_clauses": ["agrement_cession", "drag_along"],
         })))
@@ -191,7 +191,7 @@ class TestLegalGovernanceAudit:
 
     def test_single_founder_no_investors(self):
         from src.legal_status import handle_legal_governance_audit
-        r = _parse(_run(handle_legal_governance_audit({
+        r = _parse(_run(handle_legal_governance_audit(**{
             "legal_form": "SASU", "founders": 1, "has_investors": False,
         })))
         assert r["ok"] is True
@@ -200,7 +200,7 @@ class TestLegalGovernanceAudit:
 class TestLegalCreationChecklist:
     def test_sas_tech(self):
         from src.legal_status import handle_legal_creation_checklist
-        r = _parse(_run(handle_legal_creation_checklist({
+        r = _parse(_run(handle_legal_creation_checklist(**{
             "legal_form": "SAS", "sector": "tech", "geography": "France",
         })))
         assert r["ok"] is True
@@ -209,12 +209,12 @@ class TestLegalCreationChecklist:
 
     def test_unknown_form(self):
         from src.legal_status import handle_legal_creation_checklist
-        r = _parse(_run(handle_legal_creation_checklist({"legal_form": "BADFORM"})))
+        r = _parse(_run(handle_legal_creation_checklist(**{"legal_form": "BADFORM"})))
         assert r["ok"] is False
 
     def test_micro_no_annual_accounts(self):
         from src.legal_status import handle_legal_creation_checklist
-        r = _parse(_run(handle_legal_creation_checklist({"legal_form": "MICRO"})))
+        r = _parse(_run(handle_legal_creation_checklist(**{"legal_form": "MICRO"})))
         assert r["ok"] is True
 
 
@@ -225,7 +225,7 @@ class TestLegalCreationChecklist:
 class TestLocationGeoAnalysis:
     def test_paris_tech(self):
         from src.location_strategy import handle_location_geo_analysis
-        r = _parse(_run(handle_location_geo_analysis({
+        r = _parse(_run(handle_location_geo_analysis(**{
             "cities": ["Paris", "Lyon"], "sector": "tech", "headcount": 20,
         })))
         assert r["ok"] is True
@@ -233,12 +233,12 @@ class TestLocationGeoAnalysis:
 
     def test_no_cities(self):
         from src.location_strategy import handle_location_geo_analysis
-        r = _parse(_run(handle_location_geo_analysis({"cities": []})))
+        r = _parse(_run(handle_location_geo_analysis(**{"cities": []})))
         assert r["ok"] is False
 
     def test_small_city(self):
         from src.location_strategy import handle_location_geo_analysis
-        r = _parse(_run(handle_location_geo_analysis({
+        r = _parse(_run(handle_location_geo_analysis(**{
             "cities": ["Clermont-Ferrand"], "sector": "industry",
         })))
         assert r["ok"] is True
@@ -247,7 +247,7 @@ class TestLocationGeoAnalysis:
 class TestLocationRealEstate:
     def test_idf_search(self):
         from src.location_strategy import handle_location_real_estate
-        r = _parse(_run(handle_location_real_estate({
+        r = _parse(_run(handle_location_real_estate(**{
             "zone": "Île-de-France", "property_type": "bureau",
             "surface_min": 200, "budget_max": 5000,
         })))
@@ -256,21 +256,21 @@ class TestLocationRealEstate:
 
     def test_specific_zone(self):
         from src.location_strategy import handle_location_real_estate
-        r = _parse(_run(handle_location_real_estate({
+        r = _parse(_run(handle_location_real_estate(**{
             "zone": "La Défense", "surface_min": 100,
         })))
         assert r["ok"] is True
 
     def test_no_budget(self):
         from src.location_strategy import handle_location_real_estate
-        r = _parse(_run(handle_location_real_estate({"zone": "France"})))
+        r = _parse(_run(handle_location_real_estate(**{"zone": "France"})))
         assert r["ok"] is True
 
 
 class TestLocationSiteScore:
     def test_two_sites(self):
         from src.location_strategy import handle_location_site_score
-        r = _parse(_run(handle_location_site_score({
+        r = _parse(_run(handle_location_site_score(**{
             "sites": ["Site A", "Site B"],
             "scores": {"Site A": {"transport_access": 8}, "Site B": {"transport_access": 6}},
         })))
@@ -280,12 +280,12 @@ class TestLocationSiteScore:
 
     def test_no_sites(self):
         from src.location_strategy import handle_location_site_score
-        r = _parse(_run(handle_location_site_score({"sites": []})))
+        r = _parse(_run(handle_location_site_score(**{"sites": []})))
         assert r["ok"] is False
 
     def test_custom_weights(self):
         from src.location_strategy import handle_location_site_score
-        r = _parse(_run(handle_location_site_score({
+        r = _parse(_run(handle_location_site_score(**{
             "sites": ["HQ"],
             "weights": {"price_sqm": 50, "transport_access": 30},
         })))
@@ -295,7 +295,7 @@ class TestLocationSiteScore:
 class TestLocationIncentives:
     def test_startup_tech(self):
         from src.location_strategy import handle_location_incentives
-        r = _parse(_run(handle_location_incentives({
+        r = _parse(_run(handle_location_incentives(**{
             "zone": "Paris", "company_type": "startup",
             "headcount": 10, "sector": "tech",
         })))
@@ -304,7 +304,7 @@ class TestLocationIncentives:
 
     def test_large_company_filters_jei(self):
         from src.location_strategy import handle_location_incentives
-        r = _parse(_run(handle_location_incentives({
+        r = _parse(_run(handle_location_incentives(**{
             "headcount": 300, "company_type": "enterprise",
         })))
         assert r["ok"] is True
@@ -313,7 +313,7 @@ class TestLocationIncentives:
 class TestLocationTcoSimulate:
     def test_two_sites(self):
         from src.location_strategy import handle_location_tco_simulate
-        r = _parse(_run(handle_location_tco_simulate({
+        r = _parse(_run(handle_location_tco_simulate(**{
             "sites": ["La Défense", "Saint-Denis"],
             "surface": 300, "horizon_years": 3, "headcount": 15,
         })))
@@ -323,12 +323,12 @@ class TestLocationTcoSimulate:
 
     def test_no_sites(self):
         from src.location_strategy import handle_location_tco_simulate
-        r = _parse(_run(handle_location_tco_simulate({"sites": []})))
+        r = _parse(_run(handle_location_tco_simulate(**{"sites": []})))
         assert r["ok"] is False
 
     def test_single_site(self):
         from src.location_strategy import handle_location_tco_simulate
-        r = _parse(_run(handle_location_tco_simulate({
+        r = _parse(_run(handle_location_tco_simulate(**{
             "sites": ["Paris CBD"],
             "surface": 100, "horizon_years": 5,
         })))
@@ -343,7 +343,7 @@ class TestLocationTcoSimulate:
 class TestSupplierSearch:
     def test_saas_search(self):
         from src.supplier_management import handle_supplier_search
-        r = _parse(_run(handle_supplier_search({
+        r = _parse(_run(handle_supplier_search(**{
             "category": "saas", "query": "CRM", "budget_max": 500,
         })))
         assert r["ok"] is True
@@ -351,12 +351,12 @@ class TestSupplierSearch:
 
     def test_unknown_category(self):
         from src.supplier_management import handle_supplier_search
-        r = _parse(_run(handle_supplier_search({"category": "nonexistent"})))
+        r = _parse(_run(handle_supplier_search(**{"category": "nonexistent"})))
         assert r["ok"] is False
 
     def test_hardware_search(self):
         from src.supplier_management import handle_supplier_search
-        r = _parse(_run(handle_supplier_search({
+        r = _parse(_run(handle_supplier_search(**{
             "category": "hardware", "query": "laptops", "users": 50,
         })))
         assert r["ok"] is True
@@ -365,7 +365,7 @@ class TestSupplierSearch:
 class TestSupplierEvaluate:
     def test_two_suppliers(self):
         from src.supplier_management import handle_supplier_evaluate
-        r = _parse(_run(handle_supplier_evaluate({
+        r = _parse(_run(handle_supplier_evaluate(**{
             "suppliers": ["Vendor A", "Vendor B"],
             "scores": {"Vendor A": {"quality": 9}, "Vendor B": {"quality": 7}},
         })))
@@ -375,12 +375,12 @@ class TestSupplierEvaluate:
 
     def test_no_suppliers(self):
         from src.supplier_management import handle_supplier_evaluate
-        r = _parse(_run(handle_supplier_evaluate({"suppliers": []})))
+        r = _parse(_run(handle_supplier_evaluate(**{"suppliers": []})))
         assert r["ok"] is False
 
     def test_single_supplier(self):
         from src.supplier_management import handle_supplier_evaluate
-        r = _parse(_run(handle_supplier_evaluate({"suppliers": ["Solo"]})))
+        r = _parse(_run(handle_supplier_evaluate(**{"suppliers": ["Solo"]})))
         assert r["ok"] is True
         assert r["runner_up"] is None
 
@@ -388,7 +388,7 @@ class TestSupplierEvaluate:
 class TestSupplierTcoAnalyze:
     def test_two_suppliers_with_costs(self):
         from src.supplier_management import handle_supplier_tco_analyze
-        r = _parse(_run(handle_supplier_tco_analyze({
+        r = _parse(_run(handle_supplier_tco_analyze(**{
             "suppliers": ["A", "B"],
             "volume": 10, "horizon_years": 3,
             "unit_prices": {"A": 50, "B": 80},
@@ -400,7 +400,7 @@ class TestSupplierTcoAnalyze:
 
     def test_no_hidden_costs(self):
         from src.supplier_management import handle_supplier_tco_analyze
-        r = _parse(_run(handle_supplier_tco_analyze({
+        r = _parse(_run(handle_supplier_tco_analyze(**{
             "suppliers": ["X"],
             "include_hidden_costs": False,
         })))
@@ -408,14 +408,14 @@ class TestSupplierTcoAnalyze:
 
     def test_no_suppliers(self):
         from src.supplier_management import handle_supplier_tco_analyze
-        r = _parse(_run(handle_supplier_tco_analyze({"suppliers": []})))
+        r = _parse(_run(handle_supplier_tco_analyze(**{"suppliers": []})))
         assert r["ok"] is False
 
 
 class TestSupplierContractCheck:
     def test_missing_clauses(self):
         from src.supplier_management import handle_supplier_contract_check
-        r = _parse(_run(handle_supplier_contract_check({
+        r = _parse(_run(handle_supplier_contract_check(**{
             "supplier": "Vendor X", "contract_type": "SaaS",
             "existing_clauses": [],
         })))
@@ -426,7 +426,7 @@ class TestSupplierContractCheck:
     def test_all_clauses_present(self):
         from src.supplier_management import handle_supplier_contract_check, _CONTRACT_CLAUSES
         all_clauses = [c["clause"] for c in _CONTRACT_CLAUSES]
-        r = _parse(_run(handle_supplier_contract_check({
+        r = _parse(_run(handle_supplier_contract_check(**{
             "supplier": "Good Vendor",
             "existing_clauses": all_clauses,
         })))
@@ -440,49 +440,49 @@ class TestSupplierRiskMonitor:
         _SUPPLIER_WATCHLIST.clear()
 
         # Add
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "add", "supplier": "TestVendor", "notes": "test",
         })))
         assert r["ok"] is True
         assert r["action"] == "added"
 
         # Status specific
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "status", "supplier": "TestVendor",
         })))
         assert r["ok"] is True
 
         # Update
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "update", "supplier": "TestVendor", "notes": "updated",
         })))
         assert r["ok"] is True
 
         # Export
-        r = _parse(_run(handle_supplier_risk_monitor({"action": "export"})))
+        r = _parse(_run(handle_supplier_risk_monitor(**{"action": "export"})))
         assert r["ok"] is True
         assert r["total"] >= 1
 
         # Remove
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "remove", "supplier": "TestVendor",
         })))
         assert r["ok"] is True
 
         # Status empty
-        r = _parse(_run(handle_supplier_risk_monitor({"action": "status"})))
+        r = _parse(_run(handle_supplier_risk_monitor(**{"action": "status"})))
         assert r["ok"] is True
         assert r["watchlist_count"] == 0
 
     def test_add_no_supplier(self):
         from src.supplier_management import handle_supplier_risk_monitor
-        r = _parse(_run(handle_supplier_risk_monitor({"action": "add"})))
+        r = _parse(_run(handle_supplier_risk_monitor(**{"action": "add"})))
         assert r["ok"] is False
 
     def test_remove_missing(self):
         from src.supplier_management import handle_supplier_risk_monitor, _SUPPLIER_WATCHLIST
         _SUPPLIER_WATCHLIST.clear()
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "remove", "supplier": "ghost",
         })))
         assert r["ok"] is False
@@ -490,7 +490,7 @@ class TestSupplierRiskMonitor:
     def test_update_missing(self):
         from src.supplier_management import handle_supplier_risk_monitor, _SUPPLIER_WATCHLIST
         _SUPPLIER_WATCHLIST.clear()
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "update", "supplier": "ghost",
         })))
         assert r["ok"] is False
@@ -498,20 +498,20 @@ class TestSupplierRiskMonitor:
     def test_status_missing(self):
         from src.supplier_management import handle_supplier_risk_monitor, _SUPPLIER_WATCHLIST
         _SUPPLIER_WATCHLIST.clear()
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "status", "supplier": "ghost",
         })))
         assert r["ok"] is False
 
     def test_unknown_action(self):
         from src.supplier_management import handle_supplier_risk_monitor
-        r = _parse(_run(handle_supplier_risk_monitor({"action": "invalid"})))
+        r = _parse(_run(handle_supplier_risk_monitor(**{"action": "invalid"})))
         assert r["ok"] is False
 
     def test_add_with_specific_watch(self):
         from src.supplier_management import handle_supplier_risk_monitor, _SUPPLIER_WATCHLIST
         _SUPPLIER_WATCHLIST.clear()
-        r = _parse(_run(handle_supplier_risk_monitor({
+        r = _parse(_run(handle_supplier_risk_monitor(**{
             "action": "add", "supplier": "WatchTest",
             "watch": ["financial", "security"],
         })))

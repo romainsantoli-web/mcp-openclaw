@@ -6,7 +6,7 @@ Compatible with: Claude Code, Codex, VS Code, Cursor, Windsurf, Antigravity, etc
 __all__ = [
     "config_helpers",
     "main",
-    "platform",
+    "platform_compat",
     "a2a_bridge",
     "acp_bridge",
     "advanced_security",

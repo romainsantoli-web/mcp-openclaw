@@ -26,7 +26,7 @@ import time
 import uuid
 from typing import Any
 
-__version__ = "4.1.1"
+__version__ = "4.1.2"
 
 from aiohttp import web
 from pydantic import ValidationError

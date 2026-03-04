@@ -26,7 +26,7 @@ import time
 import uuid
 from typing import Any
 
-__version__ = "4.1.0"
+__version__ = "4.1.1"
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -852,9 +852,127 @@ async def _main() -> None:
     await runner.cleanup()
 
 
+# ── Stdio transport (standard MCP — used by VS Code, Claude Desktop, etc.) ───
+
+async def _stdio_main() -> None:
+    """Run the MCP server over stdin/stdout (JSON-RPC line-delimited).
+
+    VS Code launches this process and communicates via pipes.
+    All logging goes to stderr to keep stdout clean for the protocol.
+    """
+    # Redirect logging to stderr so stdout stays clean for JSON-RPC
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    logging.basicConfig(
+        level=LOG_LEVEL,
+        format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stderr,
+    )
+    logger.info("Firm MCP Server (stdio) starting — %d tools", len(TOOL_REGISTRY))
+
+    reader = asyncio.StreamReader()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin)
+
+    w_transport, w_protocol = await asyncio.get_event_loop().connect_write_pipe(
+        asyncio.streams.FlowControlMixin, sys.stdout
+    )
+    writer = asyncio.StreamWriter(w_transport, w_protocol, reader, asyncio.get_event_loop())
+
+    async def _send(obj: dict) -> None:
+        line = json.dumps(obj, separators=(",", ":")) + "\n"
+        writer.write(line.encode())
+        await writer.drain()
+
+    async def _respond(msg_id: Any, result: Any) -> None:
+        await _send({"jsonrpc": "2.0", "id": msg_id, "result": result})
+
+    async def _error(msg_id: Any, code: int, message: str) -> None:
+        await _send({"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}})
+
+    logger.info("Firm MCP Server (stdio) ready — reading from stdin")
+
+    while True:
+        line = await reader.readline()
+        if not line:
+            break  # EOF — VS Code closed the pipe
+        line_str = line.decode().strip()
+        if not line_str:
+            continue
+
+        try:
+            body = json.loads(line_str)
+        except json.JSONDecodeError:
+            continue
+
+        method: str = body.get("method", "")
+        msg_id = body.get("id")
+        params: dict[str, Any] = body.get("params", {})
+
+        if method == "initialize":
+            await _respond(msg_id, {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {
+                    "tools": {"listChanged": True},
+                    "resources": {"subscribe": False, "listChanged": False},
+                    "prompts": {"listChanged": False},
+                    "elicitation": {},
+                },
+                "serverInfo": {
+                    "name": "firm-mcp-server",
+                    "version": __version__,
+                    "description": (
+                        "Firm MCP server — 138 tools across 29 modules. "
+                        "Security, A2A, Hebbian memory, fleet mgmt, and more."
+                    ),
+                },
+            })
+
+        elif method == "notifications/initialized":
+            pass  # Acknowledgement — no response needed
+
+        elif method == "tools/list":
+            await _respond(msg_id, {"tools": _mcp_tools_list()})
+
+        elif method == "tools/call":
+            tool_name = params.get("name", "")
+            arguments = params.get("arguments", {})
+            result = await _mcp_call_tool(tool_name, arguments)
+            await _respond(msg_id, result)
+
+        elif method == "resources/list":
+            await _respond(msg_id, {"resources": _MCP_RESOURCES})
+
+        elif method == "resources/read":
+            uri = params.get("uri", "")
+            result = await _read_resource(uri)
+            await _respond(msg_id, result)
+
+        elif method == "prompts/list":
+            await _respond(msg_id, {"prompts": _MCP_PROMPTS})
+
+        elif method == "prompts/get":
+            prompt_name = params.get("name", "")
+            prompt_args = params.get("arguments", {})
+            result = await _get_prompt(prompt_name, prompt_args)
+            await _respond(msg_id, result)
+
+        elif method == "ping":
+            await _respond(msg_id, {"pong": True, "ts": time.time()})
+
+        elif msg_id is not None:
+            await _error(msg_id, -32601, f"Method not found: {method}")
+
+        # Notifications (no id) — silently ignore unknown ones
+
+
 def main() -> None:
     try:
-        asyncio.run(_main())
+        if "--stdio" in sys.argv:
+            asyncio.run(_stdio_main())
+        else:
+            asyncio.run(_main())
     except KeyboardInterrupt:
         sys.exit(0)
 

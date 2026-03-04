@@ -642,7 +642,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Tax simulation IS vs IR over 3-5 years. Includes salary/dividend optimization, holding structure benefits, and effective tax rate calculation.",
         "category": "legal_status",
         "annotations": {"title": "Legal Status — Tax Simulation", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "projections": {"type": "array"}, "summary": {"type": "object"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "projections": {"type": "array", "items": {"type": "object", "additionalProperties": True}}, "summary": {"type": "object"}}},
         "handler": handle_legal_tax_simulate,
         "inputSchema": {
             "type": "object",
@@ -680,7 +680,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Governance structure audit — recommends statutory clauses, pactes d'associés, and governance organs based on legal form and investor involvement.",
         "category": "legal_status",
         "annotations": {"title": "Legal Status — Governance Audit", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended_clauses": {"type": "array"}, "critical_clauses": {"type": "integer"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended_clauses": {"type": "array", "items": {"type": "string"}}, "critical_clauses": {"type": "integer"}}},
         "handler": handle_legal_governance_audit,
         "inputSchema": {
             "type": "object",
@@ -698,7 +698,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Post-creation compliance checklist — steps, costs, timeline, and annual obligations for the chosen legal form.",
         "category": "legal_status",
         "annotations": {"title": "Legal Status — Creation Checklist", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "creation_steps": {"type": "array"}, "annual_obligations": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "creation_steps": {"type": "array", "items": {"type": "object", "additionalProperties": True}}, "annual_obligations": {"type": "array", "items": {"type": "string"}}}},
         "handler": handle_legal_creation_checklist,
         "inputSchema": {
             "type": "object",

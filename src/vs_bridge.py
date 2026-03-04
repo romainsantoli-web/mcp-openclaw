@@ -318,7 +318,11 @@ TOOLS: list[dict[str, Any]] = [
                 "workspace_path": {"type": "string", "description": "Absolute workspace root path"},
                 "open_files": {"type": "array", "items": {"type": "string"}, "description": "Currently open files"},
                 "active_file": {"type": "string", "description": "Currently focused file"},
-                "recent_changes": {"type": "array", "description": "Recent file change events"},
+                "recent_changes": {
+                    "type": "array",
+                    "items": {"type": "object", "additionalProperties": True},
+                    "description": "Recent file change events"
+                },
                 "agent_last_action": {"type": "string", "description": "Last Copilot agent action"},
                 "agent_last_result": {"type": "string", "description": "Output of last agent action"},
                 "session_id": {"type": "string", "description": "Target Firm session (default: main)"},

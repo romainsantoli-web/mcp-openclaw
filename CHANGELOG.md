@@ -5,6 +5,18 @@ All notable changes to `mcp-openclaw-extensions` will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] — 2026-03-04
+
+### Fixed
+- VS Code Copilot MCP tool schema validation failures by ensuring every `type: "array"` field declares `items` (notably `vs_context_push.recent_changes`, plus remaining output schemas in legal/location/supplier modules)
+- Resolved Python stdlib shadowing issue by replacing `src/platform.py` with `src/platform_compat.py`
+
+### Added
+- `src/stdio_bridge.py`: official MCP SDK stdio bridge (`Server`, `stdio_server`) for Copilot/VS Code compatibility
+
+### Changed
+- Version bumped to **4.1.1**
+
 ## [3.3.0] — 2026-03-08
 
 ### Added — OpenClaw 2026.3.1 Alignment

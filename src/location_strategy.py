@@ -440,7 +440,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Geo-economic analysis of candidate cities — talent pools, transport, ecosystem, infrastructure, quality of life. Compares multiple zones.",
         "category": "location_strategy",
         "annotations": {"title": "Location — Geo-Economic Analysis", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "analyses": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "analyses": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_location_geo_analysis,
         "inputSchema": {
             "type": "object",
@@ -459,7 +459,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Real estate market intelligence — availability, pricing per sqm, coworking rates, trends by zone. Filters by budget and surface.",
         "category": "location_strategy",
         "annotations": {"title": "Location — Real Estate Intelligence", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "zones_found": {"type": "integer"}, "results": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "zones_found": {"type": "integer"}, "results": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_location_real_estate,
         "inputSchema": {
             "type": "object",
@@ -478,7 +478,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Multi-criteria site scoring with 20+ weighted criteria. Compares sites on transport, talent, cost, ecosystem, and more. Outputs ranked matrix.",
         "category": "location_strategy",
         "annotations": {"title": "Location — Site Scoring", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "results": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "results": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_location_site_score,
         "inputSchema": {
             "type": "object",
@@ -496,7 +496,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Tax incentives and aid programs by territory — ZFU, ZRR, BER, CIR, JEI, BPI, FEDER. Matches company profile to available programs.",
         "category": "location_strategy",
         "annotations": {"title": "Location — Tax Incentives", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "tax_zones": {"type": "array"}, "national_aids": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "tax_zones": {"type": "array", "items": {"type": "string"}}, "national_aids": {"type": "array", "items": {"type": "string"}}}},
         "handler": handle_location_incentives,
         "inputSchema": {
             "type": "object",
@@ -514,7 +514,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Total Cost of Occupation simulation over 3-5 years. Includes rent, charges, CFE, insurance, maintenance. Compares multiple sites.",
         "category": "location_strategy",
         "annotations": {"title": "Location — TCO Simulation", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "simulations": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "simulations": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_location_tco_simulate,
         "inputSchema": {
             "type": "object",

@@ -415,7 +415,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Market-wide supplier sourcing — identifies potential suppliers by category, budget, geography. Provides recommended sources and methodology.",
         "category": "procurement",
         "annotations": {"title": "Suppliers — Supplier Search", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "category": {"type": "string"}, "recommended_sources": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "category": {"type": "string"}, "recommended_sources": {"type": "array", "items": {"type": "string"}}}},
         "handler": handle_supplier_search,
         "inputSchema": {
             "type": "object",
@@ -435,7 +435,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Multi-criteria supplier evaluation with 15+ weighted criteria. Scores quality, price, delivery, support, security, and more. Outputs ranked matrix.",
         "category": "procurement",
         "annotations": {"title": "Suppliers — Evaluate & Score", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "results": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "results": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_supplier_evaluate,
         "inputSchema": {
             "type": "object",
@@ -453,7 +453,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Total Cost of Ownership analysis over 3-5 years. Includes license, integration, training, support, migration, and exit costs.",
         "category": "procurement",
         "annotations": {"title": "Suppliers — TCO Analysis", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "analyses": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "recommended": {"type": "string"}, "analyses": {"type": "array", "items": {"type": "object", "additionalProperties": True}}}},
         "handler": handle_supplier_tco_analyze,
         "inputSchema": {
             "type": "object",
@@ -473,7 +473,7 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Contract clause analysis — checks SLA, penalties, data protection (DPA), reversibility, IP, NDA, and more against best practices.",
         "category": "procurement",
         "annotations": {"title": "Suppliers — Contract Check", "readOnlyHint": True, "openWorldHint": False},
-        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "overall_score": {"type": "string"}, "clauses": {"type": "array"}}},
+        "outputSchema": {"type": "object", "properties": {"ok": {"type": "boolean"}, "overall_score": {"type": "string"}, "clauses": {"type": "array", "items": {"type": "string"}}}},
         "handler": handle_supplier_contract_check,
         "inputSchema": {
             "type": "object",

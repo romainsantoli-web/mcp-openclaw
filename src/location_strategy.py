@@ -131,12 +131,15 @@ _BENCHMARK_IDF_PRICES: dict[str, dict[str, float]] = {
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
-async def handle_location_geo_analysis(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_location_geo_analysis(
+    cities: list[str] | None = None,
+    sector: str = "tech",
+    headcount: int = 10,
+    priorities: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Geo-economic analysis of candidate cities/zones."""
-    cities = arguments.get("cities", [])
-    sector = arguments.get("sector", "tech")
-    headcount = arguments.get("headcount", 10)
-    arguments.get("priorities")
+    if not cities:
+        cities = []
 
     if not cities:
         return [{"type": "text", "text": json.dumps({
@@ -191,13 +194,14 @@ async def handle_location_geo_analysis(arguments: dict[str, Any]) -> list[dict[s
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_location_real_estate(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_location_real_estate(
+    zone: str = "Île-de-France",
+    property_type: str = "bureau",
+    surface_min: int = 100,
+    surface_max: int | None = None,
+    budget_max: float | None = None,
+) -> list[dict[str, Any]]:
     """Real estate market intelligence."""
-    zone = arguments.get("zone", "Île-de-France")
-    property_type = arguments.get("property_type", "bureau")
-    surface_min = arguments.get("surface_min", 100)
-    surface_max = arguments.get("surface_max")
-    budget_max = arguments.get("budget_max")
 
     property_label = _PROPERTY_TYPES.get(property_type, property_type)
 
@@ -240,11 +244,16 @@ async def handle_location_real_estate(arguments: dict[str, Any]) -> list[dict[st
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_location_site_score(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_location_site_score(
+    sites: list[str] | None = None,
+    scores: dict[str, Any] | None = None,
+    weights: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Multi-criteria site scoring."""
-    sites = arguments.get("sites", [])
-    custom_scores = arguments.get("scores", {})
-    custom_weights = arguments.get("weights", {})
+    if not sites:
+        sites = []
+    custom_scores = scores or {}
+    custom_weights = weights or {}
 
     if not sites:
         return [{"type": "text", "text": json.dumps({
@@ -299,12 +308,13 @@ async def handle_location_site_score(arguments: dict[str, Any]) -> list[dict[str
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_location_incentives(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_location_incentives(
+    zone: str = "",
+    company_type: str = "startup",
+    headcount: int = 10,
+    sector: str = "tech",
+) -> list[dict[str, Any]]:
     """Tax incentives and aid programs by territory."""
-    zone = arguments.get("zone", "")
-    company_type = arguments.get("company_type", "startup")
-    headcount = arguments.get("headcount", 10)
-    sector = arguments.get("sector", "tech")
 
     # Check applicable tax zones
     applicable_zones: list[dict[str, Any]] = []
@@ -347,13 +357,16 @@ async def handle_location_incentives(arguments: dict[str, Any]) -> list[dict[str
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_location_tco_simulate(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_location_tco_simulate(
+    sites: list[str] | None = None,
+    surface: int = 200,
+    horizon_years: int = 3,
+    headcount: int = 10,
+    annual_rent_increase: float = 0.03,
+) -> list[dict[str, Any]]:
     """Total Cost of Occupation simulation."""
-    sites = arguments.get("sites", [])
-    surface = arguments.get("surface", 200)
-    horizon_years = arguments.get("horizon_years", 3)
-    headcount = arguments.get("headcount", 10)
-    annual_rent_increase = arguments.get("annual_rent_increase", 0.03)
+    if not sites:
+        sites = []
 
     if not sites:
         return [{"type": "text", "text": json.dumps({

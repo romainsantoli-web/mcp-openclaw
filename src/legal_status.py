@@ -237,14 +237,15 @@ _CREATION_STEPS = [
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
-async def handle_legal_status_compare(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_legal_status_compare(
+    project_type: str = "startup",
+    founders: int = 1,
+    revenue_y1: float = 0,
+    fundraising: bool = False,
+    sector: str = "tech",
+    criteria_weights: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Compare legal forms with multi-criteria scoring."""
-    project_type = arguments.get("project_type", "startup")
-    founders = arguments.get("founders", 1)
-    revenue_y1 = arguments.get("revenue_y1", 0)
-    fundraising = arguments.get("fundraising", False)
-    sector = arguments.get("sector", "tech")
-    arguments.get("criteria_weights")
 
     # Filter relevant forms based on founder count
     relevant_forms: dict[str, dict[str, Any]] = {}
@@ -323,15 +324,16 @@ async def handle_legal_status_compare(arguments: dict[str, Any]) -> list[dict[st
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_legal_tax_simulate(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_legal_tax_simulate(
+    legal_form: str = "SAS",
+    revenue: float = 100000,
+    salary: float = 0,
+    dividends: float = 0,
+    horizon_years: int = 3,
+    growth_rate: float = 0.1,
+    holding: bool = False,
+) -> list[dict[str, Any]]:
     """Simulate IS vs IR taxation over multiple years."""
-    legal_form = arguments.get("legal_form", "SAS")
-    revenue = arguments.get("revenue", 100000)
-    salary = arguments.get("salary", 0)
-    dividends = arguments.get("dividends", 0)
-    horizon_years = arguments.get("horizon_years", 3)
-    growth_rate = arguments.get("growth_rate", 0.1)
-    holding = arguments.get("holding", False)
 
     form_data = _LEGAL_FORMS.get(legal_form)
     if not form_data:
@@ -419,11 +421,12 @@ async def handle_legal_tax_simulate(arguments: dict[str, Any]) -> list[dict[str,
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_legal_social_protection(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_legal_social_protection(
+    status: str = "assimile_salarie",
+    salary: float = 50000,
+    include_options: bool = True,
+) -> list[dict[str, Any]]:
     """Analyze social protection by status."""
-    status = arguments.get("status", "assimile_salarie")
-    salary = arguments.get("salary", 50000)
-    include_options = arguments.get("include_options", True)
 
     regime = _SOCIAL_REGIMES.get(status)
     if not regime:
@@ -478,12 +481,13 @@ async def handle_legal_social_protection(arguments: dict[str, Any]) -> list[dict
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_legal_governance_audit(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_legal_governance_audit(
+    legal_form: str = "SAS",
+    founders: int = 2,
+    has_investors: bool = False,
+    specific_clauses: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Audit governance structure and recommend clauses."""
-    legal_form = arguments.get("legal_form", "SAS")
-    founders = arguments.get("founders", 2)
-    has_investors = arguments.get("has_investors", False)
-    specific_clauses = arguments.get("specific_clauses")
 
     form_data = _LEGAL_FORMS.get(legal_form)
     if not form_data:
@@ -561,11 +565,12 @@ async def handle_legal_governance_audit(arguments: dict[str, Any]) -> list[dict[
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_legal_creation_checklist(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_legal_creation_checklist(
+    legal_form: str = "SAS",
+    sector: str = "tech",
+    geography: str = "France",
+) -> list[dict[str, Any]]:
     """Generate post-creation compliance checklist."""
-    legal_form = arguments.get("legal_form", "SAS")
-    sector = arguments.get("sector", "tech")
-    geography = arguments.get("geography", "France")
 
     form_data = _LEGAL_FORMS.get(legal_form)
     if not form_data:

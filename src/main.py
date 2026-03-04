@@ -719,15 +719,90 @@ async def _handle_sse_transport(request: web.Request) -> web.StreamResponse:
 
 async def _handle_messages(request: web.Request) -> web.Response:
     """Legacy SSE transport — POST /messages/?session_id=xxx.
-    Receives JSON-RPC requests from the client, dispatches them
-    through the same handler as /mcp, returns the JSON-RPC response.
+    Receives JSON-RPC requests from the client, dispatches them,
+    then pushes the response into the SSE stream (event: message).
+    Returns 202 Accepted immediately (no body).
     """
     session_id = request.query.get("session_id", "")
     if session_id not in _SSE_SESSIONS:
         return web.Response(status=404, text="Session not found")
 
-    # Reuse the existing HTTP streamable handler
-    return await _handle_mcp(request)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.Response(status=400, text="Invalid JSON")
+
+    method: str = body.get("method", "")
+    msg_id = body.get("id")
+    params: dict[str, Any] = body.get("params", {})
+
+    _MCP_HEADERS = {"MCP-Protocol-Version": "2025-11-25"}
+
+    # Build the JSON-RPC response
+    response_payload: dict[str, Any] | None = None
+
+    if method == "initialize":
+        response_payload = {
+            "jsonrpc": "2.0", "id": msg_id,
+            "result": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {
+                    "tools": {"listChanged": True},
+                    "resources": {"subscribe": False, "listChanged": False},
+                    "prompts": {"listChanged": False},
+                    "elicitation": {},
+                },
+                "serverInfo": {
+                    "name": "firm-mcp-server",
+                    "version": __version__,
+                    "description": (
+                        f"Firm MCP server — {len(TOOL_REGISTRY)} tools across 29 modules. "
+                        "Compatible with Claude Code, Codex, VS Code, Cursor, Windsurf, Antigravity."
+                    ),
+                },
+            },
+        }
+    elif method == "notifications/initialized":
+        # Client acknowledgement — no response needed
+        return web.Response(status=202)
+    elif method == "tools/list":
+        response_payload = {
+            "jsonrpc": "2.0", "id": msg_id,
+            "result": {"tools": _mcp_tools_list()},
+        }
+    elif method == "tools/call":
+        tool_name: str = params.get("name", "")
+        arguments: dict[str, Any] = params.get("arguments", {})
+        result = await _mcp_call_tool(tool_name, arguments)
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": result}
+    elif method == "resources/list":
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": {"resources": _MCP_RESOURCES}}
+    elif method == "resources/read":
+        uri = params.get("uri", "")
+        result = await _read_resource(uri)
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": result}
+    elif method == "prompts/list":
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": {"prompts": _MCP_PROMPTS}}
+    elif method == "prompts/get":
+        prompt_name = params.get("name", "")
+        prompt_args = params.get("arguments", {})
+        result = await _get_prompt(prompt_name, prompt_args)
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": result}
+    elif method == "ping":
+        response_payload = {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+    else:
+        response_payload = {
+            "jsonrpc": "2.0", "id": msg_id,
+            "error": {"code": -32601, "message": f"Method not found: {method}"},
+        }
+
+    # Push the response into the SSE stream for this session
+    if response_payload is not None:
+        queue = _SSE_SESSIONS.get(session_id)
+        if queue is not None:
+            await queue.put(response_payload)
+
+    return web.Response(status=202)
 
 
 async def _build_app() -> web.Application:

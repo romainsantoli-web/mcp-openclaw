@@ -94,14 +94,17 @@ _SUPPLIER_WATCHLIST: dict[str, dict[str, Any]] = {}
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
-async def handle_supplier_search(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_supplier_search(
+    category: str = "saas",
+    query: str = "",
+    budget_max: float | None = None,
+    users: int | None = None,
+    geography: str = "France",
+    requirements: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Search and identify suppliers in a category."""
-    category = arguments.get("category", "saas")
-    query = arguments.get("query", "")
-    budget_max = arguments.get("budget_max")
-    users = arguments.get("users")
-    geography = arguments.get("geography", "France")
-    requirements = arguments.get("requirements", [])
+    if requirements is None:
+        requirements = []
 
     cat_data = _SUPPLIER_CATEGORIES.get(category)
     if not cat_data:
@@ -136,11 +139,16 @@ async def handle_supplier_search(arguments: dict[str, Any]) -> list[dict[str, An
     return [{"type": "text", "text": json.dumps(search_result, ensure_ascii=False, indent=2)}]
 
 
-async def handle_supplier_evaluate(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_supplier_evaluate(
+    suppliers: list[str] | None = None,
+    scores: dict[str, Any] | None = None,
+    criteria: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Multi-criteria supplier evaluation."""
-    suppliers = arguments.get("suppliers", [])
-    custom_scores = arguments.get("scores", {})
-    custom_weights = arguments.get("criteria", {})
+    if not suppliers:
+        suppliers = []
+    custom_scores = scores or {}
+    custom_weights = criteria or {}
 
     if not suppliers:
         return [{"type": "text", "text": json.dumps({
@@ -198,13 +206,18 @@ async def handle_supplier_evaluate(arguments: dict[str, Any]) -> list[dict[str, 
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_supplier_tco_analyze(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_supplier_tco_analyze(
+    suppliers: list[str] | None = None,
+    volume: int = 1,
+    horizon_years: int = 3,
+    unit_prices: dict[str, Any] | None = None,
+    include_hidden_costs: bool = True,
+) -> list[dict[str, Any]]:
     """Total Cost of Ownership analysis."""
-    suppliers = arguments.get("suppliers", [])
-    volume = arguments.get("volume", 1)
-    horizon_years = arguments.get("horizon_years", 3)
-    unit_prices = arguments.get("unit_prices", {})
-    include_hidden_costs = arguments.get("include_hidden_costs", True)
+    if not suppliers:
+        suppliers = []
+    if unit_prices is None:
+        unit_prices = {}
 
     if not suppliers:
         return [{"type": "text", "text": json.dumps({
@@ -266,12 +279,15 @@ async def handle_supplier_tco_analyze(arguments: dict[str, Any]) -> list[dict[st
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_supplier_contract_check(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_supplier_contract_check(
+    supplier: str = "",
+    contract_type: str = "SaaS",
+    requirements: list[str] | None = None,
+    existing_clauses: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Contract clause analysis."""
-    supplier = arguments.get("supplier", "")
-    contract_type = arguments.get("contract_type", "SaaS")
-    arguments.get("requirements", [])
-    existing_clauses = arguments.get("existing_clauses", [])
+    if existing_clauses is None:
+        existing_clauses = []
 
     clause_analysis: list[dict[str, Any]] = []
     missing_critical = 0
@@ -317,12 +333,15 @@ async def handle_supplier_contract_check(arguments: dict[str, Any]) -> list[dict
     }, ensure_ascii=False, indent=2)}]
 
 
-async def handle_supplier_risk_monitor(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+async def handle_supplier_risk_monitor(
+    action: str = "status",
+    supplier: str = "",
+    watch: list[str] | None = None,
+    notes: str | None = None,
+) -> list[dict[str, Any]]:
     """Supplier risk monitoring — CRUD watchlist."""
-    action = arguments.get("action", "status")
-    supplier = arguments.get("supplier", "")
-    watch = arguments.get("watch", [])
-    notes = arguments.get("notes")
+    if watch is None:
+        watch = []
 
     if action == "add":
         if not supplier:
